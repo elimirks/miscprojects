@@ -4,27 +4,20 @@ import java.awt.Color
 import java.awt.Graphics
 import javax.swing.JPanel
 
-class Board extends JPanel {
+/**
+ * @constructor Create a new boards with the given tiles (unsorted is OK).
+ * @param tiles The tiles to create for the board.
+ */
+class Board(tiles: List[Tile]) extends JPanel {
   setBackground(Color.BLACK)
 
-  // Make a cozy little map
-  private val tiles = Array(
-    new Tile(4, 1, 0, spriteIndex = 23),
-    new Tile(4, 2, 0, spriteIndex = 3),
-    new Tile(5, 1, 0, spriteIndex = 28),
-    new Tile(5, 2, 0, spriteIndex = 31),
-    new Tile(4, 2, 1, spriteIndex = 0),
-    new Tile(5, 1, 1, spriteIndex = 48),
-    new Tile(6, 1, 0, spriteIndex = 0),
-    new Tile(6, 2, 0, spriteIndex = 0),
-    new Tile(6, 1, 1, spriteIndex = 44),
-    new Tile(6, 2, 1, spriteIndex = 54)
-  )
+  // Sort the tiles so that when they render, they layer properly.
+  private val _tiles = tiles.sortWith((a, b) => a.z < b.z || a.x < b.x)
 
   override def paintComponent(g: Graphics) {
     super.paintComponent(g)
 
-    for (tile <- tiles) {
+    for (tile <- _tiles) {
       val originX = 128
       val originY = 128
 
