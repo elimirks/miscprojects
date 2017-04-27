@@ -35,10 +35,10 @@ struct grid *readgrid(char *filename) {
         g->height++;
 
         if (g->width == -1) {
-            g->width = read;
-        } else if (g->width != read) {
+            g->width = read - 1; // -1 to ignore the newline
+        } else if (g->width != read - 1) {
             fprintf(stderr, "Inconsistent maze width: %d, expected %d\n",
-                    read, g->width);
+                    read - 1, g->width);
             exit(1);
         }
 
@@ -64,7 +64,8 @@ void printgrid(struct grid *g) {
 }
 
 int main(int argc, char **argv) {
-    readgrid(argv[1]);
+    struct grid *g = readgrid(argv[1]);
+    printgrid(g);
     return 0;
 }
 
