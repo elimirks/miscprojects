@@ -127,7 +127,6 @@ struct graph *create_graph(struct grid *g) {
             if (line[x]->type != WALL) {
                 // Connect the left node, if it isn't a wall
                 if (x > 0 && line[x-1]->type != WALL) {
-                    // Ugly. But gets the job done
                     line[x-1]->children[line[x-1]->child_count++] = line[x];
                     line[x]->children[line[x]->child_count++] = line[x-1];
                 }
@@ -182,6 +181,11 @@ void annotate_grid(struct grid *g, struct graph *graph) {
             stack[stack_size++] = current->children[i];
         }
     }
+
+    for (int y = 0; y < g->height; y++) {
+        free(visited_map[y]);
+    }
+    free(visited_map);
 }
 
 int main(int argc, char **argv) {
