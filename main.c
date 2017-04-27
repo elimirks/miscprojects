@@ -56,11 +56,9 @@ struct grid *read_grid(char *filename) {
         }
 
         // Don't realloc too often
-        /*
         if (ISPOWEROF2(g->height)) {
-            g->map = realloc(g->map, sizeof(char *) * g->height);
+            //g->map = realloc(g->map, sizeof(char *) * g->height);
         }
-        */
         g->map[g->height - 1] = malloc(g->width);
         strncpy(g->map[g->height - 1], line, g->width);
     }
@@ -164,11 +162,6 @@ void annotate_grid(struct grid *g, struct graph *graph) {
             visited_map[y][x] = '0';
         }
     }
-    // For debugging (remove these 4 silly lines)
-    struct grid v;
-    v.width = g->width;
-    v.height = g->height;
-    v.map = visited_map;
 
     int stack_size = 1;
     // Static 128 size stack for now... but this should really be dynamic
