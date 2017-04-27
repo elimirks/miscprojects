@@ -131,8 +131,7 @@ struct graph *create_graph(struct grid *g) {
                 if (x > 0 && line[x-1]->type != WALL) {
                     // Ugly. But gets the job done
                     line[x-1]->children[line[x-1]->child_count++] = line[x];
-                    line[x]->children[line[x]->child_count++] =
-                        line[x-1]->children[line[x-1]->child_count];
+                    line[x]->children[line[x]->child_count++] = line[x-1];
                 }
 
                 // Connect the above node, if it isn't a wall
@@ -158,28 +157,33 @@ struct graph *create_graph(struct grid *g) {
 void annotate_grid(struct grid *g, struct graph *graph) {
     // This function essentially just DFSs through the given graph
 
-    int **visited_map = malloc(sizeof(int) * g->height);
+    char **visited_map = malloc(sizeof(char *) * g->height);
     for (int y = 0; y < g->height; y++) {
-        visited_map[y] = malloc(sizeof(int) * g->width);
+        visited_map[y] = malloc(sizeof(char) * g->width);
         for (int x = 0; x < g->width; x++) {
-            visited_map[y][x] = 0;
+            visited_map[y][x] = '0';
         }
     }
+    // For debugging (remove these 4 silly lines)
+    struct grid v;
+    v.width = g->width;
+    v.height = g->height;
+    v.map = visited_map;
 
     int stack_size = 1;
     // Static 128 size stack for now... but this should really be dynamic
-    struct node **stack = malloc(sizeof(struct graph *) * 128);
+    struct node **stack = malloc(sizeof(struct node *) * 128);
     stack[0] = graph->start;
 
-    while (stack_size-- > 0) {
-        struct node *current = stack[stack_size];
-        if (visited_map[current->y][current->x] == 1) {
+    while (stack_size > 0) {
+        struct node *current = stack[--stack_size];
+        if (visited_map[current->y][current->x] == '1') {
             continue;
         }
-        visited_map[current->y][current->x] = 1;
+        visited_map[current->y][current->x] = '1';
 
-        printf("%d, %d, %d, %d\n", current->y, current->x, g->height, g->width);
-        g->map[current->y][current->x] = 'v';
+        g->map[current->y][current->x] = 'x';
+
         // Add the children to the stack
         for (int i = 0; i < current->child_count; i++) {
             stack[stack_size++] = current->children[i];
