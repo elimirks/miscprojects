@@ -14,7 +14,8 @@ struct node {
     int x, y;
     int type;
     int child_count;
-    struct node **children;
+    // We have at most 4 children
+    struct node *children[4];
 };
 struct graph {
     struct node *start;
@@ -81,41 +82,38 @@ struct graph *create_graph(struct grid *g) {
     graph->start = NULL;
     graph->end = NULL;
 
-    struct node **previous_line = NULL;
+    struct node *previous_line = NULL;
 
     for (int y = 0; y < g->height; y++) {
-        struct node **line = malloc(sizeof(struct node*) * g->width);
+        struct node *line = malloc(sizeof(struct node) * g->width);
         for (int x = 0; x < g->width; x++) {
-            line[x] = malloc(sizeof(struct node));
-            line[x]->x = x;
-            line[x]->y = y;
-            line[x]->child_count = 0;
-            // At most 4 children
-            line[x]->children = malloc(sizeof(struct node *) * 4);
+            line[x].x = x;
+            line[x].y = y;
+            line[x].child_count = 0;
 
-            line[x]->type = g->map[y][x];
-            switch (line[x]->type) {
+            line[x].type = g->map[y][x];
+            switch (line[x].type) {
             case 'S':
                 if (graph->start != NULL) {
                     fprintf(stderr, "Multiple start nodes are not allowed\n");
                     exit(1);
                 }
-                graph->start = line[x];
-                line[x]->type = START;
+                graph->start = &line[x];
+                line[x].type = START;
                 break;
             case 'E':
                 if (graph->end != NULL) {
                     fprintf(stderr, "Multiple end nodes are not allowed\n");
                     exit(1);
                 }
-                graph->end = line[x];
-                line[x]->type = END;
+                graph->end = &line[x];
+                line[x].type = END;
                 break;
             case ' ':
-                line[x]->type = PATH;
+                line[x].type = PATH;
                 break;
             case '.':
-                line[x]->type = WALL;
+                line[x].type = WALL;
                 break;
             default:
                 fprintf(stderr, "Unexpected character: %c\n", g->map[y][x]);
@@ -124,28 +122,23 @@ struct graph *create_graph(struct grid *g) {
             }
 
             // Connect this node to it's neighbors
-            if (line[x]->type != WALL) {
+            if (line[x].type != WALL) {
                 // Connect the left node, if it isn't a wall
-                if (x > 0 && line[x-1]->type != WALL) {
-                    line[x-1]->children[line[x-1]->child_count++] = line[x];
-                    line[x]->children[line[x]->child_count++] = line[x-1];
+                if (x > 0 && line[x-1].type != WALL) {
+                    line[x-1].children[line[x-1].child_count++] = &line[x];
+                    line[x].children[line[x].child_count++] = &line[x-1];
                 }
 
                 // Connect the above node, if it isn't a wall
-                if (y > 0 && previous_line[x]->type != WALL) {
-                    struct node *above = previous_line[x];
-                    above->children[above->child_count++] = line[x];
-                    line[x]->children[line[x]->child_count++] = above;
+                if (y > 0 && previous_line[x].type != WALL) {
+                    struct node *above = &previous_line[x];
+                    above->children[above->child_count++] = &line[x];
+                    line[x].children[line[x].child_count++] = above;
                 }
             }
         }
-        if (previous_line != NULL) {
-            free(previous_line);
-        }
         previous_line = line;
     }
-
-    free(previous_line); // there is always at least one line
 
     return graph;
 }
@@ -188,6 +181,8 @@ void annotate_grid(struct grid *g, struct graph *graph) {
     free(visited_map);
 }
 
+
+
 int main(int argc, char **argv) {
     struct grid *g = read_grid(argv[1]);
     printf("Input map:\n");
@@ -199,3 +194,12 @@ int main(int argc, char **argv) {
     print_grid(g);
     return 0;
 }
+
+/*
+ * Pathfinding algorithm ideas:
+ * - DFS
+ * - BFS
+ * - A-Star
+ * - Dijkstra
+ * - ???
+ */
