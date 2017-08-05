@@ -1,1 +1,4 @@
+* Introduction
 This repository will be used for miscellaneous small projects that probably don't deserve their own repos... or pieces of code that I'm just experimenting with.
+
+The git history may look wonky, since [[https://stackoverflow.com/questions/1683531/how-to-import-existing-git-repository-into-another][I merged some old repos as subtrees]]
