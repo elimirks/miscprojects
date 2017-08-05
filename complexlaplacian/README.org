@@ -1,0 +1,13 @@
+* Introduction
+	(project created on Nov 20 2016)
+
+  You have probably seen a Laplacian visualized in the real numbers... but have you seen it in the complex field? I haven't either, until I made this project :)
+
+  To visualize a Laplacian in the real numbers, you need 3 dimensions: X, Y, and the magnitude component. So to plot on a 2D grid, you can plot the X and Y coordinates on the X and Y screen, and the Z coordinate as a color gradient.
+
+  However, visualizing the Laplacian of complex numbers requires 4 dimensions: X, Y, and the two magnitude components. To plot this on a 2D grid, I used the HSV colorspace! With HSV, I plotted the arg(z) as hue, and |z| as the value (brightness).
+
+* Dependencies
+
+	SFML2
+
