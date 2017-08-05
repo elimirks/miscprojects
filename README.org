@@ -1,0 +1,1 @@
+This repository will be used for miscellaneous small projects that probably don't deserve their own repos... or pieces of code that I'm just experimenting with.

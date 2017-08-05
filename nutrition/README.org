@@ -1,0 +1,3 @@
+* Introduction
+
+  I couldn't find any nutrition planners that I liked, so I am working on this one using the Edamam API.
