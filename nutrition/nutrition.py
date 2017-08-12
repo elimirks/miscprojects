@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
 
+import argparse
 import json
 import urllib3
 import urllib
+import yaml
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--requirements', dest='requirementsPath',
+        type=str, default='requirements.yaml')
+parser.add_argument('--foods', dest='foodsPath',
+        type=str, default='foods.yaml')
+args = parser.parse_args()
 
 APP_ID  = 'fac90f20'
 APP_KEY = 'b35671c6cf9007c984b838074222c83c'
@@ -27,39 +36,14 @@ def getNutritionJson(query):
 
     return data
 
-foods = [
-    '1 shot espresso',
-    '3 cup milk',
-    '2 medium tomato',
-    '1 medium mozarella',
-    '1 large carrot',
-    '8 slice salami',
-    '2 apple',
-    '4 cup water',
-]
 
-# See https://ods.od.nih.gov/Health_Information/Dietary_Reference_Intakes.aspx
-requirements = {
-    'Vitamin A': 900,
-    'Vitamin C': 90,
-    'Vitamin D': 15,
-    'Vitamin E': 15,
-    'Vitamin K': 120,
-    'Thiamin (B1)': 1.2,
-    'Riboflavin (B2)': 1.3,
-    'Niacin (B3)': 16,
-    'Vitamin B6': 1.3,
-    'Folate (Equivalent)': 400,
-    'Vitamin B12': 2.4,
+foods = []
+requirements = {}
 
-    'Calcium': 1000,
-    'Iron': 8,
-    'Magnesium': 400,
-    'Phosphorus': 700,
-    'Zinc': 11,
-    'Potassium': 4700,
-    'Sodium': 1500,
-}
+with open(args.foodsPath) as f:
+    foods = yaml.load(f.read())
+with open(args.requirementsPath) as f:
+    requirements = yaml.load(f.read())
 
 ingredients = []
 totalCalories = 0
