@@ -1,8 +1,9 @@
-- 1 shot espresso
-- 3 cup milk
-- 2 medium tomato
-- 1 medium mozarella
-- 1 large carrot
-- 8 slice salami
-- 2 apple
-- 4 cup water
+ingredient:
+  - 1 shot espresso
+  - 3 cup milk
+  - 2 medium tomato
+  - 1 medium mozarella
+  - 1 large carrot
+  - 8 slice salami
+  - 2 apple
+  - 4 cup water
