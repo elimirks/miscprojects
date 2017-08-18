@@ -148,20 +148,29 @@ parser.add_argument('--foods', dest='foodsPath',
 args = parser.parse_args()
 
 with open(args.foodsPath) as f:
-    foods = yaml.load(f.read())
+    foodsYaml = yaml.load(f.read())
 with open(args.requirementsPath) as f:
-    requirements = yaml.load(f.read())
+    requirementsYaml = yaml.load(f.read())
 
 allFood = Food.emptyPlate()
-for foodName in foods['ingredient']:
+for foodName in foodsYaml['ingredient']:
     allFood += Food.fromIngredient(foodName)
 
 print('\nIngredients:\n%s' % '\n'.join(allFood.ingredients))
 print('\nCalories: %d' % allFood.calories)
 print('\nNutrients: ')
 
+requirements = {}
+for key in requirementsYaml.keys():
+    # Crappy I know, split by space for now :/
+    value = requirementsYaml[key].split(' ')
+    requirements[key] = Nutrient(key, float(value[0]), value[1])
+    
 for name in sorted(allFood.nutrients.keys()):
     title = name.ljust(20)
-    value = allFood.nutrients[name].toCleanStr()
+    nutrient = allFood.nutrients[name]
+    value = nutrient.toCleanStr()
+    if name in requirements.keys():
+        percent = 100 * nutrient.quantity / requirements[name].quantity
+        value = '%s%6.2f%%' % (value.ljust(20), percent)
     print('%s\t %s' % (title, value))
-
