@@ -37,7 +37,8 @@
         <ul>
             <li><b>Size (percentage)</b> is indicated by redness. It is never below 1%.</li>
             <li><b>Aquatic (percentage)</b> is indicated by blueness.</li>
-            <li><b>Carnivorous (percentage)</b> is indicated by whiteness. Blacker organisms are more herbivorous.</li>
+            <li><b>Carnivorous (percentage)</b> is indicated by whiteness. A higher level allows organisms to relieve more hunger from flesh.</li>
+            <li><b>Herbivorous (percentage)</b> is indicated by blackness. A higher level allows organisms to relieve more hunger from vegetation. The sum of the <b>Herbivorous</b> stat and the <b>Carnivorous</b> stat will always sum to 100%.</li>
             <li><b>Sex (male/female)</b> (pretty self explanitory).</li>
             <li><b>Age (number of turns)</b> does not directly kill an animal, however, it will affect the variables such as <b>Speed</b> stat and <b>Mature</b> property (both explained below).</li>
         </ul>
@@ -63,8 +64,8 @@
             <li><b>Hunger</b>. Increases linearly with <b>Size</b>. At birth, an organism starts with 0% <b>Hunger</b>. Every turn, the <b>Hunger</b> increases by 1% multiplied by the <b>Size</b> on the organism.</li>
             <li>If an organism has over 100% <b>Hunger</b>, it will die.</li>
             <li>It is impossible for an organism to have negative <b>Hunger</b></li>
-            <li>Eating vegetation decreases <b>Hunger</b> by 500% divided by the <b>Size</b> of the Organism. Thus, completely herbivorous organisms with 100% <b>Size</b> must constantly be eating vegetation to survive forever. Additionally, organisms with <b>Size</b> less than 5% will reduce <b>Hunger</b> to 0% by eating a single tile of vegetation.</li>
-            <li>Eating another organism decreases <b>Hunger</b> by twice the <b>Size</b> of the other organism. So if an organism of <b>Size</b> 10% eats an organism of 5%, it will always return <b>Hunger</b> to 0%.</li>
+            <li>Eating vegetation decreases <b>Hunger</b> by 500% divided by the <b>Size</b> of the Organism, multiplied <b>Herbivorous</b> stat of the organism. Thus, completely herbivorous organisms with 100% <b>Size</b> must constantly be eating vegetation to survive forever. Additionally, organisms with <b>Size</b> less than 5% will reduce <b>Hunger</b> to 0% by eating a single tile of vegetation.</li>
+            <li>Eating another organism decreases <b>Hunger</b> by twice times the <b>Carnivorous</b> level of the carnivorous organism. The <b>Size</b> of the other organism. So if an organism of <b>Size</b> 10% eats an organism of 5%, it will always return <b>Hunger</b> to 0%.</li>
             <li>The <b>Carnivorous</b> stat indicates how much <b>Hunger</b> is reduced by eating vegetation vs another organism.</li>
             <li><b>Aggression</b> will determine how likely an organism is to eat another organism. The higher the <b>Hunger</b> is of an organism, the more likely it is to eat an organism with a higher <b>Attacke</b></li>
         </ul>
