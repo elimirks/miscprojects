@@ -1,0 +1,102 @@
+<html>
+    <head>
+        <script src="jquery-3.1.1.min.js"></script>
+        <style>
+         body {
+             margin: 0px;
+             padding: 0px;
+             /*overflow: hidden;*/
+         }
+         #cameraContainer {
+             margin-left: -32px;
+         }
+
+         #container {
+             margin: 0px;
+             padding: 0px;
+             width: 500px;
+             height: 500px;
+         }
+
+         /* Tile styles */
+
+         .block {
+             position: absolute;
+             background-color: green;
+         }
+
+         .retroTile {
+             background-color: green;
+             border: 1px solid black;
+         }
+
+         .player {
+             background-color: red;
+         }
+        </style>
+    </head>
+    <body>
+        <div id="cameraContainer">
+            <div id="container"></div>
+        </div>
+        <h2>Objects</h2>
+        <ul>
+            <li>Vegetation (Dark Green)</li>
+            <li>Earth (Dark Yellow)</li>
+            <li>Water (Light Yellow with no vegetation, Light Green with vegetation)</li>
+            <li>Organism (Varying colors - see Base Organism Stats)</li>
+        </ul>
+        <h2>Base Organism Stats</h2>
+        <ul>
+            <li><b>Size (percentage)</b> is indicated by redness. It is never below 1%.</li>
+            <li><b>Aquatic (percentage)</b> is indicated by blueness.</li>
+            <li><b>Carnivorous (percentage)</b> is indicated by whiteness. Blacker organisms are more herbivorous.</li>
+            <li><b>Sex (male/female)</b> (pretty self explanitory).</li>
+            <li><b>Age (number of turns)</b> does not directly kill an animal, however, it will affect the variables such as <b>Speed</b> stat and <b>Mature</b> property (both explained below).</li>
+        </ul>
+        <h2>Breeding</h2>
+        <ul>
+            <li>An organism will only be <b>Mature</b> if its age is greater than 100 times <b>Size</b>. So an organism of <b>Size</b> 20% will only be considered <b>Mature</b> once it reaches an <b>Age</b> of 20 turns. Organisms will only breed once they are <b>Mature</b>.</li>
+            <li>A female organism will be <b>Pregnant</b> after breeding. The gestation period is proportional to the <b>Size</b> of the organism. An organism of <b>Size</b> 20% will take 20 turns to give birth.</li>
+            <li>Two adjacent organisms have a 50% chance of breeding per turn.</li>
+            <li>When two organisms breed, the offspring will deviate by at most 1% of the extreme for each parent. For instance, if the parents have sizes of 5% and 8%, the child will have a uniform chance of having size 4% to 9%.</li>
+            <li>Organisms will only breed with organisms that have a mean base stat different of at most 2%. Thus, it is technicaly possible, though improbable, for an organism to mate with and eat another organism.</li>
+        </ul>
+        <h2>Variable Organism Stats</h2>
+        <ul>
+            <li><b>Speed (pertentage, between 1% and 100%)</b>. Based on <b>Size</b> and <b>Aquatic</b> stats, <b>Age</b>, and the extent of <b>Pregnancy</b> for female organisms. The larger the organism, the slower. <b>Speed</b> in water vs land is dependent on <b>Aquatic</b> stat. </li>
+            <li><b>Sight (Manhattan distance between 1 and 10 tiles)</b>. Based on <b>Size</b>, <b>Aquatic</b>, and <b>Carnivorous</b> stats. </li>
+            <li><b>Swimming (pertentage)</b>. Positive linearly correlation to the <b>Aquatic</b> stat. A higher <b>Swimming</b> stat indicates the chance of an organism leaving water. Hence, with a 100% Swimming stat, an organism will <i>never</i> leave the water. Note, however, that it will still be able to move on land if it is born on land. But once it enters water, it will never go to land again.</li>
+            <li><b>Walking (pertentage)</b>. Negative linearly correlation to the <b>Aquatic</b> stat. Similar to <b>Swimming</b>, except </li>
+            <li><b>Attack (pertentage)</b>. Based on <b>Aquatic</b> and <b>Carnivorous</b> stats. The more <b>Carnivorous</b> the organism, the higher the <b>Attack</b>. The <b>Aquatic</b> stat dictates the effectiveness of attack in water vs land.</li>
+            <li><b>Defence (pertentage)</b>. Based on <b>Aquatic</b> and <b>Size</b> stats. The <b>Aquatic</b> stat dictates the effectiveness of defence in water vs land.</li>
+        </ul>
+        <h2>Eating</h2>
+        <ul>
+            <li><b>Hunger</b>. Increases linearly with <b>Size</b>. At birth, an organism starts with 0% <b>Hunger</b>. Every turn, the <b>Hunger</b> increases by 1% multiplied by the <b>Size</b> on the organism.</li>
+            <li>If an organism has over 100% <b>Hunger</b>, it will die.</li>
+            <li>It is impossible for an organism to have negative <b>Hunger</b></li>
+            <li>Eating vegetation decreases <b>Hunger</b> by 500% divided by the <b>Size</b> of the Organism. Thus, completely herbivorous organisms with 100% <b>Size</b> must constantly be eating vegetation to survive forever. Additionally, organisms with <b>Size</b> less than 5% will reduce <b>Hunger</b> to 0% by eating a single tile of vegetation.</li>
+            <li>Eating another organism decreases <b>Hunger</b> by twice the <b>Size</b> of the other organism. So if an organism of <b>Size</b> 10% eats an organism of 5%, it will always return <b>Hunger</b> to 0%.</li>
+            <li>The <b>Carnivorous</b> stat indicates how much <b>Hunger</b> is reduced by eating vegetation vs another organism.</li>
+            <li><b>Aggression</b> will determine how likely an organism is to eat another organism. The higher the <b>Hunger</b> is of an organism, the more likely it is to eat an organism with a higher <b>Attacke</b></li>
+        </ul>
+        <h2>Movement</h2>
+        <ul>
+            <li>If a tile with edible contents is adjacent to an organism, it will try to move to that tile in proportion to how high its <b>Hunger</b> is. Thus, hungrier organisms are less likely to explore.</li>
+            <li>Each organism has retains a <b>Direction</b>, which will change randomly with a 20% chance. The <b>Direction</b> is reset when an organism eats.</li>
+            <li>With 100% <b>Speed</b>, and organism will move one tile every turn. With 1%, it will take an organism 100 turns to move a tile.</li>
+            <li>Organisms are considered to occupy the tile that they mostly covering. So if an organism has move 25% onto a new tile, it is still considered on the starting tile. Once it is over 50% onto the next tile, it will be considered moved, and will consume whatever is on that tile. If an organism "accidentally" moves onto a tile with an organism that it can not eat, it will move back to the previous tile, reversing its <b>Direction</b>.</li>
+        </ul>
+        <h2>Vegetation</h2>
+        <ul>
+            <li>Vegetation has a 1% chance of spreading to each adjacent tile each turn.</li>
+        </ul>
+        <script src="platform.js"></script>
+        <script>
+         $(function() {
+             init($('#container'), 500 / SCALE, 500 / SCALE);
+         });
+        </script>
+    </body>
+</html>
