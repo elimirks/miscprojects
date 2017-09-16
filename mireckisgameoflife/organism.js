@@ -34,6 +34,7 @@ function Board($container, width, height) {
     this.width = width;
     this.height = height;
     this.$container = $container;
+    this.isUpdating = false;
 
     this.tiles = [];
     for (var y = 0; y < height; y++) {
@@ -51,11 +52,18 @@ function Board($container, width, height) {
 }
 
 Board.prototype.update = function() {
+    if (this.isUpdating) {
+        return;
+    }
+    this.isUpdating = true;
+
     for (var y = 0; y < this.height; y++) {
         for (var x = 0; x < this.width; x++) {
             this.tiles[y][x].update(this);
         }
     }
+
+    this.isUpdating = false;
 }
 
 Board.prototype.spreadVegetation = function(x, y) {
