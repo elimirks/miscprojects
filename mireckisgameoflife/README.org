@@ -1,5 +1,5 @@
 * Introduction
-
+  
   Mirecki's Game of Life was inspired by Conway's Game of Life, but is based on evolution of organism base stats.
   
   To view the current state of this project, see http://elijah.mirecki.com/miniprograms/mireckisgameoflife.
