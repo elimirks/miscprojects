@@ -1,4 +1,4 @@
-var VEGETATION_SPREAD = 0.005;
+var VEGETATION_SPREAD = 0.002;
 var TURN_SPEED_MS = 10;
 
 var SCALE = 10;
@@ -7,7 +7,7 @@ var LAKE_SIZE_MIN = 3;
 var LAKE_SIZE_MAX = 10;
 var RIVER_TURN_RATE = 0.1;
 var RIVER_NUMBER = 1;
-var MATING_SUCCESS_RATE = 0.5;
+var MATING_SUCCESS_RATE = 0.8;
 
 // Note: Don't call this yourself! Use one of the global directions _always_!
 function Direction(x, y) {
@@ -118,7 +118,7 @@ function Organism(parent1, parent2) {
     // I set the default to be all identical to speed up initial mating
     this.sizeStat        = 0.5;
     this.aquaticStat     = 0.5;
-    this.carnivorousStat = 0.5;
+    this.carnivorousStat = 0.9;
 
     // The parents are optional - we manually generate some misc organisms
     if (parent1 === undefined) {
@@ -147,6 +147,10 @@ Organism.prototype.getColor = function() {
         // Never have pure black, which hides the hue & saturation
         v: 0.3 + 0.7 * this.carnivorousStat,
     }).toHexString();
+}
+
+Organism.prototype.getAggression = function() {
+    return this.hunger * this.carnivorousStat;
 }
 
 Organism.prototype.isMating = function() {
@@ -257,30 +261,50 @@ Organism.prototype.giveBirth = function(board, adjacentTiles) {
     }
 }
 
-Organism.prototype.tryEating = function(board, adjacentTiles) {
-    var tile = board.tiles[this.y][this.x];
+Organism.prototype.directionOfTile = function(tile) {
+    if (this.x < tile.x) {
+        return Direction.east;
+    } else if (this.x > tile.x) {
+        return Direction.west;
+    } else if (this.y < tile.y) {
+        return Direction.south;
+    } else if (this.y > tile.y) {
+        return Direction.north;
+    }
+    return Direction.none;
+}
 
-    // TODO: Try to eat other organisms (weighted on the aggression stat)
+Organism.prototype.tryAttacking = function(board, adjacentTiles) {
+    for (var i = 0; i < adjacentTiles.length; i++) {
+        var tile = adjacentTiles[i];
+        // FIXME use the defence/attack probability stuff
+        // Eat another organism!
+        if (tile.organism != null) {
+            var direction = this.directionOfTile(tile);
+            board.removeOrganism(tile.organism); // Eat it
+            board.moveOrganism(this, direction);
+
+            this.hunger -= this.carnivorousStat / this.sizeStat;
+            return true;
+        }
+    }
+    return false;
+}
+
+Organism.prototype.tryGrazing = function(board, adjacentTiles) {
+    var tile = board.tiles[this.y][this.x];
 
     if (tile.hasVegetation) {
         tile.hasVegetation = false;
-        var decrease = 5 * (1 - this.carnivorousStat) / this.sizeStat;
-        this.hunger = Math.max(0, this.hunger - decrease);
+        this.hunger -= (1 - this.carnivorousStat) / this.sizeStat;
         return true;
     }
 
     for (var i = 0; i < adjacentTiles.length; i++) {
         var tile = adjacentTiles[i];
         if (tile.hasVegetation && this.canMoveTo(board, tile.x, tile.y)) {
-            if (this.x < tile.x) {
-                board.moveOrganism(this, Direction.east);
-            } else if (this.x > tile.x) {
-                board.moveOrganism(this, Direction.west);
-            } else if (this.y < tile.y) {
-                board.moveOrganism(this, Direction.south);
-            } else if (this.y > tile.y) {
-                board.moveOrganism(this, Direction.north);
-            }
+            var direction = this.directionOfTile(tile);
+            board.moveOrganism(this, direction);
             return true;
         }
     }
@@ -309,8 +333,14 @@ Organism.prototype.move = function(board) {
     }
 
     if (Math.random() < this.hunger) {
-        if (this.tryEating(board, adjacentTiles)) {
-            return;
+        if (Math.random() < this.getAggression()) {
+            if (this.tryAttacking(board, adjacentTiles)) {
+                return;
+            }
+        } else {
+            if (this.tryGrazing(board, adjacentTiles)) {
+                return;
+            }
         }
     }
 
@@ -345,6 +375,10 @@ Organism.prototype.update = function(board) {
 
     // Sadness... death...
     if (this.hunger >= 1) {
+        board.removeOrganism(this);
+    }
+
+    if (this.age > this.sizeStat * 100 * 20) {
         board.removeOrganism(this);
     }
 
@@ -411,16 +445,15 @@ function Board($container, width, height) {
         this.generateNewRiver();
     }
 
-    for (var i = 0; i < 10; i++) {
-        this.addOrganismToTile(new Organism(), this.tiles[i][10])
+    for (var i = 0; i < 100; i++) {
+        this.addOrganismToTile(new Organism(),
+                               this.tiles[Math.floor(i / 10)][i % 10])
     }
 
     this.update();
 }
 
 Board.prototype.removeOrganism = function(organism) {
-    console.log("Death");
-    console.log(organism);
     this.tiles[organism.y][organism.x].organism = null;
     this.organisms.splice(this.organisms.indexOf(organism), 1);
 }
@@ -559,16 +592,29 @@ function init($container) {
 
     var ctx = canvas.getContext("2d");
 
+    var tick = 0;
+
     var isUpdating = false;
     setInterval(function() {
         if (isUpdating) {
             return;
         }
-        
         isUpdating = true;
+
         board.update();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         board.render(ctx);
         isUpdating = false;
+
+        if (++tick == 100) {
+            var carnivorousStatSum = 0;
+            for (var i = 0; i < board.organisms.length; i++) {
+                var organism = board.organisms[i];
+                carnivorousStatSum += organism.carnivorousStat;
+            }
+            console.log("Average carnivorous stat: " +
+                        carnivorousStatSum / board.organisms.length);
+            tick = 0;
+        }
     }, TURN_SPEED_MS);
 }
