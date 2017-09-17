@@ -1,5 +1,4 @@
-var VEGETATION_SPAWN = 0.01;
-var VEGETATION_SPREAD = 0.001;
+var VEGETATION_SPREAD = 0.005;
 var TURN_SPEED_MS = 10;
 
 var SCALE = 10;
@@ -68,15 +67,6 @@ function Tile(x, y) {
     this.hasVegetation = true;
     this.hasWater      = false;
     this.organism      = null;
-
-    this.$element = $('<div/>')
-        .addClass('block')
-        .width(SCALE)
-        .height(SCALE)
-        .offset({
-            top: this.y * SCALE,
-            left: this.x * SCALE,
-        });
 }
 
 Tile.prototype.update = function(board) {
@@ -94,13 +84,13 @@ Tile.prototype.update = function(board) {
             board.spreadVegetation(this.x, this.y + 1);
         }
     }
+}
 
-    this.$element
-        .css('background-color', this.getColor())
-        .offset({
-            top: this.y * SCALE,
-            left: this.x * SCALE,
-        });
+Tile.prototype.render = function(ctx) {
+    ctx.beginPath();
+    ctx.rect(this.x * SCALE, this.y * SCALE, SCALE, SCALE);
+    ctx.fillStyle = this.getColor();
+    ctx.fill();
 }
 
 Tile.prototype.getColor = function() {
@@ -130,17 +120,6 @@ function Organism(parent1, parent2) {
     this.aquaticStat     = 0.5;
     this.carnivorousStat = 0.5;
 
-    this.$element = $('<div/>')
-        .addClass('organism')
-        .addClass(this.sex == 'm' ? 'male' : 'female')
-        .css('background-color', this.getColor())
-        .width(SCALE - 2)  // -2 for the border
-        .height(SCALE - 2) // -2 for the border
-        .offset({
-            top: this.y * SCALE,
-            left: this.x * SCALE,
-        });
-
     // The parents are optional - we manually generate some misc organisms
     if (parent1 === undefined) {
         return;
@@ -158,8 +137,6 @@ function Organism(parent1, parent2) {
         var max = Math.min(Math.max(parent1[name], parent2[name]) + 0.01, 1);
         this[name] = randomPercentInRange(min, max);
     }
-
-    this.$element.css('background-color', this.getColor())
 }
 
 Organism.prototype.getColor = function() {
@@ -267,8 +244,6 @@ Organism.prototype.setPregnant = function(father) {
 }
 
 Organism.prototype.giveBirth = function(board, adjacentTiles) {
-    this.$element.removeClass('pregnant');
-
     var child = this.childOrganism;
     this.childOrganism = null;
 
@@ -289,7 +264,7 @@ Organism.prototype.tryEating = function(board, adjacentTiles) {
 
     if (tile.hasVegetation) {
         tile.hasVegetation = false;
-        var decrease = (1 - this.carnivorousStat) / this.sizeStat;
+        var decrease = 5 * (1 - this.carnivorousStat) / this.sizeStat;
         this.hunger = Math.max(0, this.hunger - decrease);
         return true;
     }
@@ -315,15 +290,11 @@ Organism.prototype.tryEating = function(board, adjacentTiles) {
 
 Organism.prototype.move = function(board) {
     if (this.age == 0) {
-        return false;
+        return;
     }
 
     if (this.isMating()) {
         this.matingTimer--;
-
-        if (this.sex == 'f' && this.matingTimer == 0) {
-            this.$element.addClass('pregnant');
-        }
         return;
     }
 
@@ -337,7 +308,7 @@ Organism.prototype.move = function(board) {
         }
     }
 
-    if (this.hunger > 0.2 && Math.random() < this.hunger) {
+    if (Math.random() < this.hunger) {
         if (this.tryEating(board, adjacentTiles)) {
             return;
         }
@@ -370,11 +341,6 @@ Organism.prototype.update = function(board) {
     this.move(board);
     board.tiles[this.y][this.x].organism = this;
 
-    this.$element
-        .offset({
-            top: this.y * SCALE,
-            left: this.x * SCALE,
-        });
     this.age++;
 
     // Sadness... death...
@@ -385,11 +351,47 @@ Organism.prototype.update = function(board) {
     this.hunger += 0.02 * this.sizeStat;
 }
 
+Organism.prototype.render = function(ctx) {
+    ctx.beginPath();
+
+    ctx.moveTo(this.x * SCALE, this.y * SCALE + SCALE/2);
+
+    // Top two corners, which indicate male / female
+    if (this.sex == 'f') {
+        ctx.arc(this.x * SCALE + SCALE/2, this.y * SCALE + SCALE/2,
+                SCALE/2, Math.PI, 1.5 * Math.PI);
+        ctx.lineTo(this.x * SCALE + SCALE, this.y * SCALE);
+        ctx.lineTo(this.x * SCALE + SCALE, this.y * SCALE + SCALE/2);
+    } else {
+        ctx.lineTo(this.x * SCALE, this.y * SCALE);
+        ctx.lineTo(this.x * SCALE + SCALE/2, this.y * SCALE);
+        ctx.arc(this.x * SCALE + SCALE/2, this.y * SCALE + SCALE/2,
+                SCALE/2, 1.5 * Math.PI, 0);
+    }
+
+    ctx.lineTo(this.x * SCALE + SCALE, this.y * SCALE + SCALE);
+    ctx.lineTo(this.x * SCALE + SCALE/2, this.y * SCALE + SCALE);
+
+    if (this.isPregnant()) {
+        ctx.arc(this.x * SCALE + SCALE/2, this.y * SCALE + SCALE/2,
+                SCALE/2, 0.5 * Math.PI, Math.PI);
+    } else {
+        ctx.lineTo(this.x * SCALE, this.y * SCALE + SCALE);
+        ctx.lineTo(this.x * SCALE, this.y * SCALE + SCALE/2);
+    }
+
+    ctx.fillStyle = this.getColor();
+    ctx.fill();
+
+    ctx.strokeStyle = "black";
+    ctx.lineWidth   = 1;
+    ctx.stroke();
+}
+
 function Board($container, width, height) {
     this.width = width;
     this.height = height;
     this.$container = $container;
-    this.isUpdating = false;
     this.tiles = [];
     this.organisms = [];
 
@@ -397,11 +399,7 @@ function Board($container, width, height) {
         var row = [];
         for (var x = 0; x < width; x++) {
             var tile = new Tile(x, y);
-            if (Math.random() < VEGETATION_SPAWN) {
-                tile.hasVegetation = true;
-            }
             row.push(tile);
-            $container.append(tile.$element);
         }
         this.tiles.push(row);
     }
@@ -413,7 +411,7 @@ function Board($container, width, height) {
         this.generateNewRiver();
     }
 
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < 10; i++) {
         this.addOrganismToTile(new Organism(), this.tiles[i][10])
     }
 
@@ -424,7 +422,6 @@ Board.prototype.removeOrganism = function(organism) {
     console.log("Death");
     console.log(organism);
     this.tiles[organism.y][organism.x].organism = null;
-    organism.$element.remove();
     this.organisms.splice(this.organisms.indexOf(organism), 1);
 }
 
@@ -433,7 +430,6 @@ Board.prototype.addOrganismToTile = function(organism, tile) {
     organism.y = tile.y;
     tile.organism = organism;
     this.organisms.push(organism);
-    this.$container.append(organism.$element);
 }
 
 // Assumes it is a valid movement.
@@ -509,11 +505,6 @@ Board.prototype.generateNewLake = function() {
 }
 
 Board.prototype.update = function() {
-    if (this.isUpdating) {
-        return;
-    }
-    this.isUpdating = true;
-    
     for (var y = 0; y < this.height; y++) {
         for (var x = 0; x < this.width; x++) {
             this.tiles[y][x].update(this);
@@ -523,8 +514,18 @@ Board.prototype.update = function() {
     for (var i = 0; i < this.organisms.length; i++) {
         this.organisms[i].update(this);
     }
-    
-    this.isUpdating = false;
+}
+
+Board.prototype.render = function(ctx) {
+    for (var y = 0; y < this.height; y++) {
+        for (var x = 0; x < this.width; x++) {
+            this.tiles[y][x].render(ctx);
+        }
+    }
+
+    for (var i = 0; i < this.organisms.length; i++) {
+        this.organisms[i].render(ctx);
+    }
 }
 
 Board.prototype.spreadVegetation = function(x, y) {
@@ -548,10 +549,26 @@ Board.prototype.getAdjacentTiles = function(x, y) {
     return tiles;
 }
 
-function init($container, width, height) {
-    var board = new Board($container, width, height);
+function init($container) {
+    var board = new Board($container,
+                          $container.width() / SCALE,
+                          $container.height() / SCALE);
+    var canvas = document.getElementById("board");
+    canvas.width  = $container.width();
+    canvas.height = $container.height();
 
+    var ctx = canvas.getContext("2d");
+
+    var isUpdating = false;
     setInterval(function() {
+        if (isUpdating) {
+            return;
+        }
+        
+        isUpdating = true;
         board.update();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        board.render(ctx);
+        isUpdating = false;
     }, TURN_SPEED_MS);
 }
