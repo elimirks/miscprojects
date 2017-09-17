@@ -11,8 +11,8 @@
          #container {
              margin: 0px;
              padding: 0px;
-             width: 500px;
-             height: 200px;
+             width: 600px;
+             height: 300px;
              border-right: 1px solid black;
              border-bottom: 1px solid black;
          }
@@ -58,13 +58,15 @@
             <li><b>Pregnant</b>. Only for female organisms.</li>
             <li><b>Age (number of turns)</b> does not directly kill an animal, however, it will affect the variables such as <b>Speed</b> stat and <b>Mature</b> property (both explained below).</li>
         </ul>
-        <h2>Breeding</h2>
+        <h2>Mating</h2>
         <ul>
             <li>An organism will only be <b>Mature</b> if its age is greater than 100 times <b>Size</b>. So an organism of <b>Size</b> 20% will only be considered <b>Mature</b> once it reaches an <b>Age</b> of 20 turns. Organisms will only breed once they are <b>Mature</b>.</li>
-            <li>A female organism will be <b>Pregnant</b> after breeding. The gestation period is proportional to the <b>Size</b> of the organism. An organism of <b>Size</b> 20% will take 20 turns to give birth.</li>
-            <li>Two adjacent organisms have a 50% chance of breeding per turn.</li>
+            <li>A female organism will be <b>Pregnant</b> after mating. The gestation period is proportional to the <b>Size</b> of the organism, plus 5 turns. An organism of <b>Size</b> 20% will take 20 turns to give birth.</li>
+            <li>Two adjacent organisms have a 50% chance of mating per turn.</li>
             <li>When two organisms breed, the offspring will deviate by at most 1% of the extreme for each parent. For instance, if the parents have sizes of 5% and 8%, the child will have a uniform chance of having size 4% to 9%.</li>
-            <li>Organisms will only breed with organisms that have a mean base stat different of at most 2%. Thus, it is technicaly possible, though improbable, for an organism to mate with and eat another organism.</li>
+            <li>Organisms will only breed with organisms that have a mean base stat difference of at most 2%. Thus, it is technicaly possible, though improbable, for an organism to mate with and eat another organism.</li>
+            <li>Mating will last for 5 turns.</li>
+            <li>If no adjacent tile is available for a mother to give birth at, the child will die at birth.</li>
         </ul>
         <h2>Variable Organism Stats</h2>
         <ul>
@@ -78,7 +80,7 @@
         </ul>
         <h2>Eating</h2>
         <ul>
-            <li><b>Hunger</b>. Increases linearly with <b>Size</b>. At birth, an organism starts with 0% <b>Hunger</b>. Every turn, the <b>Hunger</b> increases by 1% multiplied by the <b>Size</b> on the organism.</li>
+            <li><b>Hunger</b>. Increases linearly with <b>Size</b> plus gestation peroid pertentage. At birth, an organism starts with 0% <b>Hunger</b>. Every turn, the <b>Hunger</b> increases by 1% multiplied by the <b>Size</b> on the organism.</li>
             <li>If an organism has over 100% <b>Hunger</b>, it will die.</li>
             <li>For every 10% <b>Hunger</b> recovered, it takes an organism 1 turn to eat.</li>
             <li>It is impossible for an organism to have negative <b>Hunger</b></li>
@@ -102,7 +104,7 @@
         <script src="organism.js"></script>
         <script>
          $(function() {
-             init($('#container'), Math.floor(500 / SCALE), Math.floor(200 / SCALE));
+             init($('#container'), Math.floor(600 / SCALE), Math.floor(300 / SCALE));
          });
         </script>
     </body>

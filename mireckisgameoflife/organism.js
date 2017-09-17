@@ -1,6 +1,6 @@
 var VEGETATION_SPAWN = 0.01;
 var VEGETATION_SPREAD = 0.005;
-var TURN_SPEED_MS = 500;
+var TURN_SPEED_MS = 10;
 
 var SCALE = 10;
 var LAKE_NUMBER = 1;
@@ -8,6 +8,7 @@ var LAKE_SIZE_MIN = 3;
 var LAKE_SIZE_MAX = 10;
 var RIVER_TURN_RATE = 0.1;
 var RIVER_NUMBER = 1;
+var MATING_SUCCESS_RATE = 0.5;
 
 // Note: Don't call this yourself! Use one of the global directions _always_!
 function Direction(x, y) {
@@ -110,19 +111,23 @@ Tile.prototype.getColor = function() {
     }
 }
 
-function Organism(x, y, parent1, parent2) {
-    this.x         = x;
-    this.y         = y;
-    this.sex       = Math.random() < 0.5 ? 'm' : 'f';
-    this.age       = 0;
-    this.pregnent  = false;
-    this.direction = Direction.random();
+function Organism(parent1, parent2) {
+    // Coordinates are set at birth
+    this.x             = undefined;
+    this.y             = undefined;
+    this.sex           = Math.random() < 0.5 ? 'm' : 'f';
+    this.age           = 0;
+    this.direction     = Direction.random();
+    this.childOrganism = null;
+    this.pregnantTimer = 0;
+    this.matingTimer   = 0;
 
     // Default base stats - percentages
     // Size is restrained to [1%, 100%], the other can be [0%, 100%]
-    this.sizeStat        = randomPercentInRange(0.01, 1);
-    this.aquaticStat     = randomPercentInRange(0, 1);
-    this.carnivorousStat = randomPercentInRange(0, 1);
+    // I set the default to be all identical to speed up initial mating
+    this.sizeStat        = 0.5;
+    this.aquaticStat     = 0.5;
+    this.carnivorousStat = 0.5;
 
     this.$element = $('<div/>')
         .addClass('organism')
@@ -164,6 +169,23 @@ Organism.prototype.getColor = function() {
     }).toHexString();
 }
 
+Organism.prototype.isMating = function() {
+    return this.matingTimer > 0;
+}
+
+Organism.prototype.isPregnant = function() {
+    return this.pregnantTimer > 0;
+}
+
+Organism.prototype.isMature = function() {
+    return this.age > this.sizeStat * 100;
+}
+
+Organism.prototype.isFertile = function() {
+    // FIXME
+    return this.pregnantTimer == 0 // && this.isMature();
+}
+
 Organism.prototype.canMoveTo = function(board, x, y) {
     if (x < 0 || x >= board.width || y < 0 || y >= board.height) {
         return false;
@@ -174,24 +196,136 @@ Organism.prototype.canMoveTo = function(board, x, y) {
     return true;
 }
 
-Organism.prototype.move = function(board) {
+Organism.prototype.tryMove = function(board, direction) {
+    var newX = this.x + direction.x;
+    var newY = this.y + direction.y;
+
+    if ( ! this.canMoveTo(board, newX, newY)) {
+        return false;
+    }
+
+    this.x = newX;
+    this.y = newY;
+    this.direction = direction;
+    return true;
+}
+
+// If the organism has nothing better to do, it will wander semi-randomly
+Organism.prototype.wander = function(board) {
+    var direction = this.direction;
+
     if (Math.random() < 0.1) {
-        this.direction = this.direction.randomTurn();
+        direction = this.direction.randomTurn();
     }
 
     // Try finding a valid direction
     for (var i = 0; i < 4; i++) {
-        var newX = this.x + this.direction.x;
-        var newY = this.y + this.direction.y;
-
-        if (this.canMoveTo(board, newX, newY)) {
-            this.x = newX;
-            this.y = newY;
+        if (this.tryMove(board, direction)) {
             return;
         }
-
-        this.direction = Direction.random();
+        direction = Direction.random();
     }
+}
+
+Organism.prototype.canMate = function(organism) {
+    console.log(organism);
+
+    if ( ! this.isFertile() || ! organism.isFertile()) {
+        return false;
+    }
+    if (organism.sex == this.sex) {
+        return false;
+    }
+    if (organism.isMating()) {
+        return false;
+    }
+
+    
+    
+    return true;
+}
+
+Organism.prototype.tryMating = function(board, organism) {
+    if (Math.random() < MATING_SUCCESS_RATE) {
+        // Wait 5 turns
+        this.matingTimer = organism.matingTimer = 5;
+
+        if (this.sex == 'f') {
+            this.setPregnant(organism);
+        } else {
+            organism.setPregnant(this);
+        }
+
+        return true;
+    }
+    return false;
+}
+
+Organism.prototype.setPregnant = function(father) {
+    this.childOrganism = new Organism(this, father);
+    this.pregnantTimer = 5 + Math.round(this.sizeStat * 100);
+}
+
+Organism.prototype.giveBirth = function(board, adjacentTiles) {
+    this.$element.removeClass('pregnant');
+
+    var child = this.childOrganism;
+    this.childOrganism = null;
+
+    // If there is no empty adjacent, the child will die at birth
+    for (var i = 0; i < adjacentTiles.length; i++) {
+        var tile = adjacentTiles[i];
+        if (tile.organism == null) {
+            board.addOrganismToTile(child, tile);
+            return;
+        }
+    }
+}
+
+Organism.prototype.move = function(board) {
+    if (this.age == 0) {
+        return false;
+    }
+
+    if (this.isMating()) {
+        this.matingTimer--;
+
+        if (this.sex == 'f' && this.matingTimer == 0) {
+            this.$element.addClass('pregnant');
+        }
+        return;
+    }
+
+    var adjacentTiles = board.getAdjacentTiles(this.x, this.y);
+    var adjacentOrganisms = [];
+
+    for (var i = 0; i < adjacentTiles.length; i++) {
+        var organism = adjacentTiles[i].organism;
+        if (organism !== null) {
+            adjacentOrganisms.push(organism);
+        }
+    }
+
+    if (this.isPregnant()) {
+        this.pregnantTimer--;
+        if (this.pregnantTimer == 0) {
+            this.giveBirth(board, adjacentTiles);
+        }
+    } else {
+        // The way of the wild
+        for (var i = 0; i < adjacentOrganisms.length; i++) {
+            var organism = adjacentOrganisms[i];
+            if (this.canMate(organism)) {
+                if (this.tryMating(board, organism)) {
+                    return;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    this.wander(board);
 }
 
 Organism.prototype.update = function(board) {
@@ -204,6 +338,7 @@ Organism.prototype.update = function(board) {
             top: this.y * SCALE,
             left: this.x * SCALE,
         });
+    this.age++;
 }
 
 function Board($container, width, height) {
@@ -234,13 +369,19 @@ function Board($container, width, height) {
         this.generateNewRiver();
     }
 
-    for (var i = 0; i < 10; i++) {
-        var organism = new Organism(10, i);
-        $container.append(organism.$element);
-        this.organisms.push(organism);
+    for (var i = 0; i < 30; i++) {
+        this.addOrganismToTile(new Organism(), this.tiles[i][10])
     }
 
     this.update();
+}
+
+Board.prototype.addOrganismToTile = function(organism, tile) {
+    organism.x = tile.x;
+    organism.y = tile.y;
+    tile.organism = organism;
+    this.organisms.push(organism);
+    this.$container.append(organism.$element);
 }
 
 Board.prototype.generateNewRiver = function() {
@@ -323,6 +464,23 @@ Board.prototype.update = function() {
 
 Board.prototype.spreadVegetation = function(x, y) {
     this.tiles[y][x].hasVegetation = true;
+}
+
+Board.prototype.getAdjacentTiles = function(x, y) {
+    var tiles = [];
+    if (x > 0) {
+        tiles.push(this.tiles[y][x - 1]);
+    }
+    if (x < this.width - 1) {
+        tiles.push(this.tiles[y][x + 1]);
+    }
+    if (y > 0) {
+        tiles.push(this.tiles[y - 1][x]);
+    }
+    if (y < this.height - 1) {
+        tiles.push(this.tiles[y + 1][x]);
+    }
+    return tiles;
 }
 
 function init($container, width, height) {
