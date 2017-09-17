@@ -26,6 +26,7 @@
          .organism {
              position: absolute;
              border-radius: 50%;
+             border: 1px solid black;
          }
 
          .organism.male {
@@ -79,6 +80,7 @@
         <ul>
             <li><b>Hunger</b>. Increases linearly with <b>Size</b>. At birth, an organism starts with 0% <b>Hunger</b>. Every turn, the <b>Hunger</b> increases by 1% multiplied by the <b>Size</b> on the organism.</li>
             <li>If an organism has over 100% <b>Hunger</b>, it will die.</li>
+            <li>For every 10% <b>Hunger</b> recovered, it takes an organism 1 turn to eat.</li>
             <li>It is impossible for an organism to have negative <b>Hunger</b></li>
             <li>Eating vegetation decreases <b>Hunger</b> by 500% divided by the <b>Size</b> of the Organism, multiplied <b>Herbivorous</b> stat of the organism. Thus, completely herbivorous organisms with 100% <b>Size</b> must constantly be eating vegetation to survive forever. Additionally, organisms with <b>Size</b> less than 5% will reduce <b>Hunger</b> to 0% by eating a single tile of vegetation.</li>
             <li>Eating another organism decreases <b>Hunger</b> by twice times the <b>Carnivorous</b> level of the carnivorous organism. The <b>Size</b> of the other organism. So if an organism of <b>Size</b> 10% eats an organism of 5%, it will always return <b>Hunger</b> to 0%.</li>

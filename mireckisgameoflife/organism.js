@@ -1,12 +1,56 @@
 var VEGETATION_SPAWN = 0.01;
 var VEGETATION_SPREAD = 0.005;
-var TURN_SPEED_MS = 100;
+var TURN_SPEED_MS = 500;
+
 var SCALE = 10;
 var LAKE_NUMBER = 1;
 var LAKE_SIZE_MIN = 3;
 var LAKE_SIZE_MAX = 10;
 var RIVER_TURN_RATE = 0.1;
 var RIVER_NUMBER = 1;
+
+// Note: Don't call this yourself! Use one of the global directions _always_!
+function Direction(x, y) {
+    this.x = x;
+    this.y = y;
+}
+
+Direction.none  = new Direction(0, 0);
+Direction.north = new Direction(0, -1);
+Direction.south = new Direction(0, 1);
+Direction.east  = new Direction(1, 0);
+Direction.west  = new Direction(-1, 0);
+
+Direction.random = function() {
+    return ([Direction.north, Direction.south, Direction.east, Direction.west]
+            [Math.floor(Math.random() * 4)]);
+}
+
+Direction.prototype.randomTurn = function() {
+    return (this.y == 0)
+        ? (Math.random() < 0.5 ? Direction.north : Direction.south)
+        : (Math.random() < 0.5 ? Direction.east  : Direction.west);
+}
+
+Direction.none.randomTurn = function() {
+    return Direction.random();
+}
+
+Direction.none.turnLeft = function() {
+    return Direction.random();
+}
+Direction.north.turnLeft = function() {
+    return Direction.west;
+}
+Direction.west.turnLeft = function() {
+    return Direction.south;
+}
+Direction.south.turnLeft = function() {
+    return Direction.east;
+}
+Direction.east.turnLeft = function() {
+    return Direction.north;
+}
 
 /**
  * Random percentege between min and max (inclusive).
@@ -22,6 +66,7 @@ function Tile(x, y) {
     this.y             = y;
     this.hasVegetation = false;
     this.hasWater      = false;
+    this.organism      = null;
 
     this.$element = $('<div/>')
         .addClass('block')
@@ -66,11 +111,12 @@ Tile.prototype.getColor = function() {
 }
 
 function Organism(x, y, parent1, parent2) {
-    this.x   = x;
-    this.y   = y;
-    this.sex = Math.random() < 0.5 ? 'm' : 'f';
-    this.age = 0;
-    this.pregnent = false;
+    this.x         = x;
+    this.y         = y;
+    this.sex       = Math.random() < 0.5 ? 'm' : 'f';
+    this.age       = 0;
+    this.pregnent  = false;
+    this.direction = Direction.random();
 
     // Default base stats - percentages
     // Size is restrained to [1%, 100%], the other can be [0%, 100%]
@@ -81,8 +127,9 @@ function Organism(x, y, parent1, parent2) {
     this.$element = $('<div/>')
         .addClass('organism')
         .addClass(this.sex == 'm' ? 'male' : 'female')
-        .width(SCALE)
-        .height(SCALE)
+        .css('background-color', this.getColor())
+        .width(SCALE - 2)  // -2 for the border
+        .height(SCALE - 2) // -2 for the border
         .offset({
             top: this.y * SCALE,
             left: this.x * SCALE,
@@ -103,6 +150,8 @@ function Organism(x, y, parent1, parent2) {
         var max = Math.min(Math.max(parent1[name], parent2[name]) + 0.01, 1);
         this[name] = randomPercentInRange(min, max);
     }
+
+    this.$element.css('background-color', this.getColor())
 }
 
 Organism.prototype.getColor = function() {
@@ -115,23 +164,42 @@ Organism.prototype.getColor = function() {
     }).toHexString();
 }
 
-Organism.prototype.update = function(board) {
-    if (Math.random() < 0.5) {
-        if (Math.random() < 0.5) {
-            this.x = Math.max(this.x - 1, 0);
-        } else {
-            this.x = Math.min(this.x + 1, board.width - 1);
-        }
-    } else {
-        if (Math.random() < 0.5) {
-            this.y = Math.max(this.y - 1, 0);
-        } else {
-            this.y = Math.min(this.y + 1, board.height - 1);
-        }
+Organism.prototype.canMoveTo = function(board, x, y) {
+    if (x < 0 || x >= board.width || y < 0 || y >= board.height) {
+        return false;
+    }
+    if (board.tiles[y][x].organism != null) {
+        return false;
+    }
+    return true;
+}
+
+Organism.prototype.move = function(board) {
+    if (Math.random() < 0.1) {
+        this.direction = this.direction.randomTurn();
     }
 
+    // Try finding a valid direction
+    for (var i = 0; i < 4; i++) {
+        var newX = this.x + this.direction.x;
+        var newY = this.y + this.direction.y;
+
+        if (this.canMoveTo(board, newX, newY)) {
+            this.x = newX;
+            this.y = newY;
+            return;
+        }
+
+        this.direction = Direction.random();
+    }
+}
+
+Organism.prototype.update = function(board) {
+    board.tiles[this.y][this.x].organism = null;
+    this.move(board);
+    board.tiles[this.y][this.x].organism = this;
+
     this.$element
-        .css('background-color', this.getColor())
         .offset({
             top: this.y * SCALE,
             left: this.x * SCALE,
@@ -178,25 +246,17 @@ function Board($container, width, height) {
 Board.prototype.generateNewRiver = function() {
     var x = Math.floor(Math.random() * this.width);
     var y = Math.floor(Math.random() * this.height);
-    var direction;
 
-    // 25/25/25/25 chance on which edge to start at
-    if (Math.random() < 0.5) {
-        if (Math.random() < 0.5) {
-            x = 0;
-            direction = 'e';
-        } else {
-            x = this.width - 1;
-            direction = 'w';
-        }
+    // Randomly select an edge to start at
+    var direction = Direction.random();
+    if (direction == Direction.east) {
+        x = 0;
+    } else if (direction == Direction.west) {
+        x = this.width - 1;
+    } else if (direction == Direction.south) {
+        y = 0;
     } else {
-        if (Math.random() < 0.5) {
-            y = 0;
-            direction = 's';
-        } else {
-            y = this.height - 1;
-            direction = 'n';
-        }
+        y = this.height - 1;
     }
 
     while (x >= 0 && y >= 0 && x < this.width && y < this.height) {
@@ -207,33 +267,12 @@ Board.prototype.generateNewRiver = function() {
         }
         this.tiles[y][x].hasWater = true;
 
-        if (direction == 'e' || direction == 'w') {
-            if (Math.random() < RIVER_TURN_RATE) {
-                if (Math.random() < 0.5) {
-                    direction = 'n';
-                } else {
-                    direction = 's';
-                }
-            }
-        } else {
-            if (Math.random() < RIVER_TURN_RATE) {
-                if (Math.random() < 0.5) {
-                    direction = 'e';
-                } else {
-                    direction = 'w';
-                }
-            }
+        if (Math.random() < RIVER_TURN_RATE) {
+            direction = direction.randomTurn();
         }
 
-        if (direction == 'e') {
-            x++;
-        } else if (direction == 'w') {
-            x--;
-        } else if (direction == 'n') {
-            y--;
-        } else if (direction == 's') {
-            y++;
-        }
+        x += direction.x;
+        y += direction.y;
     }
 }
 
