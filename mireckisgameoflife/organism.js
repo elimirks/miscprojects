@@ -8,6 +8,15 @@ var LAKE_SIZE_MAX = 10;
 var RIVER_TURN_RATE = 0.1;
 var RIVER_NUMBER = 1;
 
+/**
+ * Random percentege between min and max (inclusive).
+ */
+function randomPercentInRange(min, max) {
+    var minInt = Math.floor(min * 100);
+    var maxInt = Math.floor(max * 100);
+    return Math.round((Math.random() * (maxInt - minInt)) + minInt) / 100;
+}
+
 function Tile(x, y) {
     this.x             = x;
     this.y             = y;
@@ -56,13 +65,87 @@ Tile.prototype.getColor = function() {
     }
 }
 
+function Organism(x, y, parent1, parent2) {
+    this.x   = x;
+    this.y   = y;
+    this.sex = Math.random() < 0.5 ? 'm' : 'f';
+    this.age = 0;
+    this.pregnent = false;
+
+    // Default base stats - percentages
+    // Size is restrained to [1%, 100%], the other can be [0%, 100%]
+    this.sizeStat        = randomPercentInRange(0.01, 1);
+    this.aquaticStat     = randomPercentInRange(0, 1);
+    this.carnivorousStat = randomPercentInRange(0, 1);
+
+    this.$element = $('<div/>')
+        .addClass('organism')
+        .addClass(this.sex == 'm' ? 'male' : 'female')
+        .width(SCALE)
+        .height(SCALE)
+        .offset({
+            top: this.y * SCALE,
+            left: this.x * SCALE,
+        });
+
+    // The parents are optional - we manually generate some misc organisms
+    if (parent1 === undefined) {
+        return;
+    }
+
+    var stats = ['sizeStat', 'aquaticStat', 'carnivorousStat'];
+    for (var i = 0; i < stats.length; i++) {
+        var name = stats[i];
+        var min = Math.max(Math.min(parent1[name], parent2[name]) - 0.01, 0);
+        if (name == 'sizeStat' && min == 0) {
+            min = 0.01;
+        }
+        var max = Math.min(Math.max(parent1[name], parent2[name]) + 0.01, 1);
+        this[name] = randomPercentInRange(min, max);
+    }
+}
+
+Organism.prototype.getColor = function() {
+    return tinycolor({
+        // Hue between blue and red (240 deg and 360 deg)
+        h: 240 + (360 - 240) * (1 - this.aquaticStat),
+        s: 0.3 + 0.7 * this.sizeStat,
+        // Never have pure black, which hides the hue & saturation
+        v: 0.3 + 0.7 * this.carnivorousStat,
+    }).toHexString();
+}
+
+Organism.prototype.update = function(board) {
+    if (Math.random() < 0.5) {
+        if (Math.random() < 0.5) {
+            this.x = Math.max(this.x - 1, 0);
+        } else {
+            this.x = Math.min(this.x + 1, board.width - 1);
+        }
+    } else {
+        if (Math.random() < 0.5) {
+            this.y = Math.max(this.y - 1, 0);
+        } else {
+            this.y = Math.min(this.y + 1, board.height - 1);
+        }
+    }
+
+    this.$element
+        .css('background-color', this.getColor())
+        .offset({
+            top: this.y * SCALE,
+            left: this.x * SCALE,
+        });
+}
+
 function Board($container, width, height) {
     this.width = width;
     this.height = height;
     this.$container = $container;
     this.isUpdating = false;
-
     this.tiles = [];
+    this.organisms = [];
+
     for (var y = 0; y < height; y++) {
         var row = [];
         for (var x = 0; x < width; x++) {
@@ -81,6 +164,12 @@ function Board($container, width, height) {
     }
     for (var i = 0; i < RIVER_NUMBER; i++) {
         this.generateNewRiver();
+    }
+
+    for (var i = 0; i < 10; i++) {
+        var organism = new Organism(10, i);
+        $container.append(organism.$element);
+        this.organisms.push(organism);
     }
 
     this.update();
@@ -179,13 +268,17 @@ Board.prototype.update = function() {
         return;
     }
     this.isUpdating = true;
-
+    
     for (var y = 0; y < this.height; y++) {
         for (var x = 0; x < this.width; x++) {
             this.tiles[y][x].update(this);
         }
     }
-
+    
+    for (var i = 0; i < this.organisms.length; i++) {
+        this.organisms[i].update(this);
+    }
+    
     this.isUpdating = false;
 }
 

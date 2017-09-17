@@ -19,8 +19,23 @@
 
          /* Tile styles */
 
-         .block {
+         .tile {
              position: absolute;
+         }
+
+         .organism {
+             position: absolute;
+             border-radius: 50%;
+         }
+
+         .organism.male {
+             border-top-right-radius: 10%;
+         }
+         .organism.female {
+             border-top-left-radius: 10%;
+         }
+         .organism.pregnant {
+             border-bottom-left-radius: 10%;
          }
         </style>
     </head>
@@ -35,11 +50,11 @@
         </ul>
         <h2>Base Organism Stats</h2>
         <ul>
-            <li><b>Size (percentage)</b> is indicated by redness. It is never below 1%.</li>
-            <li><b>Aquatic (percentage)</b> is indicated by blueness.</li>
-            <li><b>Carnivorous (percentage)</b> is indicated by whiteness. A higher level allows organisms to relieve more hunger from flesh.</li>
-            <li><b>Herbivorous (percentage)</b> is indicated by blackness. A higher level allows organisms to relieve more hunger from vegetation. The sum of the <b>Herbivorous</b> stat and the <b>Carnivorous</b> stat will always sum to 100%.</li>
+            <li><b>Size (percentage)</b>. It is never below 1% size. Size is indicated by saturation.</li>
+            <li><b>Aquatic (percentage)</b> is indicated by hue (blue is more aquatic, red is more landlubber).</li>
+            <li><b>Carnivorous (percentage)</b> is indicated by luminosity. A higher level allows organisms to relieve more hunger from flesh.</li>
             <li><b>Sex (male/female)</b> (pretty self explanitory).</li>
+            <li><b>Pregnant</b>. Only for female organisms.</li>
             <li><b>Age (number of turns)</b> does not directly kill an animal, however, it will affect the variables such as <b>Speed</b> stat and <b>Mature</b> property (both explained below).</li>
         </ul>
         <h2>Breeding</h2>
@@ -52,6 +67,7 @@
         </ul>
         <h2>Variable Organism Stats</h2>
         <ul>
+            <li><b>Herbivorous (percentage)</b> is indicated by blackness. A higher level allows organisms to relieve more hunger from vegetation. The sum of the <b>Herbivorous</b> stat and the <b>Carnivorous</b> stat will always sum to 100%.</li>
             <li><b>Speed (pertentage, between 1% and 100%)</b>. Based on <b>Size</b> and <b>Aquatic</b> stats, <b>Age</b>, and the extent of <b>Pregnancy</b> for female organisms. The larger the organism, the slower. <b>Speed</b> in water vs land is dependent on <b>Aquatic</b> stat. </li>
             <li><b>Sight (Manhattan distance between 1 and 10 tiles)</b>. Based on <b>Size</b>, <b>Aquatic</b>, and <b>Carnivorous</b> stats. </li>
             <li><b>Swimming (pertentage)</b>. Positive linearly correlation to the <b>Aquatic</b> stat. A higher <b>Swimming</b> stat indicates the chance of an organism leaving water. Hence, with a 100% Swimming stat, an organism will <i>never</i> leave the water. Note, however, that it will still be able to move on land if it is born on land. But once it enters water, it will never go to land again.</li>
@@ -80,6 +96,7 @@
         <ul>
             <li>Vegetation has a 1% chance of spreading to each adjacent tile each turn.</li>
         </ul>
+        <script src="tinycolor.js"></script>
         <script src="organism.js"></script>
         <script>
          $(function() {
