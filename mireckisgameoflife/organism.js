@@ -1,5 +1,5 @@
 var VEGETATION_SPAWN = 0.01;
-var VEGETATION_SPREAD = 0.005;
+var VEGETATION_SPREAD = 0.001;
 var TURN_SPEED_MS = 10;
 
 var SCALE = 10;
@@ -65,7 +65,7 @@ function randomPercentInRange(min, max) {
 function Tile(x, y) {
     this.x             = x;
     this.y             = y;
-    this.hasVegetation = false;
+    this.hasVegetation = true;
     this.hasWater      = false;
     this.organism      = null;
 
@@ -117,6 +117,7 @@ function Organism(parent1, parent2) {
     this.y             = undefined;
     this.sex           = Math.random() < 0.5 ? 'm' : 'f';
     this.age           = 0;
+    this.hunger        = 0.0;
     this.direction     = Direction.random();
     this.childOrganism = null;
     this.pregnantTimer = 0;
@@ -145,7 +146,9 @@ function Organism(parent1, parent2) {
         return;
     }
 
-    var stats = ['sizeStat', 'aquaticStat', 'carnivorousStat'];
+    // FIXME Add the aquatic stat eventually
+    //var stats = ['sizeStat', 'aquaticStat', 'carnivorousStat'];
+    var stats = ['sizeStat', 'carnivorousStat'];
     for (var i = 0; i < stats.length; i++) {
         var name = stats[i];
         var min = Math.max(Math.min(parent1[name], parent2[name]) - 0.01, 0);
@@ -182,8 +185,7 @@ Organism.prototype.isMature = function() {
 }
 
 Organism.prototype.isFertile = function() {
-    // FIXME
-    return this.pregnantTimer == 0 // && this.isMature();
+    return this.pregnantTimer == 0 && this.isMature();
 }
 
 Organism.prototype.canMoveTo = function(board, x, y) {
@@ -204,9 +206,7 @@ Organism.prototype.tryMove = function(board, direction) {
         return false;
     }
 
-    this.x = newX;
-    this.y = newY;
-    this.direction = direction;
+    board.moveOrganism(this, direction);
     return true;
 }
 
@@ -228,8 +228,6 @@ Organism.prototype.wander = function(board) {
 }
 
 Organism.prototype.canMate = function(organism) {
-    console.log(organism);
-
     if ( ! this.isFertile() || ! organism.isFertile()) {
         return false;
     }
@@ -239,10 +237,12 @@ Organism.prototype.canMate = function(organism) {
     if (organism.isMating()) {
         return false;
     }
-
     
+    var meanDiff = (Math.abs(organism.sizeStat - this.sizeStat) +
+                    Math.abs(organism.carnivorousStat - this.carnivorousStat) +
+                    Math.abs(organism.aquaticStat - this.aquaticStat)) / 3;
     
-    return true;
+    return meanDiff < 0.02;
 }
 
 Organism.prototype.tryMating = function(board, organism) {
@@ -282,6 +282,37 @@ Organism.prototype.giveBirth = function(board, adjacentTiles) {
     }
 }
 
+Organism.prototype.tryEating = function(board, adjacentTiles) {
+    var tile = board.tiles[this.y][this.x];
+
+    // TODO: Try to eat other organisms (weighted on the aggression stat)
+
+    if (tile.hasVegetation) {
+        tile.hasVegetation = false;
+        var decrease = (1 - this.carnivorousStat) / this.sizeStat;
+        this.hunger = Math.max(0, this.hunger - decrease);
+        return true;
+    }
+
+    for (var i = 0; i < adjacentTiles.length; i++) {
+        var tile = adjacentTiles[i];
+        if (tile.hasVegetation && this.canMoveTo(board, tile.x, tile.y)) {
+            if (this.x < tile.x) {
+                board.moveOrganism(this, Direction.east);
+            } else if (this.x > tile.x) {
+                board.moveOrganism(this, Direction.west);
+            } else if (this.y < tile.y) {
+                board.moveOrganism(this, Direction.south);
+            } else if (this.y > tile.y) {
+                board.moveOrganism(this, Direction.north);
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
 Organism.prototype.move = function(board) {
     if (this.age == 0) {
         return false;
@@ -303,6 +334,12 @@ Organism.prototype.move = function(board) {
         var organism = adjacentTiles[i].organism;
         if (organism !== null) {
             adjacentOrganisms.push(organism);
+        }
+    }
+
+    if (this.hunger > 0.2 && Math.random() < this.hunger) {
+        if (this.tryEating(board, adjacentTiles)) {
+            return;
         }
     }
 
@@ -339,6 +376,13 @@ Organism.prototype.update = function(board) {
             left: this.x * SCALE,
         });
     this.age++;
+
+    // Sadness... death...
+    if (this.hunger >= 1) {
+        board.removeOrganism(this);
+    }
+
+    this.hunger += 0.02 * this.sizeStat;
 }
 
 function Board($container, width, height) {
@@ -369,11 +413,19 @@ function Board($container, width, height) {
         this.generateNewRiver();
     }
 
-    for (var i = 0; i < 30; i++) {
+    for (var i = 0; i < 5; i++) {
         this.addOrganismToTile(new Organism(), this.tiles[i][10])
     }
 
     this.update();
+}
+
+Board.prototype.removeOrganism = function(organism) {
+    console.log("Death");
+    console.log(organism);
+    this.tiles[organism.y][organism.x].organism = null;
+    organism.$element.remove();
+    this.organisms.splice(this.organisms.indexOf(organism), 1);
 }
 
 Board.prototype.addOrganismToTile = function(organism, tile) {
@@ -382,6 +434,19 @@ Board.prototype.addOrganismToTile = function(organism, tile) {
     tile.organism = organism;
     this.organisms.push(organism);
     this.$container.append(organism.$element);
+}
+
+// Assumes it is a valid movement.
+Board.prototype.moveOrganism = function(organism, direction) {
+    var newX = organism.x + direction.x;
+    var newY = organism.y + direction.y;
+
+    this.tiles[organism.y][organism.x].organism = null;
+    this.tiles[newY][newX].organism = organism;
+
+    organism.x = newX;
+    organism.y = newY;
+    organism.direction = direction;
 }
 
 Board.prototype.generateNewRiver = function() {
