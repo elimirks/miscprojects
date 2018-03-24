@@ -9,7 +9,8 @@ WIDTH = 512
 HEIGHT = 512
 
 # m/s
-MAX_VEL = 2
+MAX_Y_VEL = 5
+MAX_X_VEL = 2
 # m/s/s
 G       = 9.8
 # frames/s
@@ -26,27 +27,17 @@ def generateMovieSequence(width, height):
     circumferance = 2 * width + 2 * height
     initEdge = random.random() * circumferance
 
-    if initEdge < width:
-        initXMM = initEdge
-        initYMM = 0
-    elif initEdge < width + height:
-        initXMM = width
-        initYMM = initEdge - width
-    elif initEdge < 2 * width + height:
-        initXMM = initEdge - height - width
-        initYMM = height
-    else:
-        initXMM = 0
-        initYMM = initEdge - height - width * 2
+    initXMM = width / 2
+    initYMM = height / 2
 
     # meters
     initX = initXMM / 1000
     initY = initYMM / 1000
 
     # m/s
-    initXVel = random.random() * MAX_VEL * random.choice([-1, 1])
+    initXVel = random.random() * MAX_X_VEL * random.choice([-1, 1])
     # Give an upward velocity bias
-    initYVel = random.random() * (MAX_VEL - 0.5) * random.choice([-1, 1]) - 0.5
+    initYVel = - random.random() * MAX_Y_VEL
 
     sequence = []
 
@@ -56,8 +47,14 @@ def generateMovieSequence(width, height):
         xMM = x * 1000
         yMM = y * 1000
 
-        if xMM < 0 or xMM >= width or yMM < 0 or yMM >= height:
-            return sequence
+        if xMM < 0:
+            return sequence, 'left'
+        elif xMM >= width:
+            return sequence, 'right'
+        elif yMM < 0:
+            return sequence, 'up'
+        elif yMM >= height:
+            return sequence, 'down'
 
         sequence.append((int(xMM), int(yMM)))
 
@@ -74,12 +71,16 @@ def generateGifFromSequence(impath, sequence):
 
     imageio.mimwrite(impath, frames, format='GIF', duration=0.1, loop=0)
 
-MIN_FRAMES = 10
-sequence = []
-while len(sequence) < MIN_FRAMES:
-    sequence = generateMovieSequence(WIDTH, HEIGHT)
-# Only keep the first MIN_FRAMES frames
-sequence = sequence[:MIN_FRAMES]
+def generateTestCaseGif(frameCount):
+    MIN_FRAMES = 10
+    sequence = []
+    while len(sequence) < frameCount:
+        sequence, direction = generateMovieSequence(WIDTH, HEIGHT)
+        print(len(sequence))
+    # Only keep the first MIN_FRAMES frames
+    sequence = sequence[:frameCount]
 
-generateGifFromSequence('./test.gif', sequence)
+    generateGifFromSequence('./test.gif', sequence)
+    return direction
 
+print(generateTestCaseGif(10))
