@@ -106,6 +106,21 @@ function Player:handleMovement(dt)
    self.yVel = self.yVel + GRAVITY * dt
 
    if self.state == 'idle' or self.state == 'running' then
+      if love.keyboard.isDown('up') then
+         self.yVel = -180
+         self.y = self.y - 1 -- To avoid collision issues
+         self:setNewState('jumping')
+      elseif love.keyboard.isDown('down') then
+         if self.state == 'running' then
+            self:setNewState('rolling')
+            return
+         else
+            -- Crawling substate 1 will crouch down etc
+            self:setNewState('crawling', 1)
+            return
+         end
+      end
+
       if love.keyboard.isDown('right') then
          local accMultiplier = self.direction == 'left' and 2 or 1
          self.xVel = math.min(self.xVel + accMultiplier * PLAYER_MAX_VEL * dt, PLAYER_MAX_VEL)
@@ -129,11 +144,9 @@ function Player:handleMovement(dt)
             self:setNewState('idle')
          end
       end
-
-      if love.keyboard.isDown('up') then
-         self.yVel = -180
-         self.y = self.y - 1 -- To avoid collision issues
-         self:setNewState('jumping')
+   elseif self.state == 'crawling' then
+      if not love.keyboard.isDown('down') then
+         self:setNewState('landing')
       end
    end
 end
@@ -186,7 +199,13 @@ function Player:handleStateAnimations(dt)
       elseif self.xVel < 0 then
          self.xVel = math.min(0, self.xVel + 2 * PLAYER_MAX_VEL * dt)
       else
-         self:setNewState('landing')
+         self:setNewState('crawling')
+      end
+   elseif self.state == 'crawling' then
+      if self.subState == 1 and self.stateTimer > 0.1 then
+         self:setNewState('crawling', 2)
+      elseif self.subState == 2 and self.stateTimer > 0.1 then
+         self:setNewState('crawling', 0)
       end
    end
 
@@ -237,6 +256,17 @@ function Player:draw()
       -- For now, the rolling animation will just be a sliding animation
       image = playerImages.swim5
       yOrigin = yOrigin - 15
+   elseif self.state == 'crawling' then
+      if self.subState == 0 then
+         image = playerImages.swim5
+         yOrigin = yOrigin - 15
+      elseif self.subState == 1 then
+         -- Crouching down
+         image = playerImages.run5
+      elseif self.subState == 2 then
+         -- Crouching down lower
+         image = playerImages.jump2
+      end
    end
 
    love.graphics.setColor(1, 1, 1) -- No color filter
@@ -259,6 +289,7 @@ function love.load(args)
    playerImages.run4  = love.graphics.newImage('img/run_4.png')
    playerImages.run5  = love.graphics.newImage('img/run_5.png')
    playerImages.swim5 = love.graphics.newImage('img/swim_5.png')
+   playerImages.duck  = love.graphics.newImage('img/x_3.png')
    
    objects[#objects + 1] = Ground(0, 300, 100, 32)
    objects[#objects + 1] = Ground(0, 480, 512, 32)
