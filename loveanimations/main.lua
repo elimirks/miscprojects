@@ -65,7 +65,7 @@ end)
 
 function Player:collidsWithGround(g)
    return self.x + self.width > g.x and self.x < g.x + g.width and
-      self.y + self.height > g.y and self.y < g.y + g.height
+      self.y + self.height + 1 > g.y and self.y < g.y + g.height
 end
 
 function Player:handleHitGround(g)
@@ -79,38 +79,57 @@ function Player:handleHitGround(g)
    end
 end
 
-function Player:handleMovement(dt)
+function Player:getActiveGround()
    for i=1,#objects do
       local o = objects[i]
 
       -- ... primitive! TODO: You need to check the range of the velocity!
       if o:isGround() and self:collidsWithGround(o) then
-         self:handleHitGround(o)
-         break
+         return o
       end
+   end
+
+   return nil
+end
+
+function Player:handleMovement(dt)
+   local ground = self:getActiveGround()
+   if ground ~= nil then
+      self:handleHitGround(ground)
+   elseif self.state ~= 'jumping' then
+      -- Well, falling, really.
+      self:setNewState('jumping')
    end
 
    self.x = self.x + self.xVel * dt
    self.y = self.y + self.yVel * dt
    self.yVel = self.yVel + GRAVITY * dt
 
-   -- TODO: MAKE IT STAHP!
+   local MAX_VEL = 256
+
    if self.state == 'idle' or self.state == 'running' then
       if love.keyboard.isDown('right') then
-         self.xVel = 128
-         
-         if self.state ~= 'running' then
-            self:setNewState('running')
-         end
-      elseif love.keyboard.isDown('left') then
-         self.xVel = -128
+         local accMultiplier = self.direction == 'left' and 2 or 1
+         self.xVel = math.min(self.xVel + accMultiplier * MAX_VEL * dt, MAX_VEL)
 
          if self.state ~= 'running' then
             self:setNewState('running')
          end
+      elseif love.keyboard.isDown('left') then
+         local accMultiplier = self.direction == 'right' and 2 or 1
+         self.xVel = math.max(self.xVel - accMultiplier * MAX_VEL * dt, -MAX_VEL)
+         
+         if self.state ~= 'running' then
+            self:setNewState('running')
+         end
       elseif self.state == 'running' then
-         self:setNewState('idle')
-         self.xVel = 0
+         if self.xVel > 0 then
+            self.xVel = math.max(0, self.xVel - 2 * MAX_VEL * dt)
+         elseif self.xVel < 0 then
+            self.xVel = math.min(0, self.xVel + 2 * MAX_VEL * dt)
+         else
+            self:setNewState('idle')
+         end
       end
 
       if love.keyboard.isDown('up') then
@@ -223,9 +242,7 @@ function love.load(args)
    playerImages.run4  = love.graphics.newImage('img/run_4.png')
    playerImages.run5  = love.graphics.newImage('img/run_5.png')
    
-   -- FIXME: Enable falling properly when you walk off the ground!
-   
-   --objects[#objects + 1] = Ground(0, 300, 100, 32)
+   objects[#objects + 1] = Ground(0, 300, 100, 32)
    objects[#objects + 1] = Ground(0, 480, 512, 32)
    objects[#objects + 1] = Player(30, 200)
 
