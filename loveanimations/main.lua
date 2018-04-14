@@ -177,7 +177,7 @@ function Player:handleStateAnimations(dt)
       end
    elseif self.state == 'running' then
       -- TODO: Make him animate faster when his xVel is higher!
-      if self.stateTimer > 0.1 then
+      if self.stateTimer > (0.2 - 0.12 * math.abs(self.xVel / PLAYER_MAX_VEL)) then
          self:setNewState('running', (self.subState + 1) % 6)
       end
    elseif self.state == 'rolling' then
