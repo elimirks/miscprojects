@@ -5,6 +5,7 @@ local objects = {}
 -- 60 FPS
 local TICK_PERIOD = 1/60
 local GRAVITY     = 9.8 * 40
+local PLAYER_MAX_VEL = 256
 
 -- Note: They are all 120x87 images
 -- 40 width, 45 height (hitbox)
@@ -74,7 +75,6 @@ function Player:handleHitGround(g)
    self.y = g.y - self.height
 
    if self.state == 'jumping' then
-      self.xVel = 0
       self:setNewState('landing')
    end
 end
@@ -105,28 +105,26 @@ function Player:handleMovement(dt)
    self.y = self.y + self.yVel * dt
    self.yVel = self.yVel + GRAVITY * dt
 
-   local MAX_VEL = 256
-
    if self.state == 'idle' or self.state == 'running' then
       if love.keyboard.isDown('right') then
          local accMultiplier = self.direction == 'left' and 2 or 1
-         self.xVel = math.min(self.xVel + accMultiplier * MAX_VEL * dt, MAX_VEL)
+         self.xVel = math.min(self.xVel + accMultiplier * PLAYER_MAX_VEL * dt, PLAYER_MAX_VEL)
 
          if self.state ~= 'running' then
             self:setNewState('running')
          end
       elseif love.keyboard.isDown('left') then
          local accMultiplier = self.direction == 'right' and 2 or 1
-         self.xVel = math.max(self.xVel - accMultiplier * MAX_VEL * dt, -MAX_VEL)
+         self.xVel = math.max(self.xVel - accMultiplier * PLAYER_MAX_VEL * dt, -PLAYER_MAX_VEL)
          
          if self.state ~= 'running' then
             self:setNewState('running')
          end
       elseif self.state == 'running' then
          if self.xVel > 0 then
-            self.xVel = math.max(0, self.xVel - 2 * MAX_VEL * dt)
+            self.xVel = math.max(0, self.xVel - 2 * PLAYER_MAX_VEL * dt)
          elseif self.xVel < 0 then
-            self.xVel = math.min(0, self.xVel + 2 * MAX_VEL * dt)
+            self.xVel = math.min(0, self.xVel + 2 * PLAYER_MAX_VEL * dt)
          else
             self:setNewState('idle')
          end
@@ -155,6 +153,12 @@ function Player:handleStateAnimations(dt)
 
    if self.state == 'landing' then
       if self.subState == 0 then
+         if math.abs(self.xVel) > PLAYER_MAX_VEL / 2 then
+            self:setNewState('rolling')
+         else
+            self.xVel = 0
+         end
+
          if self.stateTimer > 0.1 then
             self:setNewState('landing', 1)
          end
@@ -176,6 +180,14 @@ function Player:handleStateAnimations(dt)
       if self.stateTimer > 0.1 then
          self:setNewState('running', (self.subState + 1) % 6)
       end
+   elseif self.state == 'rolling' then
+      if self.xVel > 0 then
+         self.xVel = math.max(0, self.xVel - 2 * PLAYER_MAX_VEL * dt)
+      elseif self.xVel < 0 then
+         self.xVel = math.min(0, self.xVel + 2 * PLAYER_MAX_VEL * dt)
+      else
+         self:setNewState('landing')
+      end
    end
 
    self.stateTimer = self.stateTimer + dt
@@ -188,6 +200,12 @@ end
 
 function Player:draw()
    local image = nil
+
+   -- Flip the images if going left
+   local xScale = self.direction == 'right' and 1 or -1
+   -- FIXME: Be rid of these evil magic numbers!
+   local xOrigin = self.direction == 'right' and self.centerX or 70
+   local yOrigin = self.centerY
 
    if self.state == 'jumping' then
       if self.yVel < -64 then
@@ -215,16 +233,15 @@ function Player:draw()
       end
    elseif self.state == 'running' then
       image = playerImages['run' .. self.subState]
+   elseif self.state == 'rolling' then
+      -- For now, the rolling animation will just be a sliding animation
+      image = playerImages.swim5
+      yOrigin = yOrigin - 15
    end
-
-   -- Flip the images if going left
-   local xScale = self.direction == 'right' and 1 or -1
-   -- FIXME: Be rid of these evil magic numbers!
-   local xOrigin = self.direction == 'right' and self.centerX or 70
 
    love.graphics.setColor(1, 1, 1) -- No color filter
    love.graphics.draw(image, self.x, self.y, 0,
-                      xScale, 1, xOrigin, self.centerY)
+                      xScale, 1, xOrigin, yOrigin)
 end
 
 function love.load(args)
@@ -241,6 +258,7 @@ function love.load(args)
    playerImages.run3  = love.graphics.newImage('img/run_3.png')
    playerImages.run4  = love.graphics.newImage('img/run_4.png')
    playerImages.run5  = love.graphics.newImage('img/run_5.png')
+   playerImages.swim5 = love.graphics.newImage('img/swim_5.png')
    
    objects[#objects + 1] = Ground(0, 300, 100, 32)
    objects[#objects + 1] = Ground(0, 480, 512, 32)
