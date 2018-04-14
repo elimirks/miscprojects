@@ -49,8 +49,10 @@ Player = class(Tile, function(o, x, y)
    o.subState = 0
    o.stateTimer = 0
 
-   o.xVel = 12
-   o.yVel = -512
+   o.direction = 'right'
+
+   o.xVel = 0
+   o.yVel = 0
 
    -- The player center, relative to the image sizes (constants)
    o.centerX = 30
@@ -91,6 +93,32 @@ function Player:handleMovement(dt)
    self.x = self.x + self.xVel * dt
    self.y = self.y + self.yVel * dt
    self.yVel = self.yVel + GRAVITY * dt
+
+   -- TODO: MAKE IT STAHP!
+   if self.state == 'idle' or self.state == 'running' then
+      if love.keyboard.isDown('right') then
+         self.xVel = 128
+         
+         if self.state ~= 'running' then
+            self:setNewState('running')
+         end
+      elseif love.keyboard.isDown('left') then
+         self.xVel = -128
+
+         if self.state ~= 'running' then
+            self:setNewState('running')
+         end
+      elseif self.state == 'running' then
+         self:setNewState('idle')
+         self.xVel = 0
+      end
+
+      if love.keyboard.isDown('up') then
+         self.yVel = -180
+         self.y = self.y - 1 -- To avoid collision issues
+         self:setNewState('jumping')
+      end
+   end
 end
 
 function Player:setNewState(state, subState)
@@ -100,6 +128,12 @@ function Player:setNewState(state, subState)
 end
 
 function Player:handleStateAnimations(dt)
+   if self.xVel > 0 then
+      self.direction = 'right'
+   elseif self.xVel < 0 then
+      self.direction = 'left'
+   end
+
    if self.state == 'landing' then
       if self.subState == 0 then
          if self.stateTimer > 0.1 then
@@ -118,6 +152,11 @@ function Player:handleStateAnimations(dt)
       elseif self.stateTimer > 1.0 then
          self:setNewState('idle', self.subState == 1 and 2 or 0)
       end
+   elseif self.state == 'running' then
+      -- TODO: Make him animate faster when his xVel is higher!
+      if self.stateTimer > 0.1 then
+         self:setNewState('running', (self.subState + 1) % 6)
+      end
    end
 
    self.stateTimer = self.stateTimer + dt
@@ -129,8 +168,6 @@ function Player:update(dt)
 end
 
 function Player:draw()
-   love.graphics.setColor(1, 1, 1) -- No color filter
-
    local image = nil
 
    if self.state == 'jumping' then
@@ -157,9 +194,18 @@ function Player:draw()
       else
          image = playerImages.idle2
       end
+   elseif self.state == 'running' then
+      image = playerImages['run' .. self.subState]
    end
 
-   love.graphics.draw(image, self.x - self.centerX, self.y - self.centerY)
+   -- Flip the images if going left
+   local xScale = self.direction == 'right' and 1 or -1
+   -- FIXME: Be rid of these evil magic numbers!
+   local xOrigin = self.direction == 'right' and self.centerX or 70
+
+   love.graphics.setColor(1, 1, 1) -- No color filter
+   love.graphics.draw(image, self.x, self.y, 0,
+                      xScale, 1, xOrigin, self.centerY)
 end
 
 function love.load(args)
@@ -170,10 +216,18 @@ function love.load(args)
    playerImages.jump1 = love.graphics.newImage('img/jump_1.png')
    playerImages.jump2 = love.graphics.newImage('img/jump_2.png')
    playerImages.jump3 = love.graphics.newImage('img/jump_3.png')
+   playerImages.run0  = love.graphics.newImage('img/run_0.png')
+   playerImages.run1  = love.graphics.newImage('img/run_1.png')
+   playerImages.run2  = love.graphics.newImage('img/run_2.png')
+   playerImages.run3  = love.graphics.newImage('img/run_3.png')
+   playerImages.run4  = love.graphics.newImage('img/run_4.png')
    playerImages.run5  = love.graphics.newImage('img/run_5.png')
    
+   -- FIXME: Enable falling properly when you walk off the ground!
+   
+   --objects[#objects + 1] = Ground(0, 300, 100, 32)
    objects[#objects + 1] = Ground(0, 480, 512, 32)
-   objects[#objects + 1] = Player(30, 350)
+   objects[#objects + 1] = Player(30, 200)
 
    love.graphics.setBackgroundColor(104, 136, 248)
 end
