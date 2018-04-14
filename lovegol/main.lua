@@ -1,4 +1,11 @@
-local time, grid, gridWidth, gridHeight
+local grid, gridWidth, gridHeight
+
+local time = 0
+local TICK_PERIOD = 0.5
+local DEAD_FADE_SCALE = 2
+-- Used for fancy flashy animations.
+-- Stores tuples of x,y coordinate pairs and elapsed times.
+local deadCells = {}
 
 local SCREEN_WIDTH  = 512
 local SCREEN_HEIGHT = 512
@@ -27,8 +34,6 @@ function getCellNeighborCount(x, y)
       (gridHasCellAt(x + 1, y + 1) and 1 or 0)
 end
 
--- TODO make it load from the _same_ format as cgol! (for simplicity)
-
 function updateGrid()
    local tempGrid = {}
 
@@ -41,6 +46,15 @@ function updateGrid()
       -- Apply the rules of CGOL
       tempGrid[#tempGrid + 1] = ((not gridHasCellAt(x, y)) and (neighborCount == 3)) or
          (gridHasCellAt(x, y) and (neighborCount >= 2 and neighborCount <= 3))
+
+      -- Start tracking this cell as a sad, dead cell (for animations)
+      if (not tempGrid[#tempGrid]) and grid[#tempGrid] then
+         deadCells[#deadCells + 1] = {
+            x = x,
+            y = y,
+            time = TICK_PERIOD,
+         }
+      end
    end
 
    grid = tempGrid
@@ -91,14 +105,8 @@ function loadMap(fileName)
 end
 
 function love.load(args)
-   if #args ~= 1 then
-      -- FIXME show errors nicely :)
-      -- ... or maybe use a file picker widget instead, to learn about Love2D
-      error('Please specify the map to load!')
-   end
-
+   assert(#args == 1)
    loadMap(args[1])
-
    time = 0
 end
 
@@ -125,13 +133,31 @@ function love.draw()
                                  yOffset + y * SCALE, SCALE, SCALE)
       end
    end
+
+   for i=1,#deadCells do
+      local cell = deadCells[i]
+      local alpha = cell.time / TICK_PERIOD
+
+      love.graphics.setColor(131/255, 192/255, 240/255, alpha)
+      love.graphics.rectangle('fill', xOffset + cell.x * SCALE,
+                              yOffset + cell.y * SCALE, SCALE, SCALE)
+   end
 end
 
 function love.update(dt)
    time = time + dt
 
-   if time >= 1 then
-      time = time - 1
+   for i=#deadCells,1,-1 do
+      local cell = deadCells[i]
+      cell.time = cell.time - dt * DEAD_FADE_SCALE
+
+      if cell.time <= 0 then
+         table.remove(deadCells, i)
+      end
+   end
+
+   if time >= TICK_PERIOD then
+      time = time - TICK_PERIOD
       updateGrid()
    end
 end

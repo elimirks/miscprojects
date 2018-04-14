@@ -2,6 +2,18 @@
 
   Yet another Conway's Game of Life implementation. This time, I aim to make it a very flashy version!
 
-  Note: For aesthetic purposes, the current MAX board size is 64x64.
+  Note: For aesthetic purposes, the current MAX board size is 64x64. At some point, I plan to remove this limit and add some mechanism to scroll around (probably with arrow keys).
+
+* To play
   
-  Currently, there is no flashyness. BUT IT WORKS.
+  Install Love2D, then run:
+
+  #+begin_src shell
+    love . maps/gosperglider.cgolmap
+  #+end_src shell
+
+  Love2D should be available in your favorite package manager (usually under the name "love").
+  
+  See ~maps/hello.cgolmap~ for an example on how to make a new map. The first line is the height of the map, and the second line is the width.
+  
+  If you want to speed up the game, change the ~TICK_PERIOD~ value at the top of ~main.lua~. If you find the animation annoying, change ~DEAD_FADE_SCALE~ to some large number (say, 1337?).
