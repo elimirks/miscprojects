@@ -46,6 +46,7 @@ end
 Player = class(Tile, function(o, x, y)
    Tile.init(o, x, y)
    o.state = 'jumping'
+   o.subState = 0
    o.stateTimer = 0
 
    o.xVel = 12
@@ -72,7 +73,7 @@ function Player:handleHitGround(g)
 
    if self.state == 'jumping' then
       self.xVel = 0
-      self.state = 'landing'
+      self:setNewState('landing')
    end
 end
 
@@ -92,33 +93,30 @@ function Player:handleMovement(dt)
    self.yVel = self.yVel + GRAVITY * dt
 end
 
-function Player:setNewState(state)
+function Player:setNewState(state, subState)
    self.state = state
+   self.subState = subState or 0
    self.stateTimer = 0
 end
 
 function Player:handleStateAnimations(dt)
    if self.state == 'landing' then
-      self:setNewState('landed')
-   elseif self.state == 'landed' then
-      if self.stateTimer > 0.1 then
-         self:setNewState('idle0')
+      if self.subState == 0 then
+         if self.stateTimer > 0.1 then
+            self:setNewState('landing', 1)
+         end
+      else
+         if self.stateTimer > 0.1 then
+            self:setNewState('idle')
+         end
       end
-   elseif self.state == 'idle0' then
-      if self.stateTimer > 10.0 then
-         self:setNewState('idle1')
-      end
-   elseif self.state == 'idle1' then
-      if self.stateTimer > 2.0 then
-         self:setNewState('idle2')
-      end
-   elseif self.state == 'idle2' then
-      if self.stateTimer > 10.0 then
-         self:setNewState('idle3')
-      end
-   elseif self.state == 'idle3' then
-      if self.stateTimer > 2.0 then
-         self:setNewState('idle0')
+   elseif self.state == 'idle' then
+      if self.subState == 0 or self.subState == 2 then
+         if self.stateTimer > 5.0 then
+            self:setNewState('idle', self.subState == 0 and 1 or 3)
+         end
+      elseif self.stateTimer > 1.0 then
+         self:setNewState('idle', self.subState == 1 and 2 or 0)
       end
    end
 
@@ -143,17 +141,22 @@ function Player:draw()
       else
          image = playerImages.jump3
       end
-   elseif self.state == 'landing' or self.state == 'landed' then
-      -- The landing/landed position
-      image = playerImages.jump2
-   elseif self.state == 'idle0' then
-      image = playerImages.idle0
-   elseif self.state == 'idle1' then
-      image = playerImages.idle2
-   elseif self.state == 'idle2' then
-      image = playerImages.idle1
-   elseif self.state == 'idle3' then
-      image = playerImages.idle2
+   elseif self.state == 'landing' then
+      if self.subState == 0 then
+         -- The landing position
+         image = playerImages.jump2
+      else
+         -- "getting up" position
+         image = playerImages.run5
+      end
+   elseif self.state == 'idle' then
+      if self.subState == 0 then
+         image = playerImages.idle0
+      elseif self.subState == 2 then
+         image = playerImages.idle1
+      else
+         image = playerImages.idle2
+      end
    end
 
    love.graphics.draw(image, self.x - self.centerX, self.y - self.centerY)
@@ -167,6 +170,7 @@ function love.load(args)
    playerImages.jump1 = love.graphics.newImage('img/jump_1.png')
    playerImages.jump2 = love.graphics.newImage('img/jump_2.png')
    playerImages.jump3 = love.graphics.newImage('img/jump_3.png')
+   playerImages.run5  = love.graphics.newImage('img/run_5.png')
    
    objects[#objects + 1] = Ground(0, 480, 512, 32)
    objects[#objects + 1] = Player(30, 350)
