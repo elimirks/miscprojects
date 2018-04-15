@@ -70,13 +70,26 @@ function Player:collidsWithGround(g)
 end
 
 function Player:handleHitGround(g)
+   local HARD_Y_VEL = 180
    -- ...YES, IT'S PRIMITIVE
+   if self.state == 'jumping' then
+      if math.abs(self.xVel) > PLAYER_MAX_VEL / 2 and self.yVel > HARD_Y_VEL then
+         self:setNewState('rolling')
+      else
+         local wantsToRun = (self.direction == 'right' and love.keyboard.isDown('right')) or
+            (self.direction == 'left' and love.keyboard.isDown('left'))
+         
+         if self.yVel > HARD_Y_VEL or not wantsToRun then
+            self.xVel = 0
+            self:setNewState('landing')
+         else
+            self:setNewState('running')
+         end
+      end
+   end
+
    self.yVel = 0
    self.y = g.y - self.height
-
-   if self.state == 'jumping' then
-      self:setNewState('landing')
-   end
 end
 
 function Player:getActiveGround()
@@ -166,12 +179,6 @@ function Player:handleStateAnimations(dt)
 
    if self.state == 'landing' then
       if self.subState == 0 then
-         if math.abs(self.xVel) > PLAYER_MAX_VEL / 2 then
-            self:setNewState('rolling')
-         else
-            self.xVel = 0
-         end
-
          if self.stateTimer > 0.1 then
             self:setNewState('landing', 1)
          end
@@ -291,8 +298,9 @@ function love.load(args)
    playerImages.swim5 = love.graphics.newImage('img/swim_5.png')
    playerImages.duck  = love.graphics.newImage('img/x_3.png')
    
-   objects[#objects + 1] = Ground(0, 300, 100, 32)
-   objects[#objects + 1] = Ground(0, 480, 512, 32)
+   objects[#objects + 1] = Ground(0, 200, 100, 32)
+   objects[#objects + 1] = Ground(0, 448, 640, 32)
+   objects[#objects + 1] = Ground(100, 416, 100, 32)
    objects[#objects + 1] = Player(30, 200)
 
    love.graphics.setBackgroundColor(104, 136, 248)
