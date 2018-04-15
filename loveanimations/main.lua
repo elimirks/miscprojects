@@ -223,9 +223,9 @@ function Player:handleMovement(dt)
          self.xVel = 0
          self:setNewState('landing')
       else
-         if love.keyboard.isDown('right') then
+         if self.direction == 'right' and love.keyboard.isDown('right') then
             self.xVel = PLAYER_CRAWL_VEL
-         elseif love.keyboard.isDown('left') then
+         elseif self.direction == 'left' and love.keyboard.isDown('left') then
             self.xVel = -PLAYER_CRAWL_VEL
          else
             self.xVel = 0
@@ -367,10 +367,15 @@ function Player:draw()
       if self.subState == 1 or self.subState == 3 then
          yOrigin = yOrigin - 15
       end
+
+      if self.subState == 1 then
+         xOrigin = xOrigin + 2
+      end
    elseif self.state == 'crawling' then
       if self.subState <= 3 then
          image = playerImages['crawl' .. self.subState]
          yOrigin = yOrigin - 15
+         xOrigin = xOrigin + 2
       elseif self.subState == 10 then
          -- Crouching down
          image = playerImages.run5
