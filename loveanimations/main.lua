@@ -6,6 +6,7 @@ local objects
 local TICK_PERIOD = 1/60
 local GRAVITY     = 9.8 * 40
 local PLAYER_MAX_VEL = 300
+local PLAYER_CRAWL_VEL = 20
 local MIN_ROLL_VEL = 50
 
 -- Note: They are all 120x87 images
@@ -186,8 +187,8 @@ function Player:handleMovement(dt)
             self:setNewState('rolling')
             return
          else
-            -- Crawling substate 1 will crouch down etc
-            self:setNewState('crawling', 1)
+            -- Crawling substate 10 will crouch down etc
+            self:setNewState('crawling', 10)
             return
          end
       end
@@ -214,10 +215,21 @@ function Player:handleMovement(dt)
          else
             self:setNewState('idle')
          end
-      end
-   elseif self.state == 'crawling' then
+     end
+   end
+
+   if self.state == 'crawling' then
       if not love.keyboard.isDown('down') then
+         self.xVel = 0
          self:setNewState('landing')
+      else
+         if love.keyboard.isDown('right') then
+            self.xVel = PLAYER_CRAWL_VEL
+         elseif love.keyboard.isDown('left') then
+            self.xVel = -PLAYER_CRAWL_VEL
+         else
+            self.xVel = 0
+         end
       end
    end
 
@@ -287,9 +299,20 @@ function Player:handleStateAnimations(dt)
          end
       end
    elseif self.state == 'crawling' then
-      if self.subState == 1 and self.stateTimer > 0.1 then
-         self:setNewState('crawling', 2)
-      elseif self.subState == 2 and self.stateTimer > 0.1 then
+      if self.subState < 10 then
+         if math.abs(self.xVel) > 0 and self.stateTimer > 0.2 then
+            self:setNewState('crawling', (self.subState + 1) % 4)
+         end
+
+         -- Don't stop in state 1! It should only be for animations
+         if self.subState ~= 0 and math.abs(self.xVel) == 0 and self.stateTimer > 0.2 then
+            self:setNewState('crawling', (self.subState + 1) % 4)
+         end
+      end
+
+      if self.subState == 10 and self.stateTimer > 0.1 then
+         self:setNewState('crawling', 11)
+      elseif self.subState == 11 and self.stateTimer > 0.1 then
          self:setNewState('crawling', 0)
       end
    end
@@ -345,13 +368,13 @@ function Player:draw()
          yOrigin = yOrigin - 15
       end
    elseif self.state == 'crawling' then
-      if self.subState == 0 then
-         image = playerImages.swim5
+      if self.subState <= 3 then
+         image = playerImages['crawl' .. self.subState]
          yOrigin = yOrigin - 15
-      elseif self.subState == 1 then
+      elseif self.subState == 10 then
          -- Crouching down
          image = playerImages.run5
-      elseif self.subState == 2 then
+      elseif self.subState == 11 then
          -- Crouching down lower
          image = playerImages.jump2
       end
@@ -364,25 +387,27 @@ end
 
 function love.load(args)
    playerImages = {}
-   playerImages.idle0 = love.graphics.newImage('img/idle_0.png')
-   playerImages.idle1 = love.graphics.newImage('img/idle_1.png')
-   playerImages.idle2 = love.graphics.newImage('img/idle_2.png')
-   playerImages.jump0 = love.graphics.newImage('img/jump_0.png')
-   playerImages.jump1 = love.graphics.newImage('img/jump_1.png')
-   playerImages.jump2 = love.graphics.newImage('img/jump_2.png')
-   playerImages.jump3 = love.graphics.newImage('img/jump_3.png')
-   playerImages.run0  = love.graphics.newImage('img/run_0.png')
-   playerImages.run1  = love.graphics.newImage('img/run_1.png')
-   playerImages.run2  = love.graphics.newImage('img/run_2.png')
-   playerImages.run3  = love.graphics.newImage('img/run_3.png')
-   playerImages.run4  = love.graphics.newImage('img/run_4.png')
-   playerImages.run5  = love.graphics.newImage('img/run_5.png')
-   playerImages.swim5 = love.graphics.newImage('img/swim_5.png')
-   playerImages.duck  = love.graphics.newImage('img/x_3.png')
-   playerImages.roll0 = love.graphics.newImage('img/roll0.png')
-   playerImages.roll1 = playerImages.swim5
-   playerImages.roll2 = love.graphics.newImage('img/roll2.png')
-   playerImages.roll3 = love.graphics.newImage('img/roll3.png')
+   playerImages.idle0  = love.graphics.newImage('img/idle_0.png')
+   playerImages.idle1  = love.graphics.newImage('img/idle_1.png')
+   playerImages.idle2  = love.graphics.newImage('img/idle_2.png')
+   playerImages.jump0  = love.graphics.newImage('img/jump_0.png')
+   playerImages.jump1  = love.graphics.newImage('img/jump_1.png')
+   playerImages.jump2  = love.graphics.newImage('img/jump_2.png')
+   playerImages.jump3  = love.graphics.newImage('img/jump_3.png')
+   playerImages.run0   = love.graphics.newImage('img/run_0.png')
+   playerImages.run1   = love.graphics.newImage('img/run_1.png')
+   playerImages.run2   = love.graphics.newImage('img/run_2.png')
+   playerImages.run3   = love.graphics.newImage('img/run_3.png')
+   playerImages.run4   = love.graphics.newImage('img/run_4.png')
+   playerImages.run5   = love.graphics.newImage('img/run_5.png')
+   playerImages.crawl0 = love.graphics.newImage('img/crawl_0.png')
+   playerImages.crawl1 = love.graphics.newImage('img/crawl_1.png')
+   playerImages.crawl2 = love.graphics.newImage('img/crawl_2.png')
+   playerImages.crawl3 = playerImages.crawl1
+   playerImages.roll0  = love.graphics.newImage('img/roll_0.png')
+   playerImages.roll1  = playerImages.crawl0
+   playerImages.roll2  = love.graphics.newImage('img/roll_2.png')
+   playerImages.roll3  = love.graphics.newImage('img/roll_3.png')
    
    objects = {}
    objects[#objects + 1] = Ground(0, 200, 200, 32)
