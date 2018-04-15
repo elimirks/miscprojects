@@ -5,7 +5,8 @@ local objects
 -- 60 FPS
 local TICK_PERIOD = 1/60
 local GRAVITY     = 9.8 * 40
-local PLAYER_MAX_VEL = 256
+local PLAYER_MAX_VEL = 300
+local MIN_ROLL_VEL = 50
 
 -- Note: They are all 120x87 images
 -- 40 width, 45 height (hitbox)
@@ -67,7 +68,6 @@ end)
 function Player:handleHitFloor(g)
    local HARD_Y_VEL = 180
 
-   -- ...YES, IT'S PRIMITIVE
    if self.state == 'jumping' then
       if math.abs(self.xVel) > PLAYER_MAX_VEL / 2 and self.yVel > HARD_Y_VEL then
          self:setNewState('rolling')
@@ -221,6 +221,22 @@ function Player:handleMovement(dt)
       end
    end
 
+   if self.state == 'rolling' then
+      local wantsToRoll = (self.direction == 'right' and love.keyboard.isDown('right')) or
+            (self.direction == 'left' and love.keyboard.isDown('left'))
+      local canRoll = math.abs(self.xVel) > MIN_ROLL_VEL and self.subState ~= 1
+
+      local friction = (wantsToRoll and canRoll) and 0.3 or 2
+
+      if self.xVel > 0 then
+         self.xVel = math.max(0, self.xVel - friction * PLAYER_MAX_VEL * dt)
+      elseif self.xVel < 0 then
+         self.xVel = math.min(0, self.xVel + friction * PLAYER_MAX_VEL * dt)
+      elseif self.subState == 1 then
+         self:setNewState('crawling')
+      end
+   end
+
    if self:hasHandledWallCollisions(dt) then
       if self.state == 'running' then
          self:setNewState('idle')
@@ -260,17 +276,15 @@ function Player:handleStateAnimations(dt)
          self:setNewState('idle', self.subState == 1 and 2 or 0)
       end
    elseif self.state == 'running' then
-      -- TODO: Make him animate faster when his xVel is higher!
       if self.stateTimer > (0.2 - 0.12 * math.abs(self.xVel / PLAYER_MAX_VEL)) then
          self:setNewState('running', (self.subState + 1) % 6)
       end
    elseif self.state == 'rolling' then
-      if self.xVel > 0 then
-         self.xVel = math.max(0, self.xVel - 2 * PLAYER_MAX_VEL * dt)
-      elseif self.xVel < 0 then
-         self.xVel = math.min(0, self.xVel + 2 * PLAYER_MAX_VEL * dt)
-      else
-         self:setNewState('crawling')
+      -- If moving slowly, slide animation!
+      if math.abs(self.xVel) > MIN_ROLL_VEL or self.subState ~= 1 then
+         if self.stateTimer > (0.1 - 0.04 * math.abs(self.xVel / PLAYER_MAX_VEL)) then
+            self:setNewState('rolling', (self.subState + 1) % 4)
+         end
       end
    elseif self.state == 'crawling' then
       if self.subState == 1 and self.stateTimer > 0.1 then
@@ -296,6 +310,7 @@ function Player:draw()
    -- FIXME: Be rid of these evil magic numbers!
    local xOrigin = self.direction == 'right' and self.centerX or 70
    local yOrigin = self.centerY
+   local rotation = 0
 
    if self.state == 'jumping' then
       if self.yVel < -64 then
@@ -324,9 +339,11 @@ function Player:draw()
    elseif self.state == 'running' then
       image = playerImages['run' .. self.subState]
    elseif self.state == 'rolling' then
-      -- For now, the rolling animation will just be a sliding animation
-      image = playerImages.swim5
-      yOrigin = yOrigin - 15
+      image = playerImages['roll' .. self.subState]
+
+      if self.subState == 1 or self.subState == 3 then
+         yOrigin = yOrigin - 15
+      end
    elseif self.state == 'crawling' then
       if self.subState == 0 then
          image = playerImages.swim5
@@ -341,7 +358,7 @@ function Player:draw()
    end
 
    love.graphics.setColor(1, 1, 1) -- No color filter
-   love.graphics.draw(image, self.x, self.y, 0,
+   love.graphics.draw(image, self.x, self.y, rotation,
                       xScale, 1, xOrigin, yOrigin)
 end
 
@@ -362,15 +379,20 @@ function love.load(args)
    playerImages.run5  = love.graphics.newImage('img/run_5.png')
    playerImages.swim5 = love.graphics.newImage('img/swim_5.png')
    playerImages.duck  = love.graphics.newImage('img/x_3.png')
+   playerImages.roll0 = love.graphics.newImage('img/roll0.png')
+   playerImages.roll1 = playerImages.swim5
+   playerImages.roll2 = love.graphics.newImage('img/roll2.png')
+   playerImages.roll3 = love.graphics.newImage('img/roll3.png')
    
    objects = {}
    objects[#objects + 1] = Ground(0, 200, 200, 32)
-   objects[#objects + 1] = Ground(0, 100, 32, 380)
+   objects[#objects + 1] = Ground(0, 100, 32, 700)
    objects[#objects + 1] = Ground(0, 100, 80, 32)
    objects[#objects + 1] = Ground(270, 230, 50, 32)
-   objects[#objects + 1] = Ground(0, 448, 640, 32)
+   objects[#objects + 1] = Ground(100, 448, 540, 32)
    objects[#objects + 1] = Ground(100, 416, 100, 32)
-   objects[#objects + 1] = Ground(608, 0, 32, 448)
+   objects[#objects + 1] = Ground(608, 0, 32, 800)
+   objects[#objects + 1] = Ground(0, 768, 640, 32)
    objects[#objects + 1] = Player(35, 150)
 
    love.graphics.setBackgroundColor(200/255, 220/255, 255/255)

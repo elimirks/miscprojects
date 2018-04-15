@@ -4,6 +4,6 @@ function love.conf(t)
 	t.url = "https//elijah.mirecki.com"
 	t.version = "11.0"
 	t.window.width = 640
-	t.window.height = 480
+	t.window.height = 800
 	t.window.vsync = false
 end
