@@ -277,18 +277,20 @@ function Player:handleHitWall(g)
 
    if self.state == 'running' then
       self:setNewState('idle')
-   elseif self.state == 'jumping' and love.keyboard.isDown('up') then
+   elseif self.state == 'jumping' then
       local bounceVel = 128
 
-      if self.direction == 'right' then
-         self.xVel = -bounceVel
-         self.direction = 'left'
-      else
-         self.xVel = bounceVel
-         self.direction = 'right'
-      end
+      if love.keyboard.isDown('up') and math.abs(self.yVel) < bounceVel then
+         if self.direction == 'right' then
+            self.xVel = -bounceVel
+            self.direction = 'left'
+         else
+            self.xVel = bounceVel
+            self.direction = 'right'
+         end
 
-      self.yVel = -bounceVel
+         self.yVel = -bounceVel
+      end
    end
 end
 
