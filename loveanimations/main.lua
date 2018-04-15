@@ -117,7 +117,7 @@ function Player:collidesWithWall(g, dt)
       self.y + self.height > g.y and self.y < g.y + g.height
 end
 
-function Player:handleWallHit(g)
+function Player:handleHitWall(g)
    if self.xVel > 0 then
       self.x = g.x - self.width
    else
@@ -132,7 +132,7 @@ function Player:hasHandledWallCollisions(dt)
       local o = objects[i]
 
       if o:isGround() and self:collidesWithWall(o, dt) then
-         self:handleWallHit(o)
+         self:handleHitWall(o)
          -- We only have to care about at most one wall hit.
          return true
       end
@@ -141,7 +141,32 @@ function Player:hasHandledWallCollisions(dt)
    return false
 end
 
+function Player:handleHitCeiling(o)
+   self.yVel = 0
+end
+
+function Player:collidesWithCeiling(g, dt)
+   local travel = self.yVel * dt
+   local headHeight = self.height / 2
+
+   return self.x + self.width > g.x and self.x < g.x + g.width and
+      self.y + headHeight + travel > g.y and self.y + travel < g.y + g.height
+end
+
+function Player:handleCeilingCollider(dt)
+   for i=1,#objects do
+      local o = objects[i]
+
+      if o:isGround() and self:collidesWithCeiling(o, dt) then
+         self:handleHitCeiling(o)
+         break
+      end
+   end
+end
+
 function Player:handleMovement(dt)
+   self:handleCeilingCollider(dt)
+
    if not self:hasHandledFloorCollider(dt) then
       -- Well, falling, really.
       self:setNewState('jumping')
