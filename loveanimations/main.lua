@@ -1,6 +1,6 @@
 require 'class'
 
-local objects = {}
+local objects
 
 -- 60 FPS
 local TICK_PERIOD = 1/60
@@ -321,6 +321,7 @@ function Player:draw()
 end
 
 function love.load(args)
+   playerImages = {}
    playerImages.idle0 = love.graphics.newImage('img/idle_0.png')
    playerImages.idle1 = love.graphics.newImage('img/idle_1.png')
    playerImages.idle2 = love.graphics.newImage('img/idle_2.png')
@@ -337,6 +338,7 @@ function love.load(args)
    playerImages.swim5 = love.graphics.newImage('img/swim_5.png')
    playerImages.duck  = love.graphics.newImage('img/x_3.png')
    
+   objects = {}
    objects[#objects + 1] = Ground(0, 200, 200, 32)
    objects[#objects + 1] = Ground(0, 100, 32, 380)
    objects[#objects + 1] = Ground(0, 100, 80, 32)
@@ -344,7 +346,7 @@ function love.load(args)
    objects[#objects + 1] = Ground(0, 448, 640, 32)
    objects[#objects + 1] = Ground(100, 416, 100, 32)
    objects[#objects + 1] = Ground(608, 0, 32, 448)
-   objects[#objects + 1] = Player(30, 200)
+   objects[#objects + 1] = Player(35, 150)
 
    love.graphics.setBackgroundColor(200/255, 220/255, 255/255)
 end
@@ -358,5 +360,9 @@ end
 function love.update(dt)
    for i=1,#objects do
       objects[i]:update(dt)
+   end
+
+   if love.keyboard.isDown('r') then
+      love.load()
    end
 end
