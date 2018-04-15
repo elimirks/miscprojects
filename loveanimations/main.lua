@@ -8,6 +8,7 @@ local GRAVITY     = 9.8 * 40
 local PLAYER_MAX_VEL = 300
 local PLAYER_CRAWL_VEL = 20
 local MIN_ROLL_VEL = 50
+local MAX_STEP_HEIGHT = 8
 
 -- Note: They are all 120x87 images
 -- 40 width, 45 height (hitbox)
@@ -25,10 +26,17 @@ end
 function Tile:update(dt)
 end
 
-function Tile:isGround()
+function Tile:isFloor()
    return false
 end
 
+function Tile:isWall()
+   return false
+end
+
+function Tile:isRamp()
+   return false
+end
 
 Ground = class(Tile, function(o, x, y, width, height)
    Tile.init(o, x, y)
@@ -41,10 +49,41 @@ function Ground:draw()
   love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
 end
 
-function Ground:isGround()
+function Ground:isFloor()
    return true
 end
 
+function Ground:isWall()
+   return true
+end
+
+Ramp = class(Tile, function(o, x, y, width, height, direction)
+   Tile.init(o, x, y)
+   o.width = width
+   o.height = height
+   -- The direction of incline
+   o.direction = direction
+end)
+
+function Ramp:draw()
+  love.graphics.setColor(72 / 255, 160 / 255, 14 / 255)
+
+  if self.direction == 'left' then
+     love.graphics.polygon("fill", {
+                              self.x, self.y,
+                              self.x, self.y + self.height,
+                              self.x + self.width, self.y + self.height})
+  else
+     love.graphics.polygon("fill", {
+                              self.x + self.width, self.y,
+                              self.x + self.width, self.y + self.height,
+                              self.x, self.y + self.height})
+  end
+end
+
+function Ramp:isRamp()
+   return true
+end
 
 Player = class(Tile, function(o, x, y)
    Tile.init(o, x, y)
@@ -93,7 +132,61 @@ function Player:getHitbox()
    return self:getFullHitbox()
 end
 
-function Player:handleHitFloor(g)
+function Player:collidesWithRamp(r, dt)
+   local hitPointX = self.x + self.width / 2
+
+   if hitPointX > r.x + r.width or hitPointX < r.x then
+      return false
+   end
+   if self.y > r.y + r.height or self.y + self.height < r.y then
+      return false
+   end
+   
+   -- It _potentially_ has hit at this point.
+   
+   local hitPointY = self.y + self.height
+   local slope = r.height / r.width
+
+   local deltaX = hitPointX - r.x
+   local deltaY = hitPointY - r.y
+
+   if r.direction == 'right' then
+      return deltaY + 1 >= (r.width - deltaX) * slope
+   else
+      return deltaY + 1 >= deltaX * slope
+   end
+end
+
+function Player:handleHitRamp(o)
+   self:handleLanding()
+   
+   self.yVel = 0
+   
+   local hitPointX = self.x + self.width / 2
+   local deltaX    = hitPointX - o.x
+   local slope     = o.height / o.width
+   
+   if o.direction == 'right' then
+      self.y = o.y - self.height + (o.width - deltaX) * slope
+   else
+      self.y = o.y - self.height + deltaX * slope
+   end
+end
+
+function Player:hasHandledRampCollider(dt)
+   for i=1,#objects do
+      local o = objects[i]
+
+      if o:isRamp() and self:collidesWithRamp(o, dt) then
+         self:handleHitRamp(o)
+         return true
+      end
+   end
+
+   return false
+end
+
+function Player:handleLanding()
    local HARD_Y_VEL = 180
 
    if self.state == 'jumping' then
@@ -113,6 +206,11 @@ function Player:handleHitFloor(g)
       end
    end
 
+end
+
+function Player:handleHitFloor(g)
+   self:handleLanding()
+
    self.yVel = 0
    self.y = g.y - self.height
 end
@@ -126,17 +224,25 @@ function Player:collidesWithFloor(g, dt)
 end
 
 function Player:hasHandledFloorCollider(dt)
+   local handledFloor = false
+
    for i=1,#objects do
       local o = objects[i]
 
-      if o:isGround() and self:collidesWithFloor(o, dt) then
+      if o:isFloor() and self:collidesWithFloor(o, dt) then
          self:handleHitFloor(o)
          -- We only have to care about at most one floor hit.
-         return true
+         handledFloor = true
+         break
       end
    end
 
-   return false
+   -- We should always check ramps _after_ handling floors
+   if self:hasHandledRampCollider(dt) then
+      handledFloor = true
+   end
+
+   return handledFloor
 end
 
 function Player:collidesWithWall(g, dt)
@@ -148,6 +254,20 @@ function Player:collidesWithWall(g, dt)
 end
 
 function Player:handleHitWall(g)
+   local hitbox = self:getHitbox()
+
+   if self.state ~= 'jumping' and hitbox.y + hitbox.height - g.y <= MAX_STEP_HEIGHT then
+      self.y = g.y - self.height
+
+      if self.xVel > 0 then
+         self.x = self.x + 1
+      else
+         self.x = self.x - 1
+      end
+
+      return
+   end
+
    if self.xVel > 0 then
       self.x = g.x - self.width
    else
@@ -155,20 +275,22 @@ function Player:handleHitWall(g)
    end
 
    self.xVel = 0
+
+   if self.state == 'running' then
+      self:setNewState('idle')
+   end
 end
 
-function Player:hasHandledWallCollisions(dt)
+function Player:handleWallCollisions(dt)
    for i=1,#objects do
       local o = objects[i]
 
-      if o:isGround() and self:collidesWithWall(o, dt) then
+      if o:isWall() and self:collidesWithWall(o, dt) then
          self:handleHitWall(o)
          -- We only have to care about at most one wall hit.
-         return true
+         break
       end
    end
-
-   return false
 end
 
 function Player:handleHitCeiling(o)
@@ -189,7 +311,7 @@ function Player:handleCeilingCollider(dt)
    for i=1,#objects do
       local o = objects[i]
 
-      if o:isGround() and self:collidesWithCeiling(o, dt) then
+      if o:isFloor() and self:collidesWithCeiling(o, dt) then
          self:handleHitCeiling(o)
          break
       end
@@ -200,7 +322,7 @@ function Player:canStandUp(dt)
    for i=1,#objects do
       local o = objects[i]
 
-      if o:isGround() and self:collidesWithCeiling(o, dt, self:getFullHitbox()) then
+      if o:isFloor() and self:collidesWithCeiling(o, dt, self:getFullHitbox()) then
          return false
       end
    end
@@ -292,11 +414,7 @@ function Player:handleMovement(dt)
       end
    end
 
-   if self:hasHandledWallCollisions(dt) then
-      if self.state == 'running' then
-         self:setNewState('idle')
-      end
-   end
+   self:handleWallCollisions(dt)
 end
 
 function Player:setNewState(state, subState)
@@ -465,6 +583,7 @@ function love.load(args)
    objects[#objects + 1] = Ground(500, 380, 32, 32)
    objects[#objects + 1] = Ground(100, 448, 540, 32)
    objects[#objects + 1] = Ground(100, 416, 100, 32)
+   objects[#objects + 1] = Ramp(200, 416, 100, 32, 'left')
    objects[#objects + 1] = Ground(608, 0, 32, 800)
    objects[#objects + 1] = Ground(0, 768, 640, 32)
    objects[#objects + 1] = Player(35, 150)
