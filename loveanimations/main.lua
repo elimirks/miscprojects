@@ -403,7 +403,7 @@ function love.load(args)
    playerImages.crawl0 = love.graphics.newImage('img/crawl_0.png')
    playerImages.crawl1 = love.graphics.newImage('img/crawl_1.png')
    playerImages.crawl2 = love.graphics.newImage('img/crawl_2.png')
-   playerImages.crawl3 = playerImages.crawl1
+   playerImages.crawl3 = love.graphics.newImage('img/crawl_3.png')
    playerImages.roll0  = love.graphics.newImage('img/roll_0.png')
    playerImages.roll1  = playerImages.crawl0
    playerImages.roll2  = love.graphics.newImage('img/roll_2.png')
