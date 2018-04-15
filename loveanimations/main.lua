@@ -11,7 +11,6 @@ local MIN_ROLL_VEL = 50
 local MAX_STEP_HEIGHT = 8
 
 -- Note: They are all 120x87 images
--- 40 width, 45 height (hitbox)
 local playerImages = {}
 
 Tile = class(function(o, x, y)
@@ -96,12 +95,8 @@ Player = class(Tile, function(o, x, y)
    o.xVel = 0
    o.yVel = 0
 
-   -- The player center, relative to the image sizes (constants)
-   o.centerX = 30
-   o.centerY = 30
-
    -- Full hitbox size
-   o.width = 40
+   o.width = 30
    o.height = 45
 end)
 
@@ -496,8 +491,8 @@ function Player:draw()
    -- Flip the images if going left
    local xScale = self.direction == 'right' and 1 or -1
    -- FIXME: Be rid of these evil magic numbers!
-   local xOrigin = self.direction == 'right' and self.centerX or 70
-   local yOrigin = self.centerY
+   local xOrigin = self.direction == 'right' and 33 or 63
+   local yOrigin = 30
    local rotation = 0
 
    if self.state == 'jumping' then
@@ -550,6 +545,12 @@ function Player:draw()
       end
    end
 
+   --[[
+   local hitbox = self:getHitbox()
+   love.graphics.setColor(1, 0, 0)
+   love.graphics.rectangle("fill", hitbox.x, hitbox.y, hitbox.width, hitbox.height)
+   --]]
+
    love.graphics.setColor(1, 1, 1) -- No color filter
    love.graphics.draw(image, self.x, self.y, rotation,
                       xScale, 1, xOrigin, yOrigin)
@@ -588,6 +589,7 @@ function love.load(args)
    objects[#objects + 1] = Ground(100, 448, 540, 32)
    objects[#objects + 1] = Ground(100, 416, 100, 32)
    objects[#objects + 1] = Ramp(200, 416, 100, 32, 'left')
+   objects[#objects + 1] = Ramp(200, 416, 64, 32, 'left')
    objects[#objects + 1] = Ground(608, 0, 32, 800)
    objects[#objects + 1] = Ground(0, 768, 640, 32)
    objects[#objects + 1] = Player(35, 150)
