@@ -337,12 +337,16 @@ function love.load(args)
    playerImages.swim5 = love.graphics.newImage('img/swim_5.png')
    playerImages.duck  = love.graphics.newImage('img/x_3.png')
    
-   objects[#objects + 1] = Ground(0, 200, 100, 32)
+   objects[#objects + 1] = Ground(0, 200, 200, 32)
+   objects[#objects + 1] = Ground(0, 100, 32, 380)
+   objects[#objects + 1] = Ground(0, 100, 80, 32)
+   objects[#objects + 1] = Ground(270, 230, 50, 32)
    objects[#objects + 1] = Ground(0, 448, 640, 32)
    objects[#objects + 1] = Ground(100, 416, 100, 32)
+   objects[#objects + 1] = Ground(608, 0, 32, 448)
    objects[#objects + 1] = Player(30, 200)
 
-   love.graphics.setBackgroundColor(104, 136, 248)
+   love.graphics.setBackgroundColor(200/255, 220/255, 255/255)
 end
 
 function love.draw()
