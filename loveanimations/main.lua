@@ -61,10 +61,37 @@ Player = class(Tile, function(o, x, y)
    o.centerX = 30
    o.centerY = 30
 
-   -- Hitbox
+   -- Full hitbox size
    o.width = 40
    o.height = 45
 end)
+
+function Player:getFullHitbox()
+   return {
+      x = self.x,
+      y = self.y,
+      width = self.width,
+      height = self.height,
+   }
+end
+
+function Player:getLowHitbox()
+   local CRAWL_HEIGHT_DIFF = 12
+
+   return {
+      x = self.x,
+      y = self.y + CRAWL_HEIGHT_DIFF,
+      width = self.width,
+      height = self.height - CRAWL_HEIGHT_DIFF,
+   }
+end
+
+function Player:getHitbox()
+   if self.state == 'rolling' or self.state == 'crawling' then
+      return self:getLowHitbox()
+   end
+   return self:getFullHitbox()
+end
 
 function Player:handleHitFloor(g)
    local HARD_Y_VEL = 180
@@ -92,9 +119,10 @@ end
 
 function Player:collidesWithFloor(g, dt)
    local travel = self.yVel * dt
+   local hitbox = self:getHitbox()
 
-   return self.x + self.width > g.x and self.x < g.x + g.width and
-      self.y + self.height + travel > g.y and self.y + travel < g.y + g.height
+   return hitbox.x + hitbox.width > g.x and hitbox.x < g.x + g.width and
+      hitbox.y + hitbox.height + travel > g.y and hitbox.y + travel < g.y + g.height
 end
 
 function Player:hasHandledFloorCollider(dt)
@@ -112,10 +140,11 @@ function Player:hasHandledFloorCollider(dt)
 end
 
 function Player:collidesWithWall(g, dt)
+   local hitbox = self:getHitbox()
    local travel = self.xVel * dt
 
-   return self.x + self.width + travel > g.x and self.x + travel < g.x + g.width and
-      self.y + self.height > g.y and self.y < g.y + g.height
+   return hitbox.x + hitbox.width + travel > g.x and hitbox.x + travel < g.x + g.width and
+      hitbox.y + hitbox.height > g.y and hitbox.y < g.y + g.height
 end
 
 function Player:handleHitWall(g)
@@ -146,12 +175,14 @@ function Player:handleHitCeiling(o)
    self.yVel = 0
 end
 
-function Player:collidesWithCeiling(g, dt)
+function Player:collidesWithCeiling(g, dt, hitbox)
    local travel = self.yVel * dt
+
+   hitbox = hitbox or self:getHitbox()
    local headHeight = self.height / 2
 
-   return self.x + self.width > g.x and self.x < g.x + g.width and
-      self.y + headHeight + travel > g.y and self.y + travel < g.y + g.height
+   return hitbox.x + hitbox.width > g.x and hitbox.x < g.x + g.width and
+      hitbox.y + headHeight + travel > g.y and hitbox.y + travel < g.y + g.height
 end
 
 function Player:handleCeilingCollider(dt)
@@ -163,6 +194,18 @@ function Player:handleCeilingCollider(dt)
          break
       end
    end
+end
+
+function Player:canStandUp(dt)
+   for i=1,#objects do
+      local o = objects[i]
+
+      if o:isGround() and self:collidesWithCeiling(o, dt, self:getFullHitbox()) then
+         return false
+      end
+   end
+
+   return true
 end
 
 function Player:handleMovement(dt)
@@ -219,7 +262,7 @@ function Player:handleMovement(dt)
    end
 
    if self.state == 'crawling' then
-      if not love.keyboard.isDown('down') then
+      if not love.keyboard.isDown('down') and self:canStandUp(dt) then
          self.xVel = 0
          self:setNewState('landing')
       else
@@ -419,6 +462,7 @@ function love.load(args)
    objects[#objects + 1] = Ground(0, 100, 32, 700)
    objects[#objects + 1] = Ground(0, 100, 80, 32)
    objects[#objects + 1] = Ground(270, 230, 50, 32)
+   objects[#objects + 1] = Ground(500, 380, 32, 32)
    objects[#objects + 1] = Ground(100, 448, 540, 32)
    objects[#objects + 1] = Ground(100, 416, 100, 32)
    objects[#objects + 1] = Ground(608, 0, 32, 800)
