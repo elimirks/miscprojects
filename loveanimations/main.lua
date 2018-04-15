@@ -64,22 +64,19 @@ Player = class(Tile, function(o, x, y)
    o.height = 45
 end)
 
-function Player:collidsWithGround(g)
-   return self.x + self.width > g.x and self.x < g.x + g.width and
-      self.y + self.height + 1 > g.y and self.y < g.y + g.height
-end
-
-function Player:handleHitGround(g)
+function Player:handleHitFloor(g)
    local HARD_Y_VEL = 180
+
    -- ...YES, IT'S PRIMITIVE
    if self.state == 'jumping' then
       if math.abs(self.xVel) > PLAYER_MAX_VEL / 2 and self.yVel > HARD_Y_VEL then
          self:setNewState('rolling')
       else
-         local wantsToRun = (self.direction == 'right' and love.keyboard.isDown('right')) or
-            (self.direction == 'left' and love.keyboard.isDown('left'))
+         local wantsToMove = (self.direction == 'right' and love.keyboard.isDown('right')) or
+            (self.direction == 'left' and love.keyboard.isDown('left')) or
+            love.keyboard.isDown('down')
          
-         if self.yVel > HARD_Y_VEL or not wantsToRun then
+         if self.yVel > HARD_Y_VEL or not wantsToMove then
             self.xVel = 0
             self:setNewState('landing')
          else
@@ -92,24 +89,60 @@ function Player:handleHitGround(g)
    self.y = g.y - self.height
 end
 
-function Player:getActiveGround()
+function Player:collidesWithFloor(g, dt)
+   local travel = self.yVel * dt
+
+   return self.x + self.width > g.x and self.x < g.x + g.width and
+      self.y + self.height + travel > g.y and self.y + travel < g.y + g.height
+end
+
+function Player:hasHandledFloorCollider(dt)
    for i=1,#objects do
       local o = objects[i]
 
-      -- ... primitive! TODO: You need to check the range of the velocity!
-      if o:isGround() and self:collidsWithGround(o) then
-         return o
+      if o:isGround() and self:collidesWithFloor(o, dt) then
+         self:handleHitFloor(o)
+         -- We only have to care about at most one floor hit.
+         return true
       end
    end
 
-   return nil
+   return false
+end
+
+function Player:collidesWithWall(g, dt)
+   local travel = self.xVel * dt
+
+   return self.x + self.width + travel > g.x and self.x + travel < g.x + g.width and
+      self.y + self.height > g.y and self.y < g.y + g.height
+end
+
+function Player:handleWallHit(g)
+   if self.xVel > 0 then
+      self.x = g.x - self.width
+   else
+      self.x = g.x + g.width
+   end
+
+   self.xVel = 0
+end
+
+function Player:hasHandledWallCollisions(dt)
+   for i=1,#objects do
+      local o = objects[i]
+
+      if o:isGround() and self:collidesWithWall(o, dt) then
+         self:handleWallHit(o)
+         -- We only have to care about at most one wall hit.
+         return true
+      end
+   end
+
+   return false
 end
 
 function Player:handleMovement(dt)
-   local ground = self:getActiveGround()
-   if ground ~= nil then
-      self:handleHitGround(ground)
-   elseif self.state ~= 'jumping' then
+   if not self:hasHandledFloorCollider(dt) then
       -- Well, falling, really.
       self:setNewState('jumping')
    end
@@ -160,6 +193,12 @@ function Player:handleMovement(dt)
    elseif self.state == 'crawling' then
       if not love.keyboard.isDown('down') then
          self:setNewState('landing')
+      end
+   end
+
+   if self:hasHandledWallCollisions(dt) then
+      if self.state == 'running' then
+         self:setNewState('idle')
       end
    end
 end
