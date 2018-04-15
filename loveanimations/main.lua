@@ -277,6 +277,18 @@ function Player:handleHitWall(g)
 
    if self.state == 'running' then
       self:setNewState('idle')
+   elseif self.state == 'jumping' and love.keyboard.isDown('up') then
+      local bounceVel = 128
+
+      if self.direction == 'right' then
+         self.xVel = -bounceVel
+         self.direction = 'left'
+      else
+         self.xVel = bounceVel
+         self.direction = 'right'
+      end
+
+      self.yVel = -bounceVel
    end
 end
 
@@ -585,11 +597,10 @@ function love.load(args)
    objects[#objects + 1] = Ground(0, 100, 32, 700)
    objects[#objects + 1] = Ground(0, 100, 80, 32)
    objects[#objects + 1] = Ground(270, 230, 50, 32)
-   objects[#objects + 1] = Ground(500, 380, 32, 32)
+   objects[#objects + 1] = Ground(500, 280, 32, 132)
    objects[#objects + 1] = Ground(100, 448, 540, 32)
    objects[#objects + 1] = Ground(100, 416, 100, 32)
    objects[#objects + 1] = Ramp(200, 416, 100, 32, 'left')
-   objects[#objects + 1] = Ramp(200, 416, 64, 32, 'left')
    objects[#objects + 1] = Ground(608, 0, 32, 800)
    objects[#objects + 1] = Ground(0, 768, 640, 32)
    objects[#objects + 1] = Player(35, 150)
