@@ -158,6 +158,10 @@ function Player:collidesWithRamp(r, dt)
 end
 
 function Player:handleHitRamp(o)
+   if self.yVel < 0 then
+      return
+   end
+
    self:handleLanding()
    
    self.yVel = 0
