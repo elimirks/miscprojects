@@ -13,6 +13,19 @@ local MAX_STEP_HEIGHT = 8
 -- Note: They are all 120x87 images
 local playerImages = {}
 
+KeyboardController = class(function(o, left, right, down, up)
+   o.buttons = {
+     left  = left,
+     right = right,
+     down  = down,
+     up    = up,
+   }
+end)
+
+function KeyboardController:isDown(button)
+   return love.keyboard.isDown(self.buttons[button])
+end
+
 Tile = class(function(o, x, y)
    o.x = x
    o.y = y
@@ -84,8 +97,10 @@ function Ramp:isRamp()
    return true
 end
 
-Player = class(Tile, function(o, x, y)
+Player = class(Tile, function(o, x, y, controller)
    Tile.init(o, x, y)
+   o.controller = controller
+
    o.state = 'jumping'
    o.subState = 0
    o.stateTimer = 0
@@ -192,9 +207,9 @@ function Player:handleLanding()
       if math.abs(self.xVel) > PLAYER_MAX_VEL / 2 and self.yVel > HARD_Y_VEL then
          self:setNewState('rolling')
       else
-         local wantsToMove = (self.direction == 'right' and love.keyboard.isDown('right')) or
-            (self.direction == 'left' and love.keyboard.isDown('left')) or
-            love.keyboard.isDown('down')
+         local wantsToMove = (self.direction == 'right' and self.controller:isDown('right')) or
+            (self.direction == 'left' and self.controller:isDown('left')) or
+            self.controller:isDown('down')
          
          if self.yVel > HARD_Y_VEL or not wantsToMove then
             self.xVel = 0
@@ -280,7 +295,7 @@ function Player:handleHitWall(g)
    elseif self.state == 'jumping' then
       local bounceVel = 128
 
-      if love.keyboard.isDown('up') and math.abs(self.yVel) < bounceVel then
+      if self.controller:isDown('up') and math.abs(self.yVel) < bounceVel then
          if self.direction == 'right' then
             self.xVel = -bounceVel
             self.direction = 'left'
@@ -356,11 +371,11 @@ function Player:handleMovement(dt)
    self.yVel = self.yVel + GRAVITY * dt
 
    if self.state == 'idle' or self.state == 'running' then
-      if love.keyboard.isDown('up') then
+      if self.controller:isDown('up') then
          self.yVel = -180
          self.y = self.y - 1 -- To avoid collision issues
          self:setNewState('jumping')
-      elseif love.keyboard.isDown('down') then
+      elseif self.controller:isDown('down') then
          if self.state == 'running' then
             self:setNewState('rolling')
             return
@@ -371,14 +386,14 @@ function Player:handleMovement(dt)
          end
       end
 
-      if love.keyboard.isDown('right') then
+      if self.controller:isDown('right') then
          local accMultiplier = self.direction == 'left' and 2 or 1
          self.xVel = math.min(self.xVel + accMultiplier * PLAYER_MAX_VEL * dt, PLAYER_MAX_VEL)
 
          if self.state ~= 'running' then
             self:setNewState('running')
          end
-      elseif love.keyboard.isDown('left') then
+      elseif self.controller:isDown('left') then
          local accMultiplier = self.direction == 'right' and 2 or 1
          self.xVel = math.max(self.xVel - accMultiplier * PLAYER_MAX_VEL * dt, -PLAYER_MAX_VEL)
          
@@ -397,13 +412,13 @@ function Player:handleMovement(dt)
    end
 
    if self.state == 'crawling' then
-      if not love.keyboard.isDown('down') and self:canStandUp(dt) then
+      if not self.controller:isDown('down') and self:canStandUp(dt) then
          self.xVel = 0
          self:setNewState('landing')
       else
-         if self.direction == 'right' and love.keyboard.isDown('right') then
+         if self.direction == 'right' and self.controller:isDown('right') then
             self.xVel = PLAYER_CRAWL_VEL
-         elseif self.direction == 'left' and love.keyboard.isDown('left') then
+         elseif self.direction == 'left' and self.controller:isDown('left') then
             self.xVel = -PLAYER_CRAWL_VEL
          else
             self.xVel = 0
@@ -412,8 +427,8 @@ function Player:handleMovement(dt)
    end
 
    if self.state == 'rolling' then
-      local wantsToRoll = (self.direction == 'right' and love.keyboard.isDown('right')) or
-            (self.direction == 'left' and love.keyboard.isDown('left'))
+      local wantsToRoll = (self.direction == 'right' and self.controller:isDown('right')) or
+            (self.direction == 'left' and self.controller:isDown('left'))
       local canRoll = math.abs(self.xVel) > MIN_ROLL_VEL and self.subState ~= 1
 
       local friction = (wantsToRoll and canRoll) and 0.3 or 2
@@ -605,7 +620,11 @@ function love.load(args)
    objects[#objects + 1] = Ramp(200, 416, 100, 32, 'left')
    objects[#objects + 1] = Ground(608, 0, 32, 800)
    objects[#objects + 1] = Ground(0, 768, 640, 32)
-   objects[#objects + 1] = Player(35, 150)
+
+   local controller = KeyboardController('left', 'right', 'down', 'up')
+   --local controller = KeyboardController('a', 'e', 'o', ',')
+   --local controller = KeyboardController('a', 'd', 's', 'w')
+   objects[#objects + 1] = Player(35, 150, controller)
 
    love.graphics.setBackgroundColor(200/255, 220/255, 255/255)
 end
