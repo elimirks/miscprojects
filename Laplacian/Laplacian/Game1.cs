@@ -23,6 +23,8 @@ namespace Laplacian.Desktop
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
 
+        int relaxationTimer = 0;
+
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
@@ -31,8 +33,8 @@ namespace Laplacian.Desktop
 
         protected override void Initialize()
         {
-            height = 800;
             width  = 400;
+            height = 800;
 
             tracedSize = GraphicsDevice.PresentationParameters.Bounds;
             canvas = new Texture2D(GraphicsDevice,
@@ -81,7 +83,13 @@ namespace Laplacian.Desktop
             if (Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            successiveRelaxation();
+            // Start out with a course SOR, then go to a stable relaxation factor.
+            if (relaxationTimer < 2000) {
+                successiveRelaxation(1.95);
+                relaxationTimer++;
+            } else {
+                successiveRelaxation(1.7);
+            }
 
             base.Update(gameTime);
         }
@@ -118,10 +126,7 @@ namespace Laplacian.Desktop
         }
 
         // Faster algorithm than Gauss-Seidel, but could still use some improvement
-        private void successiveRelaxation() {
-            // SR parameter
-            const double s = 1.7;
-
+        private void successiveRelaxation(double relaxationFactor) {
             // Never change the boundaries!
             for (int y = 1; y < height - 1; y++) {
                 for (int x = 1; x < width - 1; x++) {
@@ -130,8 +135,8 @@ namespace Laplacian.Desktop
                         computePixels[width * y + (x-1)] +
                         computePixels[width * y + (x+1)];
 
-                    computePixels[width * y + x] = computePixels[width * y + x] * (1.0-s) +
-                        (s / 4.0) * surrounding;
+                    computePixels[width * y + x] *= (1.0 - relaxationFactor);
+                    computePixels[width * y + x] += (relaxationFactor / 4.0) * surrounding;
                 }
             }
         }
