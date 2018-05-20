@@ -33,7 +33,7 @@ namespace Laplacian.Desktop
 
         protected override void Initialize()
         {
-            width  = 400;
+            width  = 600;
             height = 800;
 
             tracedSize = GraphicsDevice.PresentationParameters.Bounds;
@@ -83,12 +83,15 @@ namespace Laplacian.Desktop
             if (Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            // Start out with a course SOR, then go to a stable relaxation factor.
-            if (relaxationTimer < 2000) {
-                successiveRelaxation(1.95);
+            // Start out with a course grid, then generate with proper resolution
+            if (relaxationTimer < 200) {
+                successiveRelaxation(16, 1.7);
+                relaxationTimer++;
+            } else if (relaxationTimer == 200) {
+                fillGrid(16);
                 relaxationTimer++;
             } else {
-                successiveRelaxation(1.7);
+                successiveRelaxation(1, 1.7);
             }
 
             base.Update(gameTime);
@@ -126,17 +129,31 @@ namespace Laplacian.Desktop
         }
 
         // Faster algorithm than Gauss-Seidel, but could still use some improvement
-        private void successiveRelaxation(double relaxationFactor) {
+        private void successiveRelaxation(int step, double relaxationFactor) {
             // Never change the boundaries!
-            for (int y = 1; y < height - 1; y++) {
-                for (int x = 1; x < width - 1; x++) {
-                    Complex surrounding = computePixels[width * (y-1) + x] +
-                        computePixels[width * (y+1) + x] +
-                        computePixels[width * y + (x-1)] +
-                        computePixels[width * y + (x+1)];
+            for (int y = step; y < height - 1; y += step) {
+                for (int x = step; x < width - 1; x += step) {
+                    Complex surrounding = computePixels[width * (y-step) + x] +
+                        computePixels[width * Math.Min(height - 1, y+step) + x] +
+                        computePixels[width * y + (x-step)] +
+                        computePixels[width * y + Math.Min(width - 1, x+step)];
 
                     computePixels[width * y + x] *= (1.0 - relaxationFactor);
                     computePixels[width * y + x] += (relaxationFactor / 4.0) * surrounding;
+                }
+            }
+        }
+
+        private void fillGrid(int step) {
+            for (int y = step; y < height - 1; y += step) {
+                for (int x = step; x < width - 1; x += step) {
+                    Complex value = computePixels[width * y + x];
+
+                    for (int i = y - step + 1; i < Math.Min(height - 1, y + step - 1); i++) {
+                        for (int j = x - step + 1; j < Math.Min(width - 1, x + step - 1); j++) {
+                            computePixels[width * i + j] = value;
+                        }
+                    }
                 }
             }
         }
