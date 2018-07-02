@@ -39,7 +39,6 @@ const int pin_map[24] = {
   0, // Ground line (not connected)
   0, // Not connected
 
-  // TODO: These are the special pins (not part of the main keyboard)
   6, 
   5,
   4,
