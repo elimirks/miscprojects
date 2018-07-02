@@ -1,0 +1,123 @@
+#released under the GPL feel free to modify and reshare. By: Robert Adrian Alberto Perez: syswebroot@gmail.com
+# - Conky settings - #
+##########################################################
+update_interval 1
+total_run_times 0
+net_avg_samples 1
+cpu_avg_samples 1
+
+imlib_cache_size 0
+double_buffer yes
+no_buffers yes
+
+
+# - Text settings - #
+##########################################################
+use_xft yes
+xftfont AvantGarde LT Medium:size=40
+override_utf8_locale yes
+text_buffer_size 2048
+
+
+# - Window specifications - #
+##########################################################
+own_window yes
+own_window_type normal
+own_window_transparent yes
+own_window_hints undecorated,below,sticky,skip_taskbar,skip_pager
+#own_window_argb_visual yes
+#own_window_argb_value 100
+
+alignment top_right
+gap_x 20
+gap_y 0
+minimum_size 300 800
+
+
+default_bar_size 60 8
+
+# - Graphics settings - #
+##########################################################
+draw_shades no
+
+default_color 080808
+default_shade_color 1d1d1d
+color0 ffffff #WHITE
+color1 000000 #BLACK
+color2 008000 #DARK GREEN
+color3 E20D0D #RED
+color7 0DE215 #LIGHT GREEN
+color5 FFFF00 #YELLOW
+color6 A52A2A #DARK RED
+color7 1E90FF #LIGHT BLUE
+color8 0000FF #DARK BLUE
+
+
+own_window_argb_visual yes
+own_window_colour 000000
+own_window_argb_value 0
+
+TEXT
+#######################DAy number
+#${voffset 1}
+${alignc}${font ge inspira:pixelsize=150}${color7}${time %d}
+#
+########################hour
+#
+${voffset -210}${offset 10}${font ge inspira:pixelsize=40}${color0}${time %H:%M}
+#
+########################date month and other
+#
+${voffset -80}${font ge inspira:pixelsize=25} #set the default size of the font.
+${alignc}${offset 140}${time %A}
+${alignc}${offset 140}${time %B}
+${alignc}${offset 140}${time %Y}
+#
+######################System 
+#
+${font ge inspira:pixelsize=20} #set the default size of the font.
+${voffset 1}
+${alignc}______________________________________
+${voffset 1}
+${color0}hostname: ${color7}${alignr}${nodename}
+${color0}ip: ${color7}${alignr}${addr wlp3s0}
+${color0}kernel: ${color7}${alignr}${sysname} ${kernel} ${machine}
+${color0}uptime: ${color7}${alignr}${uptime_short}
+${color0}packages: ${color7}${alignr}${exec pacman -Q | wc -l} Packages Installed
+#
+########################computer
+#
+${alignc}${color0}______________________________________
+${voffset 1}
+${color0}CPU${offset 6}${color7}${cpubar 10,100}
+${color0}RAM${offset 5}${color7}${membar 10,100}
+${color0}SSD${offset 9}${color7}${fs_bar 10,100 /}
+#
+########################network upload
+#
+${voffset -70}${alignc -10}${color0}Upload
+${alignc -10 }${color7}${upspeedgraph wlp3s0 28,100}
+${voffset -40}${alignc -10}${color0}${font ge inspira:pixelsize=20}${upspeed wlp3s0}
+#
+#########################network download
+#
+${font ge inspira:pixelsize=20}
+${voffset -84}${alignc -110}${color0}Download
+${alignc -120}${color7}${downspeedgraph wlp3s0 28,100}
+${voffset -40}${alignc -120}${color0}${font ge inspira:pixelsize=20}${downspeed wlp3s0}
+#
+#########################fans and temps
+#
+${alignc}${color0}______________________________________${voffset 12}
+${color0}wifi strength: ${color7}${alignr}${wireless_link_qual_perc wlp3s0}%
+${color0}fan speed: ${color7}${alignr}${exec sensors | \grep FAN | sed 's/FAN:\s*//'}
+${color0}CPU 0: ${color7}${alignr}${exec sensors | \grep 'CPU_0' | sed 's/.*\(\+[^ ,)]* \).*$/\1/' | sed 's/ *$//'}
+${color0}CPU 1: ${color7}${alignr}${exec sensors | \grep 'CPU_1' | sed 's/.*\(\+[^ ,)]* \).*$/\1/' | sed 's/ *$//'}
+${color0}GPU: ${color7}${alignr}${exec sensors | \grep VGA | sed 's/VGA:\s*//' | sed 's/ *$//'}
+#
+#########################battery
+#
+${alignc}${color0}______________________________________
+${voffset 1}${alignc}${color7}${battery_bar 40,380 BAT1}
+${voffset -54}${alignc 20}${color0}${font ge inspira:pixelsize=30}Battery: ${battery_percent BAT1}%
+#
