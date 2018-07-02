@@ -1,9 +1,15 @@
 #include "Keyboard.h"
 
+const unsigned int PIN_RESET = 23;
+const unsigned int PIN_OPTION = 22;
+const unsigned int PIN_SELECT = 21;
+const unsigned int PIN_START = 20;
+
 struct Key {
   unsigned int keyCode;
   unsigned int writePin;
   unsigned int readPin;
+  unsigned int altKeyCode;
   unsigned int pressed;
 };
 
@@ -34,10 +40,10 @@ const int pin_map[24] = {
   0, // Not connected
 
   // TODO: These are the special pins (not part of the main keyboard)
-  0, 
-  0,
-  0,
-  0,
+  6, 
+  5,
+  4,
+  3,
 };
 
 /*
@@ -78,9 +84,10 @@ Key key_states[64] = {
     .readPin = 17
   },
   { // BREAK
-    .keyCode = KEY_LEFT_ALT,
+    .keyCode = 96,
     .writePin = 1,
-    .readPin = 9
+    .readPin = 9,
+    .altKeyCode = 126
   },
   { // RETURN
     .keyCode = KEY_RETURN,
@@ -88,7 +95,7 @@ Key key_states[64] = {
     .readPin = 17
   },
   { // CAPS
-    .keyCode = KEY_CAPS_LOCK,
+    .keyCode = KEY_LEFT_ALT,
     .writePin = 6,
     .readPin = 17
   },
@@ -155,12 +162,14 @@ Key key_states[64] = {
   { // <
     .keyCode = 45,
     .writePin = 1,
-    .readPin = 15
+    .readPin = 15,
+    .altKeyCode = KEY_MEDIA_VOLUME_DEC
   },
   { // >
     .keyCode = 61,
     .writePin = 1,
-    .readPin = 16
+    .readPin = 16,
+    .altKeyCode = KEY_MEDIA_VOLUME_INC
   },
   { // q
     .keyCode = 113,
@@ -215,12 +224,14 @@ Key key_states[64] = {
   { // _
     .keyCode = 91,
     .writePin = 3,
-    .readPin = 15
+    .readPin = 15,
+    .altKeyCode = KEY_UP
   },
   { // =
     .keyCode = 93,
     .writePin = 3,
-    .readPin = 16
+    .readPin = 16,
+    .altKeyCode = KEY_DOWN
   },
   { // a
     .keyCode = 97,
@@ -275,12 +286,14 @@ Key key_states[64] = {
   { // +
     .keyCode = 39,
     .writePin = 5,
-    .readPin = 15
+    .readPin = 15,
+    .altKeyCode = KEY_LEFT
   },
   { // *
     .keyCode = 92,
     .writePin = 5,
-    .readPin = 16
+    .readPin = 16,
+    .altKeyCode = KEY_RIGHT
   },
   { // z
     .keyCode = 122,
@@ -344,11 +357,19 @@ void setup() {
     pinMode(pin_map[i], INPUT_PULLUP);
   }
 
+  pinMode(pin_map[PIN_START], INPUT_PULLUP);
+  pinMode(pin_map[PIN_SELECT], INPUT_PULLUP);
+  pinMode(pin_map[PIN_OPTION], INPUT_PULLUP);
+  pinMode(pin_map[PIN_RESET], INPUT_PULLUP);
+
   // initialize control over the keyboard:
+
   Keyboard.begin();
 }
 
 void loop() {
+  int layerPressed = digitalRead(pin_map[PIN_OPTION]) == LOW;
+  
   for (unsigned int i = 0; i < sizeof(key_states) / sizeof(Key); i++) {
     Key *k = &key_states[i];
 
@@ -356,11 +377,17 @@ void loop() {
 
     int state = digitalRead(pin_map[k->readPin]);
 
-    if (state == LOW && k->pressed == 0) {
-      Keyboard.press(k->keyCode);
-      k->pressed = 1;
-    } else if (state == HIGH && k->pressed == 1) {
-      Keyboard.release(k->keyCode);
+    unsigned int keyCode = k->keyCode;
+
+    if (layerPressed && k->altKeyCode) {
+      keyCode = k->altKeyCode;
+    }
+    
+    if (state == LOW && !k->pressed) {      
+      Keyboard.press(keyCode);
+      k->pressed = keyCode;
+    } else if (state == HIGH && k->pressed) {
+      Keyboard.release(keyCode);
       k->pressed = 0;
     }
 

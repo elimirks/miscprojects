@@ -1,0 +1,1 @@
+This directory contains configurations for my Atari 800XL revival project.
