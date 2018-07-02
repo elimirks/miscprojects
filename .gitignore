@@ -1,2 +1,3 @@
 a.out
 *.sw?
+.DS_Store

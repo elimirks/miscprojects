@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
 using System;
+using System.IO;
 using System.Numerics;
 
 namespace Laplacian.Desktop
@@ -17,13 +18,18 @@ namespace Laplacian.Desktop
         UInt32[] texturePixels;
 
         Complex[] computePixels;
+
+        // Used to compute a diff when decreasing resolution and detecting completion
+        Complex[] historyPixels;
+        // Should be a multiple of 2
+        int computeResolution = 32;
+        int diffTimer  = 0;
+
         // Magnitude
         double maxComputePixel;
 
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
-
-        int relaxationTimer = 0;
 
         public Game1()
         {
@@ -33,7 +39,7 @@ namespace Laplacian.Desktop
 
         protected override void Initialize()
         {
-            width  = 600;
+            width  = 800;
             height = 800;
 
             tracedSize = GraphicsDevice.PresentationParameters.Bounds;
@@ -78,22 +84,61 @@ namespace Laplacian.Desktop
             graphics.ApplyChanges();
         }
 
+        protected bool hasDiff(Complex[] first, Complex[] second)
+        {
+            const double precision = 0.0001;
+
+            for (int i = 0; i < first.Length; i++) {
+                if (Complex.Subtract(first[i], second[i]).Magnitude > precision) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void saveCanvas()
+        {
+            Stream stream = File.Create("out.png");
+            canvas.SaveAsPng(stream, width, height);
+            stream.Dispose();
+        }
+
         protected override void Update(GameTime gameTime)
         {
             if (Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            // Start out with a course grid, then generate with proper resolution
-            if (relaxationTimer < 200) {
-                successiveRelaxation(16, 1.7);
-                relaxationTimer++;
-            } else if (relaxationTimer == 200) {
-                fillGrid(16);
-                relaxationTimer++;
-            } else {
-                successiveRelaxation(1, 1.7);
+            if (computeResolution == 0) {
+                return;
             }
 
+            const int historyCheckPeriod = 100;
+
+            if (diffTimer == historyCheckPeriod) {
+                historyPixels = (Complex[])computePixels.Clone();
+            } else if (diffTimer == historyCheckPeriod + 1) {
+                if (!hasDiff(historyPixels, computePixels)) {
+                    computeResolution /= 2;
+
+                    if (computeResolution == 0) {
+                        Console.WriteLine("Finished computing grid.");
+                        saveCanvas();
+                        return;
+                    }
+                }
+            } else if (diffTimer > historyCheckPeriod + 1) {
+                diffTimer = 0;
+            }
+
+            successiveRelaxation(computeResolution, 1.7);
+
+            if (computeResolution > 1) {
+                // Used soley for display. In headless mode, this would waste cycles
+                fillGrid(computeResolution);
+            }
+
+            diffTimer++;
             base.Update(gameTime);
         }
 
