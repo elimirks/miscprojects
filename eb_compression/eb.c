@@ -18,11 +18,23 @@ struct EBImage {
     uint32_t *data;
 };
 
+/* 
+ * Raw image data type. Mainly for loading and saving PPMs.
+ */
+struct RawImage {
+    uint32_t width, height;
+    uint32_t *data;
+};
+
 /*
  * Returns a raw bitmap array for the given EBImage.
  */
-uint32_t * EBImage_to_raw(struct EBImage *im) {
-    uint32_t *raw = malloc(sizeof(uint32_t) * im->width * im->height);
+struct RawImage EBImage_to_raw(struct EBImage *im) {
+    struct RawImage raw;
+    raw.width = im->width;
+    raw.height = im->height;
+    raw.data = malloc(sizeof(uint32_t) * im->width * im->height);
+
     // Map out which pixels have been set so far (via regions)
     uint8_t *region_map = malloc(im->width * im->height);
     memset(region_map, 0, im->width * im->height);
@@ -32,7 +44,7 @@ uint32_t * EBImage_to_raw(struct EBImage *im) {
         struct Region *reg = &im->regions[i];
         for (uint32_t y = reg->y; y < reg->y + reg->height; y++) {
             for (uint32_t x = reg->x; x < reg->x + reg->width; x++) {
-                raw[y * im->width + x] = reg->color;
+                raw.data[y * im->width + x] = reg->color;
                 region_map[y * im->width + x] = 1;
             }
         }
@@ -47,21 +59,20 @@ uint32_t * EBImage_to_raw(struct EBImage *im) {
             continue;
         }
 
-        raw[iter - region_map] = im->data[data_index];
+        raw.data[iter - region_map] = im->data[data_index];
         data_index++;
     }
 
     return raw;
 }
 
-void save_ppm(uint32_t *raw, uint32_t width, uint32_t height,
-              const char *path) {
+void save_ppm(struct RawImage *raw, const char *path) {
     FILE *fp = fopen(path, "wb");
-    fprintf(fp, "P6\n%d %d\n255\n", width, height);
+    fprintf(fp, "P6\n%d %d\n255\n", raw->width, raw->height);
 
-    for (uint32_t y = 0; y < height; y++) {
-        for (uint32_t x = 0; x < width; x++) {
-            uint8_t *rawColor = (uint8_t*)&raw[y * width + x];
+    for (uint32_t y = 0; y < raw->height; y++) {
+        for (uint32_t x = 0; x < raw->width; x++) {
+            uint8_t *rawColor = (uint8_t*)&raw->data[y * raw->width + x];
             uint8_t color[3];
 
             // Write RGB channels (PPM doesn't have alpha)
@@ -71,6 +82,31 @@ void save_ppm(uint32_t *raw, uint32_t width, uint32_t height,
             fwrite(color, 1, 3, fp);
         }
     }
+}
+
+struct RawImage load_ppm(const char *path) {
+    FILE *fp = fopen(path, "rb");
+    uint32_t width, height;
+    fscanf(fp, "P6\n%d %d\n255\n", &width, &height);
+
+    struct RawImage raw;
+    raw.width  = width;
+    raw.height = height;
+    raw.data = malloc(sizeof(uint32_t) * width * height);
+
+    for (uint32_t y = 0; y < height; y++) {
+        for (uint32_t x = 0; x < width; x++) {
+            uint8_t color[3];
+            fread(color, 1, 3, fp);
+
+            raw.data[y * raw.width + x] = 0xff // alpha
+                + (color[0] << 24) // r
+                + (color[1] << 16) // g
+                + (color[2] << 8); // b
+        }
+    }
+
+    return raw;
 }
 
 int main() {
@@ -94,10 +130,10 @@ int main() {
         im.data[i] = 0xff0000ff;
     }
 
-    uint32_t *raw = EBImage_to_raw(&im);
-
-    save_ppm(raw, im.width, im.height, "test.ppm");
+    //struct RawImage raw = EBImage_to_raw(&im);
+    struct RawImage raw = load_ppm("in.ppm");
+    save_ppm(&raw, "test.ppm");
 
     free(im.data);
-    free(raw);
+    free(raw.data);
 }

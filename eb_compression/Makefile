@@ -1,3 +1,3 @@
 all:
-	gcc eb.c -o eb
+	gcc -g eb.c -o eb
 	./eb
