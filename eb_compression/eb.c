@@ -3,6 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+// It's not worth compressing if the region is this tiny
+#define MINIMUM_REGION_SIZE (6)
+// There is only one type of region so far... maybe I'll add more
+#define REGION_TYPE_SQUARE (1)
+
 struct Region {
     uint8_t type;
     uint32_t color;
@@ -63,6 +68,7 @@ struct RawImage EBImage_to_raw(struct EBImage *im) {
         data_index++;
     }
 
+    free(region_map);
     return raw;
 }
 
@@ -109,31 +115,139 @@ struct RawImage load_ppm(const char *path) {
     return raw;
 }
 
-int main() {
-    struct Region regions[1];
-    regions[0] = (struct Region){ .type   = 1,
-                                  .color  = 0x00ff00ff,
-                                  .x      = 0,
-                                  .y      = 0,
-                                  .width  = 8,
-                                  .height = 8 };
+void grow_rect(struct RawImage *raw,
+               uint8_t *visited_map,
+               const uint32_t x, const uint32_t y,
+               uint32_t *out_width, uint32_t *out_height) {
+    uint32_t color = raw->data[y * raw->height + x];
+    uint32_t rwidth = 1, rheight = 1;
+    uint8_t width_done = 0, height_done = 0;
 
-    struct EBImage im = { .width        = 16,
-                          .height       = 16,
-                          .region_count = 1 };
-    im.regions = regions;
-    im.data_length = im.width * im.height -
-        regions[0].width * regions[0].height;
-    im.data = (uint32_t*)malloc(im.data_length * sizeof(uint32_t));
+    while (!width_done || !height_done) {
+        if (y + rheight >= raw->height) {
+            height_done = 1;
+        }
+        if (x + rwidth >= raw->width) {
+            width_done = 1;
+        }
 
-    for (uint64_t i = 0; i < im.data_length; i++) {
-        im.data[i] = 0xff0000ff;
+        // Grow the width, if appropriate
+        if (!width_done) {
+            for (uint32_t i = y; i < y + rheight; i++) {
+                uint32_t coord = i * raw->height + x + rwidth;
+                if (raw->data[coord] != color || visited_map[coord]) {
+                    width_done = 1;
+                    break;
+                }
+            }
+
+            if (!width_done) {
+                rwidth++;
+            }
+        }
+
+        // Grow the height, if appropriate
+        if (!height_done) {
+            for (uint32_t i = x; i < x + rwidth; i++) {
+                uint32_t coord = (y + rheight) * raw->height + i;
+                if (raw->data[coord] != color || visited_map[coord]) {
+                    height_done = 1;
+                    break;
+                }
+            }
+
+            if (!height_done) {
+                rheight++;
+            }
+        }
     }
 
-    //struct RawImage raw = EBImage_to_raw(&im);
-    struct RawImage raw = load_ppm("in.ppm");
-    save_ppm(&raw, "test.ppm");
+    *out_width  = rwidth;
+    *out_height = rheight;
+}
 
-    free(im.data);
+void EBImage_add_region(struct EBImage *eb,
+                        const uint32_t color,
+                        const uint32_t x, const uint32_t y,
+                        const uint32_t width, const uint32_t height) {
+    eb->region_count++;
+    eb->regions = realloc(eb->regions,
+                          sizeof(struct Region) * eb->region_count);
+
+    struct Region *r = &eb->regions[eb->region_count - 1];
+    r->type   = REGION_TYPE_SQUARE;
+    r->color  = color;
+    r->x      = x;
+    r->y      = y;
+    r->width  = width;
+    r->height = height;
+}
+
+void EBImage_append_data(struct EBImage *eb, const uint32_t color) {
+    eb->data_length++;
+    eb->data = realloc(eb->data,
+                       sizeof(uint32_t) * eb->data_length);
+    eb->data[eb->data_length - 1] = color;
+}
+
+struct EBImage compress_raw(struct RawImage *raw) {
+    struct EBImage eb = { .width        = raw->width,
+                          .height       = raw->height,
+                          .region_count = 0,
+                          .regions      = malloc(1),
+                          .data_length  = 0,
+                          .data         = malloc(1)};
+    
+    uint8_t *visited_map = malloc(raw->width * raw->height);
+    memset(visited_map, 0, raw->width * raw->height);
+
+    for (uint32_t y = 0; y < raw->height; y++) {
+        for (uint32_t x = 0; x < raw->width; x++) {
+            const uint32_t color = raw->data[y * raw->width + x];
+
+            uint32_t rwidth, rheight;
+            grow_rect(raw, visited_map, x, y, &rwidth, &rheight);
+
+            if (rwidth * rheight < MINIMUM_REGION_SIZE) {
+                // Boring 'ol raw data
+                EBImage_append_data(&eb, color);
+                continue;
+            }
+
+            EBImage_add_region(&eb, color, x, y, rwidth, rheight);
+
+            // Set the visited region
+            for (uint32_t i = x; i < x + rwidth; i++) {
+                for (uint32_t j = y; j < y + rheight; j++) {
+                    visited_map[j * raw->width + i] = 1;
+                }
+            }
+        }
+    }
+
+    free(visited_map);
+    return eb;
+}
+
+// TODO: Make saving & loading functions
+void EBImage_save(struct EBImage *eb, const char *path) {
+}
+
+struct EBImage EBImage_load(const char *path) {
+    struct EBImage eb;
+    return eb;
+}
+
+int main() {
+    struct RawImage raw = load_ppm("in.ppm");
+    struct EBImage eb = compress_raw(&raw);
+
+    //struct RawImage new_raw = EBImage_to_raw(&eb);
+    //save_ppm(&raw, "test.ppm");
+
+    EBImage_save(&eb, "test.eb");
+
+    free(eb.regions);
+    free(eb.data);
     free(raw.data);
 }
