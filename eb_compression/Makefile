@@ -1,3 +1,3 @@
 all:
-	gcc -g eb.c -o eb
-	./eb
+	gcc -pedantic -g eb.c -o eb
+	./eb test.eb test.ppm

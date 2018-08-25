@@ -1,25 +1,23 @@
+#include <getopt.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 // It's not worth compressing if the region is this tiny
-#define MINIMUM_REGION_SIZE (6)
-// There is only one type of region so far... maybe I'll add more
-#define REGION_TYPE_SQUARE (1)
+#define MINIMUM_REGION_SIZE (4)
 
 struct Region {
-    uint8_t type;
     uint32_t color;
-    uint32_t x, y, width, height;
+    uint16_t x, y, width, height;
 };
 
 struct EBImage {
-    uint32_t width, height;
-    uint16_t region_count;
+    uint16_t width, height;
+    uint32_t region_count;
     struct Region *regions;
     // At most width*height. If regions exist, it will be less.
-    uint64_t data_length;
+    uint32_t data_length;
     uint32_t *data;
 };
 
@@ -27,7 +25,7 @@ struct EBImage {
  * Raw image data type. Mainly for loading and saving PPMs.
  */
 struct RawImage {
-    uint32_t width, height;
+    uint16_t width, height;
     uint32_t *data;
 };
 
@@ -45,7 +43,7 @@ struct RawImage EBImage_to_raw(struct EBImage *im) {
     memset(region_map, 0, im->width * im->height);
 
     // draw the regions
-    for (uint16_t i = 0; i < im->region_count; i++) {
+    for (uint32_t i = 0; i < im->region_count; i++) {
         struct Region *reg = &im->regions[i];
         for (uint32_t y = reg->y; y < reg->y + reg->height; y++) {
             for (uint32_t x = reg->x; x < reg->x + reg->width; x++) {
@@ -78,7 +76,8 @@ void save_ppm(struct RawImage *raw, const char *path) {
 
     for (uint32_t y = 0; y < raw->height; y++) {
         for (uint32_t x = 0; x < raw->width; x++) {
-            uint8_t *rawColor = (uint8_t*)&raw->data[y * raw->width + x];
+            uint8_t *rawColor =
+                (uint8_t*)&raw->data[y * raw->width + x];
             uint8_t color[3];
 
             // Write RGB channels (PPM doesn't have alpha)
@@ -105,8 +104,8 @@ struct RawImage load_ppm(const char *path) {
             uint8_t color[3];
             fread(color, 1, 3, fp);
 
-            raw.data[y * raw.width + x] = 0xff // alpha
-                + (color[0] << 24) // r
+            raw.data[y * raw.width + x] =
+                (color[0] << 24) // r
                 + (color[1] << 16) // g
                 + (color[2] << 8); // b
         }
@@ -166,32 +165,26 @@ void grow_rect(struct RawImage *raw,
     *out_height = rheight;
 }
 
-void EBImage_add_region(struct EBImage *eb,
-                        const uint32_t color,
-                        const uint32_t x, const uint32_t y,
-                        const uint32_t width, const uint32_t height) {
-    eb->region_count++;
-    eb->regions = realloc(eb->regions,
-                          sizeof(struct Region) * eb->region_count);
-
-    struct Region *r = &eb->regions[eb->region_count - 1];
-    r->type   = REGION_TYPE_SQUARE;
-    r->color  = color;
-    r->x      = x;
-    r->y      = y;
-    r->width  = width;
-    r->height = height;
+void EBImage_add_region(struct EBImage *eb, const struct Region r) {
+    const size_t new_region_mem =
+        sizeof(struct Region) * ++(eb->region_count);
+    eb->regions = realloc(eb->regions, new_region_mem);
+    if (eb->regions == 0) {
+        fprintf(stderr, "Out of memory! "
+                "(tried allocating %lu regions)\n", new_region_mem);
+        exit(1);
+    }
+    eb->regions[eb->region_count - 1] = r;
 }
 
 void EBImage_append_data(struct EBImage *eb, const uint32_t color) {
-    printf("Append data\n");
     eb->data_length++;
     eb->data = realloc(eb->data,
                        sizeof(uint32_t) * eb->data_length);
     eb->data[eb->data_length - 1] = color;
 }
 
-struct EBImage compress_raw(struct RawImage *raw) {
+struct EBImage EBImage_compress_raw(struct RawImage *raw) {
     struct EBImage eb = { .width        = raw->width,
                           .height       = raw->height,
                           .region_count = 0,
@@ -219,7 +212,13 @@ struct EBImage compress_raw(struct RawImage *raw) {
                 continue;
             }
 
-            EBImage_add_region(&eb, color, x, y, rwidth, rheight);
+            struct Region r;
+            r.color  = color;
+            r.x      = x;
+            r.y      = y;
+            r.width  = rwidth;
+            r.height = rheight;
+            EBImage_add_region(&eb, r);
 
             // Set the visited region
             for (uint32_t i = x; i < x + rwidth; i++) {
@@ -236,43 +235,123 @@ struct EBImage compress_raw(struct RawImage *raw) {
 
 void EBImage_save(struct EBImage *eb, const char *path) {
     FILE *fp = fopen(path, "wb");
-    fwrite(&eb->width, 4, 1, fp);
-    fwrite(&eb->height, 4, 1, fp);
-    fwrite(&eb->region_count, 2, 1, fp);
+    fwrite(&eb->width, 2, 1, fp);
+    fwrite(&eb->height, 2, 1, fp);
+    fwrite(&eb->region_count, 4, 1, fp);
 
     // Write the compressed regions
-    for (uint16_t i = 0; i < eb->region_count; i++) {
+    for (uint32_t i = 0; i < eb->region_count; i++) {
         struct Region *r = &eb->regions[i];
 
-        fwrite(&r->type, 1, 1, fp);
-        fwrite(&r->color, 4, 1, fp);
-        fwrite(&r->x, 4, 1, fp);
-        fwrite(&r->y, 4, 1, fp);
-        fwrite(&r->width, 4, 1, fp);
-        fwrite(&r->height, 4, 1, fp);
+        // RBG (no alpha)
+        fwrite(&r->color, 3, 1, fp);
+        fwrite(&r->x, 2, 1, fp);
+        fwrite(&r->y, 2, 1, fp);
+        fwrite(&r->width, 2, 1, fp);
+        fwrite(&r->height, 2, 1, fp);
     }
 
     // Write remaining uncompressed data
+    fwrite(&eb->data_length, 4, 1, fp);
     for (uint32_t i = 0; i < eb->data_length; i++) {
-        fwrite(&eb->data[i], 4, 1, fp);
+        fwrite(&eb->data[i], 3, 1, fp);
     }
 }
 
-// TODO: Make a loading function
 struct EBImage EBImage_load(const char *path) {
     struct EBImage eb;
+    eb.region_count = 0;
+
+    FILE *fp = fopen(path, "rb");
+    fread(&eb.width, 2, 1, fp);
+    fread(&eb.height, 2, 1, fp);
+
+    uint32_t region_count;
+    fread(&region_count, 4, 1, fp);
+    eb.regions = malloc(1);
+
+    // The area taken up by regions, not raw data.
+    uint32_t region_area = 0;
+
+    for (uint32_t i = 0; i < region_count; i++) {
+        struct Region r;
+
+        fread(&r.color, 3, 1, fp);
+        fread(&r.x, 2, 1, fp);
+        fread(&r.y, 2, 1, fp);
+        fread(&r.width, 2, 1, fp);
+        fread(&r.height, 2, 1, fp);
+
+        EBImage_add_region(&eb, r);
+
+        region_area += r.width * r.height;
+    }
+
+    eb.data_length = eb.width * eb.height - region_area;
+
+    eb.data = malloc(sizeof(uint32_t) * eb.data_length);
+    for (uint32_t i = 0; i < eb.data_length; i++) {
+        fread(&eb.data[i], 3, 1, fp);
+    }
+
     return eb;
 }
 
-int main() {
-    struct RawImage raw = load_ppm("in.ppm");
-    struct EBImage eb = compress_raw(&raw);
-    EBImage_save(&eb, "test.eb");
+void EBImage_dealloc(struct EBImage *eb) {
+    free(eb->regions);
+    free(eb->data);
+}
 
-    //struct RawImage new_raw = EBImage_to_raw(&eb);
-    //save_ppm(&raw, "test.ppm");
+void raw_dealloc(struct RawImage *raw) {
+    free(raw->data);
+}
 
-    free(eb.regions);
-    free(eb.data);
-    free(raw.data);
+void exit_usage() {
+    printf("Usage: eb <in>.ppm <out>.eb\n"
+           " or    eb <in>.eb <out>.ppm\n");
+    exit(1);
+}
+
+int has_extension(char *str, const char *ext) {
+    str = strrchr(str, '.');
+    if (str == 0 || ++str == 0) {
+        return 0;
+    }
+
+    return strcmp(str, ext) == 0;
+}
+
+int main(int argc, char **argv) {
+    if (argc != 3) {
+        exit_usage();
+    }
+
+    char *from_file = argv[1];
+    char *to_file = argv[2];
+
+    int should_convert_to_eb = has_extension(to_file, "eb");
+
+    if (should_convert_to_eb) {
+        if (!has_extension(from_file, "ppm")) {
+            exit_usage();
+        }
+    } else {
+        if (!has_extension(from_file, "eb")) {
+            exit_usage();
+        }
+    }
+
+    if (should_convert_to_eb) {
+        struct RawImage raw = load_ppm(from_file);
+        struct EBImage eb = EBImage_compress_raw(&raw);
+        EBImage_save(&eb, to_file);
+        EBImage_dealloc(&eb);
+        raw_dealloc(&raw);
+    } else {
+        struct EBImage eb = EBImage_load(from_file);
+        struct RawImage raw = EBImage_to_raw(&eb);
+        save_ppm(&raw, to_file);
+        EBImage_dealloc(&eb);
+        raw_dealloc(&raw);
+    }
 }
