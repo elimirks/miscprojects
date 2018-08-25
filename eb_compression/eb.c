@@ -184,6 +184,7 @@ void EBImage_add_region(struct EBImage *eb,
 }
 
 void EBImage_append_data(struct EBImage *eb, const uint32_t color) {
+    printf("Append data\n");
     eb->data_length++;
     eb->data = realloc(eb->data,
                        sizeof(uint32_t) * eb->data_length);
@@ -203,6 +204,10 @@ struct EBImage compress_raw(struct RawImage *raw) {
 
     for (uint32_t y = 0; y < raw->height; y++) {
         for (uint32_t x = 0; x < raw->width; x++) {
+            if (visited_map[y * raw->width + x]) {
+                continue;
+            }
+
             const uint32_t color = raw->data[y * raw->width + x];
 
             uint32_t rwidth, rheight;
@@ -229,10 +234,31 @@ struct EBImage compress_raw(struct RawImage *raw) {
     return eb;
 }
 
-// TODO: Make saving & loading functions
 void EBImage_save(struct EBImage *eb, const char *path) {
+    FILE *fp = fopen(path, "wb");
+    fwrite(&eb->width, 4, 1, fp);
+    fwrite(&eb->height, 4, 1, fp);
+    fwrite(&eb->region_count, 2, 1, fp);
+
+    // Write the compressed regions
+    for (uint16_t i = 0; i < eb->region_count; i++) {
+        struct Region *r = &eb->regions[i];
+
+        fwrite(&r->type, 1, 1, fp);
+        fwrite(&r->color, 4, 1, fp);
+        fwrite(&r->x, 4, 1, fp);
+        fwrite(&r->y, 4, 1, fp);
+        fwrite(&r->width, 4, 1, fp);
+        fwrite(&r->height, 4, 1, fp);
+    }
+
+    // Write remaining uncompressed data
+    for (uint32_t i = 0; i < eb->data_length; i++) {
+        fwrite(&eb->data[i], 4, 1, fp);
+    }
 }
 
+// TODO: Make a loading function
 struct EBImage EBImage_load(const char *path) {
     struct EBImage eb;
     return eb;
@@ -241,11 +267,10 @@ struct EBImage EBImage_load(const char *path) {
 int main() {
     struct RawImage raw = load_ppm("in.ppm");
     struct EBImage eb = compress_raw(&raw);
+    EBImage_save(&eb, "test.eb");
 
     //struct RawImage new_raw = EBImage_to_raw(&eb);
     //save_ppm(&raw, "test.ppm");
-
-    EBImage_save(&eb, "test.eb");
 
     free(eb.regions);
     free(eb.data);
