@@ -211,7 +211,6 @@ void EBImage_save(struct EBImage *eb, const char *path) {
     }
 
     // Write remaining uncompressed data
-    fwrite(&eb->data_length, 4, 1, fp);
     for (uint32_t i = 0; i < eb->data_length; i++) {
         fwrite(&eb->data[i], 1, 3, fp);
     }
