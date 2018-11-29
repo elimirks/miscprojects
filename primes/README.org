@@ -1,0 +1,3 @@
+This is a threaded prime number generator. ~primes.py~ is a non-threaded implementation. ~primes_threaded.c~ uses pthreads to generate primes quickly!
+
+In the future I am thinking of using OpenCL to make this even faster!
