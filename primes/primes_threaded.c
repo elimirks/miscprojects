@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const int THREAD_COUNT = 8;
-const size_t BATCH_SIZE = 1 << 14;
+#define BATCH_SIZE (1 << 14)
+#define THREAD_COUNT (8)
 
 uint64_t *prime_nums;
 size_t prime_number_count = 0;

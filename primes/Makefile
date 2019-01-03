@@ -1,2 +1,2 @@
 all:
-	gcc -O2 primes_threaded.c -o primes
+	gcc -O2 -lpthread primes_threaded.c -o primes
