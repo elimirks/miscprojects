@@ -1,12 +1,15 @@
 package com.mirecki;
 
 import java.io.IOException;
+import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
         String fileName = "machines/palindrome.tm";
-        // FIXME: Input this manually somehow.
-        String inputTapeString = "aabbaa";
+
+        System.out.println("Write an input string: ");
+        Scanner scanner = new Scanner(System.in);
+        String inputTapeString = scanner.nextLine();
 
         try {
             MachineReader reader = new MachineReader();
@@ -18,7 +21,7 @@ public class Main {
             if (machine.run(tape)) {
                 System.out.println("Accept!");
             } else {
-                System.out.println("Reject!")
+                System.out.println("Reject!");
             }
         } catch (IOException e) {
             System.out.println("Error reading TM: " + e.getMessage());
