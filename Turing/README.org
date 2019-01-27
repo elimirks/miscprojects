@@ -1,0 +1,2 @@
+* Introduction
+  I am currently taking a theory of computation course, and am learning about Turing Machines. I wanted some Java practice, so I wrote a Turing Machine. It's still a work in progress, but is mostly functional.
