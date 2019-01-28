@@ -6,12 +6,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 
-/**
- * TODO:
- * - Verify input tape
- * - Add good ol' Java exceptions instead of using System.exit()
- */
-
 public class Main {
     /**
      * Finds TM files in a given directory.

@@ -121,10 +121,16 @@ public class MachineReader {
      * @return The initialized Tape object.
      */
     public Tape parseInputTapeString(String inputTapeString) {
-        LinkedList<Letter> inputTape = new LinkedList<>();
+        List<Letter> inputTape = new LinkedList<>();
+        List<Letter> inputAlphabet = machine.getInputAlphabet();
 
         for (char c : inputTapeString.toCharArray()) {
-            inputTape.add(Letter.fromString(Character.toString(c)));
+            Letter l = Letter.fromString(Character.toString(c));
+            if ( ! inputAlphabet.contains(l)) {
+                System.out.printf("Input character %s is not in input alphabet\n", l.toString());
+                System.exit(1);
+            }
+            inputTape.add(l);
         }
 
         return new Tape(inputTape);

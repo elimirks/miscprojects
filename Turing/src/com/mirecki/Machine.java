@@ -43,6 +43,10 @@ public class Machine {
         this.workingAlphabet = workingAlphabet;
     }
 
+    public List<Letter> getInputAlphabet(){
+        return this.inputAlphabet;
+    }
+
     /**
      * Sets the initial machine state.
      * @param state
@@ -103,11 +107,13 @@ public class Machine {
             System.out.println(tape.toString());
             tick(tape);
 
+            /* Nice for debugging
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 // Swallow it!
             }
+            */
         }
 
         return currentState.isAcceptState();
