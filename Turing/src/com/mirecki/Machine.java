@@ -104,7 +104,7 @@ public class Machine {
             tick(tape);
 
             try {
-                Thread.sleep(1000);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
                 // Swallow it!
             }
