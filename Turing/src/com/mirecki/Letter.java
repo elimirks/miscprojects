@@ -25,8 +25,7 @@ public abstract class Letter {
         }
 
         if (letter.length() != 1) {
-            System.out.printf("Letters should only be 1 character. '%s' given.", letter);
-            System.exit(1);
+            throw new TMException(String.format("Letters should only be 1 character. '%s' given", letter));
         }
 
         return new CharLetter(letter.charAt(0));

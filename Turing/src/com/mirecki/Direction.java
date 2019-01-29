@@ -10,9 +10,7 @@ public enum Direction {
             return RIGHT;
         }
 
-        System.out.printf("Invalid direction name: %s\n", name);
-        System.exit(1);
-        return LEFT;
+        throw new TMException(String.format("Invalid direction name: %s", name));
     }
 
     public String toString () {

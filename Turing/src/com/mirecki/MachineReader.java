@@ -45,8 +45,7 @@ public class MachineReader {
         String components[] = line.split(",");
 
         if (components.length != 5) {
-            System.out.printf("Invalid state transition: %s\n", line);
-            System.exit(1);
+            throw new TMException(String.format("Invalid state transition: %s", line));
         }
 
         String startStateName = components[0].trim();
@@ -58,7 +57,7 @@ public class MachineReader {
         State startState = State.createState(startStateName);
 
         if (startState.isAcceptState() || startState.isRejectState()) {
-            System.out.printf("Invalid start state name: %s\n", startStateName);
+            throw new TMException(String.format("Invalid state transition: %s", line));
         }
 
         Letter inputLetter = Letter.fromString(inputString);
@@ -127,8 +126,9 @@ public class MachineReader {
         for (char c : inputTapeString.toCharArray()) {
             Letter l = Letter.fromString(Character.toString(c));
             if ( ! inputAlphabet.contains(l)) {
-                System.out.printf("Input character %s is not in input alphabet\n", l.toString());
-                System.exit(1);
+                throw new TMException(
+                        String.format("Input character %s is not in input alphabet", l.toString())
+                );
             }
             inputTape.add(l);
         }

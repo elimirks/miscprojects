@@ -17,13 +17,11 @@ public class Machine {
      */
     public void addStateTransition(StateTransition transition) {
         if ( ! workingAlphabet.contains(transition.getInput())) {
-            System.out.printf("Input %s isn't in machine alphabet\n", transition.getInput());
-            System.exit(1);
+            throw new TMException(String.format("Input %s isn't in machine alphabet", transition.getInput()));
         }
 
         if ( ! workingAlphabet.contains(transition.getReplacement())) {
-            System.out.printf("Replacement %s isn't in machine alphabet\n", transition.getReplacement());
-            System.exit(1);
+            throw new TMException(String.format("Replacement %s isn't in machine alphabet", transition.getReplacement()));
         }
 
         State state = transition.getState();
@@ -75,9 +73,7 @@ public class Machine {
             }
         }
 
-        System.out.println("Couldn't find appropriate state transition for " + currentState.toString());
-        System.exit(1);
-        return null;
+        throw new TMException("Couldn't find appropriate state transition for " + currentState.toString());
     }
 
     private void tick(Tape tape) {

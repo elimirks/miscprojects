@@ -79,6 +79,10 @@ public class Main {
             } else {
                 System.out.println("Reject!");
             }
+        } catch (TMException e) {
+            System.out.println("Error running TM:");
+            System.out.println(e.getMessage());
+            System.exit(1);
         } catch (IOException e) {
             System.out.println("Error reading TM: " + e.getMessage());
             System.exit(1);
