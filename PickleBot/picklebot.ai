@@ -1,0 +1,4 @@
+[AI]
+name = "PickleBot Version 0"
+js = picklebot.js
+tip = "PickleBot"

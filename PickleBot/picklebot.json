@@ -1,0 +1,7 @@
+{
+    "AI": {
+        "js": "picklebot.js",
+        "name": "PickleBot",
+        "tip": "PickleBot - A defensive WZ2100 AI!"
+    }
+}

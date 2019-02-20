@@ -1,0 +1,2 @@
+* A defensive WZ2100 AI
+  https://warzone.atlassian.net/wiki/spaces/mod/pages/7636551/Javascript+API
