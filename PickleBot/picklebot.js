@@ -1,6 +1,8 @@
 // Used in the game, but not defined in the JS API
 var DORDER_NONE = 0;
 
+var baseRadius = 3;
+
 /**
  * Debug event - for testing
  */
@@ -12,6 +14,64 @@ function debugPickle() {
     }
 
     buildBaseWalls();
+}
+
+function hasStructAtLocation(structs, x, y) {
+    for (var i = 0; i < structs.length; i++) {
+        if (structs[i].x == x && structs[i].y == y) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Enumerate where walls should be built, forming a nice cozy base.
+ */
+function enumBaseWalls() {
+    var startPosition = getStartPosition();
+
+    var baseWalls = [];
+
+    var startX = Math.max(startPosition.x - baseRadius, 0);
+    var startY = Math.max(startPosition.y - baseRadius, 0);
+    var endX   = Math.min(startPosition.x + baseRadius, mapWidth);
+    var endY   = Math.min(startPosition.y + baseRadius, mapHeight);
+
+    var myStructs = enumStruct();
+
+    var baseHeight = endY - startY;
+    var baseWidth  = endX - startX;
+    var perimiterLength = 2 * (baseWidth - 1) + 2 * (baseHeight - 1);
+
+    // Trace the base perimeter
+    for (var i = 0; i < perimiterLength; i++) {
+        var x = 0;
+        var y = 0;
+
+        // Top wall
+        if (i < baseWidth) {
+            x = startX + i;
+            y = startY;
+        // Right wall
+        } else if (i < baseWidth + baseHeight) {
+            x = endX;
+            y = startY + i - baseWidth;
+        }
+        // TODO: Bottom and left walls
+
+        // Something already exists here!
+        if (hasStructAtLocation(myStructs, x, y)) {
+            continue;
+        }
+
+        baseWalls.push({
+            x: x,
+            y: y,
+        });
+    }
+
+    return baseWalls;
 }
 
 /**
@@ -61,8 +121,24 @@ function buildTruck() {
     }
 
     debug('Building a new truck.');
-    buildDroid(factory, "Truck", ['Body2SUP','Body4ABT','Body1REC'],
-               ['hover01','wheeled01'], "", DROID_CONSTRUCT, "Spade1Mk1");
+    buildDroid(factory, "Truck", ['Body2SUP', 'Body4ABT', 'Body1REC'],
+               ['hover01', 'wheeled01'], "", DROID_CONSTRUCT, "Spade1Mk1");
+}
+
+function positionToString(position) {
+    return '' + position.x + ',' + position.y;
+}
+
+function getStartPosition() {
+    var position = startPositions[playerData[me].position];
+
+    // FIXME: hack!
+    return {
+        x: position.x - 5,
+        y: position.y - 5,
+    };
+
+    return position;
 }
 
 function buildBaseWalls() {
@@ -73,24 +149,31 @@ function buildBaseWalls() {
         return;
     }
 
-    var startPosition = playerData[me].position;
+    var truck = trucks[0];
+    var walls = enumBaseWalls();
 
-    // Naively pick a base diameter... for now!
-    // TODO: make it "intelligently" decide which region to wall off
-    var baseDiameter = 5;
+    var startPosition = getStartPosition();
+    debug('Truck pos: ' + positionToString(truck));
+    debug('Start pos: ' + positionToString(startPosition));
 
-    var baseRegionStartX = Math.max(0, startPosition.x - baseDiameter);
-    var baseRegionEndX   = Math.min(0, baseRegionStartX + 2 * baseDiameter);
-    var baseRegionStartY = Math.max(0, startPosition.y - baseDiameter);
-    var baseRegionEndY   = Math.min(0, baseRegionStartY + 2 * baseDiameter);
+    for (var i = 0; i < walls.length; i++) {
+        if ( ! droidCanReach(truck, walls[i].x, walls[i].y)) {
+            continue;
+        }
 
-    var baseTiles = enumArea(baseRegionStartX, baseRegionStartY,
-                             baseRegionEndX, baseRegionEndY);
+        orderDroidBuild(truck, DORDER_BUILD, 'A0HardcreteMk1Wall',
+                        walls[i].x, walls[i].y);
+    }
 
     // Build a square section walled in
+    /*
     for (var x = baseRegionStartX; x <= baseRegionEndX; x++) {
         for (var y = baseRegionStartY; y <= baseRegionEndX; y++) {
-            debug('Buliding wall');
+            if ( ! droidCanReach(trucks[0], x, y )) {
+                continue;
+            }
+
+            debug('Buliding wall at ' + x + ',' + y);
 
             // Return after buliding the wall.
             if (orderDroidBuild(trucks[0], DORDER_BUILD, 'A0HardcreteMk1Wall', x, y)) {
@@ -98,4 +181,9 @@ function buildBaseWalls() {
             }
         }    
     }
+    */
+    /*
+    orderDroidBuild(trucks[0], DORDER_BUILD, 'A0HardcreteMk1Wall',
+                    trucks[0].x, trucks[0].y + 1);
+    */
 }
