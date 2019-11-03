@@ -6,6 +6,35 @@
 #include "Tile.hpp"
 #include "VoidTile.hpp"
 
+// Taken from https://en.sfml-dev.org/forums/index.php?topic=7313.0
+sf::Color hsv(int hue, float sat, float val) {
+    hue %= 360;
+    while(hue<0) hue += 360;
+
+    if(sat<0.f) sat = 0.f;
+    if(sat>1.f) sat = 1.f;
+
+    if(val<0.f) val = 0.f;
+    if(val>1.f) val = 1.f;
+
+    int h = hue/60;
+    float f = float(hue)/60-h;
+    float p = val*(1.f-sat);
+    float q = val*(1.f-sat*f);
+    float t = val*(1.f-sat*(1-f));
+
+    switch(h) {
+    default:
+    case 0:
+    case 6: return sf::Color(val*255, t*255, p*255);
+    case 1: return sf::Color(q*255, val*255, p*255);
+    case 2: return sf::Color(p*255, val*255, t*255);
+    case 3: return sf::Color(p*255, q*255, val*255);
+    case 4: return sf::Color(t*255, p*255, val*255);
+    case 5: return sf::Color(val*255, p*255, q*255);
+    }
+}
+
 TilePtr Tile::createTile(unsigned sideCount) {
     return TilePtr(new Tile(sideCount));
 }
@@ -22,42 +51,30 @@ Tile::Tile(unsigned sideCount) {
 
     this->sideCount = sideCount;
 
-    for (unsigned i = 0; i < sideCount / 2; i++) {
-        leftSides.push_back(shared_ptr<Tile>(new VoidTile()));
-        rightSides.push_back(shared_ptr<Tile>(new VoidTile()));
+    for (unsigned i = 0; i < sideCount; i++) {
+        sides.push_back(shared_ptr<Tile>(new VoidTile()));
     }
 }
 
 TilePtr Tile::getNeighbor(unsigned num) {
     // Restrict to multiples of 2, and non-zero
-    if (num % 2 != 0 || num == 0) {
+    if (num >= sideCount) {
         fprintf(stderr, "Invalid side number: %d\n", num);
         exit(1);
     }
 
-    TilePtr ptr;
-
-    // Left side
-    if (num < sideCount / 2) {
-        return leftSides[num];
-    } else {
-        return rightSides[num / 2];
-    }
+    return sides[num];
 }
 
 void Tile::setNeighbor(unsigned num, TilePtr tile) {
     // Restrict to multiples of 2, and non-zero
-    if (num % 2 != 0 || num == 0) {
+    if (num >= sideCount) {
         fprintf(stderr, "Invalid side number: %d\n", num);
         exit(1);
     }
 
-    // Left side
-    if (num < sideCount / 2) {
-        leftSides[num] = tile;
-    } else {
-        rightSides[num / 2] = tile;
-    }
+    // TODO: Make cyclic, once the draw method supports it
+    sides[num] = tile;
 }
 
 void Tile::draw(DrawContext &context) {
@@ -69,20 +86,28 @@ void Tile::draw(DrawContext &context) {
     sf::ConvexShape polygon;
     polygon.setPointCount(sideCount);
 
+    const double angleOffset = context.getCurrentAngle();
+    const double xOffset = context.getCurrentX();
+    const double yOffset = context.getCurrentY();
+    const double direction = context.getDirection();
+
     // External Angle
     const double edgeAngle = 2.0 * M_PI / ((double)sideCount);
 
-    const double xOffset = 100.0;
-    const double yOffset = 100.0;
-
     for (unsigned i = 0; i < sideCount; i++) {
-        const double currentAngle = i * edgeAngle;
+        const double currentAngle = angleOffset + i * edgeAngle * direction;
         const double x = xOffset + CIRCUMRADIUS * cos(currentAngle);
         const double y = yOffset + CIRCUMRADIUS * sin(currentAngle);
         polygon.setPoint(i, sf::Vector2f(x, y));
+
+        TilePtr neighbor = sides[i];
+        if (!neighbor->isVoid()) {
+            DrawContext newContext = context.mirroredContextForPosition(currentAngle, x, y);
+            neighbor->draw(newContext);
+        }
     }
 
-    polygon.setFillColor(sf::Color::Green);
+    polygon.setFillColor(hsv((180 / M_PI) * angleOffset, 1, 1));
     polygon.setOutlineColor(sf::Color::White);
     polygon.setOutlineThickness(2);
 
@@ -90,17 +115,10 @@ void Tile::draw(DrawContext &context) {
 }
 
 void Tile::destroy() {
-    for (TilePtr tile : leftSides) {
+    for (TilePtr tile : sides) {
         if (!tile->isVoid()) {
             tile->destroy();
         }
     }
-    for (TilePtr tile : rightSides) {
-        if (!tile->isVoid()) {
-            tile->destroy();
-        }
-    }
-
-    leftSides.clear();
-    rightSides.clear();
+    sides.clear();
 }

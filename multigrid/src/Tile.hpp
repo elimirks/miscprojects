@@ -13,7 +13,7 @@ typedef shared_ptr<Tile> TilePtr;
 class Tile {
 private:
     unsigned short sideCount;
-    vector<TilePtr> leftSides, rightSides;
+    vector<TilePtr> sides;
 protected:
     Tile();
     Tile(unsigned sideCount);
