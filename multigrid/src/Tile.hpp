@@ -27,6 +27,11 @@ public:
 
     void draw(DrawContext &context);
 
+    /**
+     * Destroys the graph of connected tiles
+     */
+    void destroy();
+
     static TilePtr createTile(unsigned sideCount);
 };
 #endif
