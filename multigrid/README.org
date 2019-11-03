@@ -1,0 +1,6 @@
+* Multigrid Game POC
+  The goal of this game is to create a game using any type of grid tile. Lines, squares, octagons, etc. The controls will allow shooting, turning, and moving forward (to the next tile).
+  
+  The kicker is, maps can contain multiple tile shapes. The geometry will be fun to implement!
+* Tested Dependencies
+  SFML-2.5.1
