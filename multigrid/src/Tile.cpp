@@ -105,7 +105,7 @@ void Tile::drawAll(TilePtr tile, DrawContext &context) {
 }
 
 void Tile::draw(DrawContext &context) {
-    static const double SIDE_LEN = 40;
+    static const double SIDE_LEN = 80;
     const double CIRCUMRADIUS = SIDE_LEN / (2.0 * sin(M_PI / ((double)sideCount)));
 
     // Draw an appropriate regular polygon
