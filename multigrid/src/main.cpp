@@ -2,16 +2,26 @@
 #include "DrawContext.hpp"
 #include "Tile.hpp"
 
-int main()
-{
-    WindowPtr window(new sf::RenderWindow(sf::VideoMode(200, 200), "SFML works!"));
-    DrawContext context(window);
+int main() {
+    const int SIZE = 500;
+    const int WIDTH = SIZE;
+    const int HEIGHT = SIZE;
 
-    /*
+    WindowPtr window(new sf::RenderWindow(sf::VideoMode(WIDTH, HEIGHT), "multigrid"));
+
+    sf::View view;
+    // Initialize the view to a rectangle located at :
+    view.reset(sf::FloatRect(-WIDTH/2, -HEIGHT/2, WIDTH, HEIGHT));
+    //view.reset(sf::FloatRect(0, 0, WIDTH, HEIGHT));
+    // Apply it
+    window->setView(view);
+
+    DrawContext context(window);
+    context.setCurrentX(-100);
+
     TilePtr root = Tile::createTile(6);
-    root->setNeighbor(1, Tile::createTile(4));
-    */
-    TilePtr root = Tile::createTile(4);
+    //TilePtr root = Tile::createTile(4);
+    root->setNeighbor(5, Tile::createTile(4));
 
     while (window->isOpen()) {
         sf::Event event;
@@ -24,13 +34,7 @@ int main()
         }
 
         window->clear();
-        
-        context.resetPosition();
-        context.setCurrentX(300.0);
-        context.setCurrentY(300.0);
-        
         root->draw(context);
-
         window->display();
     }
 

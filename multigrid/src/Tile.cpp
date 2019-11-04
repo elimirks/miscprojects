@@ -44,10 +44,12 @@ Tile::Tile() {
 
 Tile::Tile(unsigned sideCount) {
     // Restrict to multiples of 2, and non-zero
+    /*
     if (sideCount % 2 != 0 || sideCount == 0) {
         fprintf(stderr, "Invalid side count: %d\n", sideCount);
         exit(1);
     }
+    */
 
     this->sideCount = sideCount;
 
@@ -86,32 +88,49 @@ void Tile::draw(DrawContext &context) {
     sf::ConvexShape polygon;
     polygon.setPointCount(sideCount);
 
-    const double angleOffset = context.getCurrentAngle();
-    const double xOffset = context.getCurrentX();
-    const double yOffset = context.getCurrentY();
-    const double direction = context.getDirection();
+    const double originPerpBisector = context.getPerpBisector();
+    const double directionMultiplier = context.getDirectionMultiplier();
+    
+    const double xOrigin = context.getCurrentX();
+    const double yOrigin = context.getCurrentY();
 
-    // External Angle
-    const double edgeAngle = 2.0 * M_PI / ((double)sideCount);
+    const double externalAngle = 2.0 * M_PI / ((double)sideCount);
+    const double internalAngle = M_PI * (((double)sideCount) - 2) / ((double)sideCount);
 
     for (unsigned i = 0; i < sideCount; i++) {
-        const double currentAngle = angleOffset + i * edgeAngle * direction;
-        const double x = xOffset + CIRCUMRADIUS * cos(currentAngle);
-        const double y = yOffset + CIRCUMRADIUS * sin(currentAngle);
+        const double currentAngle = originPerpBisector + ((double)i + 0.5)
+            * externalAngle * directionMultiplier;
+        
+        const double x = xOrigin + CIRCUMRADIUS * cos(currentAngle);
+        const double y = yOrigin + CIRCUMRADIUS * sin(currentAngle);
+        //const double x = CIRCUMRADIUS * cos(currentAngle);
+        //const double y = CIRCUMRADIUS * sin(currentAngle);
         polygon.setPoint(i, sf::Vector2f(x, y));
 
         TilePtr neighbor = sides[i];
         if (!neighbor->isVoid()) {
-            DrawContext newContext = context.mirroredContextForPosition(currentAngle, x, y);
+            const double currentPerpBisector = originPerpBisector
+                + ((double)i) * externalAngle * directionMultiplier;
+            const double bisectX = xOrigin + CIRCUMRADIUS * cos(currentPerpBisector);
+            const double bisectY = yOrigin + CIRCUMRADIUS * sin(currentPerpBisector);
+            DrawContext newContext = context.mirroredContextForPosition(currentPerpBisector,
+                                                                        bisectX, bisectY);
             neighbor->draw(newContext);
         }
     }
 
-    polygon.setFillColor(hsv((180 / M_PI) * angleOffset, 1, 1));
+    polygon.setFillColor(hsv((180 / M_PI) * originPerpBisector, 1, 1));
     polygon.setOutlineColor(sf::Color::White);
     polygon.setOutlineThickness(2);
 
     context.getWindow()->draw(polygon);
+
+    sf::CircleShape originPointShape(3);
+    originPointShape.setFillColor(sf::Color::White);
+    originPointShape.setOrigin(3 - xOrigin, 3 - yOrigin);
+    context.getWindow()->draw(originPointShape);
+
+    printf("%f, %f\n", xOrigin, yOrigin);
 }
 
 void Tile::destroy() {

@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "DrawContext.hpp"
 
 DrawContext::DrawContext(WindowPtr window) {
@@ -8,8 +10,8 @@ WindowPtr DrawContext::getWindow() {
     return this->window;
 }
 
-void DrawContext::setCurrentAngle(double angle) {
-    this->currentAngle = angle;
+void DrawContext::setPerpBisector(double angle) {
+    this->perpBisector = angle;
 }
 
 void DrawContext::setCurrentX(double x) {
@@ -20,8 +22,8 @@ void DrawContext::setCurrentY(double y) {
     this->currentY = y;
 }
 
-double DrawContext::getCurrentAngle() {
-    return this->currentAngle;
+double DrawContext::getPerpBisector() {
+    return this->perpBisector;
 }
 
 double DrawContext::getCurrentX() {
@@ -32,21 +34,21 @@ double DrawContext::getCurrentY() {
     return this->currentY;
 }
 
-double DrawContext::getDirection() {
-    return direction;
+double DrawContext::getDirectionMultiplier() {
+    return directionMultiplier;
 }
 
 void DrawContext::resetPosition() {
     currentY = 0.0;
     currentX = 0.0;
-    currentAngle = 0.0;
+    perpBisector = 0.0;
 }
 
 DrawContext DrawContext::mirroredContextForPosition(double angle, double x, double y) {
     DrawContext context(window);
-    context.setCurrentAngle(angle);
+    context.setPerpBisector(angle);
     context.setCurrentX(x);
     context.setCurrentY(y);
-    context.direction = -direction;
+    context.directionMultiplier = -directionMultiplier;
     return context;
 }

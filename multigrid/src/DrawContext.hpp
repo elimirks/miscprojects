@@ -10,22 +10,23 @@ typedef shared_ptr<sf::RenderWindow> WindowPtr;
 class DrawContext {
 private:
     WindowPtr window;
-    double currentAngle = 0.0; // Vector angle of the origin draw edge
+    // Perpendicular bisector of the context, away from the origin
+    double perpBisector = 0.0;
     double currentX = 0.0, currentY = 0.0;
-    double direction = -1;
+    double directionMultiplier = 1;
 public:
     DrawContext(WindowPtr window);
     WindowPtr getWindow();
 
-    void setCurrentAngle(double angle);
+    void setPerpBisector(double angle);
     void setCurrentX(double x);
     void setCurrentY(double y);
 
-    double getCurrentAngle();
+    double getPerpBisector();
     double getCurrentX();
     double getCurrentY();
 
-    double getDirection();
+    double getDirectionMultiplier();
 
     void resetPosition();
 
