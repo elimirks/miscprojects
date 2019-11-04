@@ -21,7 +21,10 @@ int main() {
 
     TilePtr root = Tile::createTile(6);
     //TilePtr root = Tile::createTile(4);
-    root->setNeighbor(5, Tile::createTile(4));
+    root->setNeighbor(5, Tile::createTile(8));
+    root->setNeighbor(3, Tile::createTile(4));
+    root->setNeighbor(1, Tile::createTile(6));
+    root->setNeighbor(2, Tile::createTile(6));
 
     while (window->isOpen()) {
         sf::Event event;

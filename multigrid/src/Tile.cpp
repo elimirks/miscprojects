@@ -90,9 +90,12 @@ void Tile::draw(DrawContext &context) {
 
     const double originPerpBisector = context.getPerpBisector();
     const double directionMultiplier = context.getDirectionMultiplier();
+
+    const double originBisectX = CIRCUMRADIUS * cos(originPerpBisector);
+    const double originBisectY = CIRCUMRADIUS * sin(originPerpBisector);
     
-    const double xOrigin = context.getCurrentX();
-    const double yOrigin = context.getCurrentY();
+    const double xOrigin = context.getCurrentX() + originBisectX;
+    const double yOrigin = context.getCurrentY() + originBisectY;
 
     const double externalAngle = 2.0 * M_PI / ((double)sideCount);
     const double internalAngle = M_PI * (((double)sideCount) - 2) / ((double)sideCount);
@@ -103,16 +106,15 @@ void Tile::draw(DrawContext &context) {
         
         const double x = xOrigin + CIRCUMRADIUS * cos(currentAngle);
         const double y = yOrigin + CIRCUMRADIUS * sin(currentAngle);
-        //const double x = CIRCUMRADIUS * cos(currentAngle);
-        //const double y = CIRCUMRADIUS * sin(currentAngle);
         polygon.setPoint(i, sf::Vector2f(x, y));
 
         TilePtr neighbor = sides[i];
         if (!neighbor->isVoid()) {
             const double currentPerpBisector = originPerpBisector
                 + ((double)i) * externalAngle * directionMultiplier;
-            const double bisectX = xOrigin + CIRCUMRADIUS * cos(currentPerpBisector);
-            const double bisectY = yOrigin + CIRCUMRADIUS * sin(currentPerpBisector);
+            const double bisectorLength = CIRCUMRADIUS * pow(cos(externalAngle / 2.0), 2);
+            const double bisectX = xOrigin + bisectorLength * cos(currentPerpBisector);
+            const double bisectY = yOrigin + bisectorLength * sin(currentPerpBisector);
             DrawContext newContext = context.mirroredContextForPosition(currentPerpBisector,
                                                                         bisectX, bisectY);
             neighbor->draw(newContext);
