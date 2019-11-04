@@ -3,6 +3,7 @@
 #include "Tile.hpp"
 #include "DrawContext.hpp"
 #include <vector>
+#include <queue>
 #include <memory>
 
 using namespace std;
@@ -33,5 +34,6 @@ public:
     void destroy();
 
     static TilePtr createTile(unsigned sideCount);
+    static void drawAll(TilePtr tile, DrawContext &context);
 };
 #endif

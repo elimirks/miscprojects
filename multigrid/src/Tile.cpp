@@ -2,9 +2,16 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <queue>
+#include <set>
+
+using namespace std;
 
 #include "Tile.hpp"
 #include "VoidTile.hpp"
+
+static queue<TilePtr> tileDrawQueue;
+static queue<DrawContext> contextQueue;
 
 // Taken from https://en.sfml-dev.org/forums/index.php?topic=7313.0
 sf::Color hsv(int hue, float sat, float val) {
@@ -43,18 +50,16 @@ Tile::Tile() {
 }
 
 Tile::Tile(unsigned sideCount) {
-    // Restrict to multiples of 2, and non-zero
-    /*
-    if (sideCount % 2 != 0 || sideCount == 0) {
+    // Restrict to multiples of 2, and at least 4 sides
+    if (sideCount % 2 != 0 || sideCount <= 2) {
         fprintf(stderr, "Invalid side count: %d\n", sideCount);
         exit(1);
     }
-    */
 
     this->sideCount = sideCount;
 
     for (unsigned i = 0; i < sideCount; i++) {
-        sides.push_back(shared_ptr<Tile>(new VoidTile()));
+        sides.push_back(TilePtr(new VoidTile()));
     }
 }
 
@@ -75,8 +80,28 @@ void Tile::setNeighbor(unsigned num, TilePtr tile) {
         exit(1);
     }
 
-    // TODO: Make cyclic, once the draw method supports it
     sides[num] = tile;
+    // TODO: Set proper side index, depending on if there is a principle angle yet
+    tile->sides[0] = TilePtr(this);
+}
+
+void Tile::drawAll(TilePtr tile, DrawContext &context) {
+    set<Tile*> rendered;
+
+    tileDrawQueue.push(tile);
+    contextQueue.push(context);
+
+    while (!tileDrawQueue.empty()) {
+        TilePtr nextTile = tileDrawQueue.front();
+        DrawContext nextContext = contextQueue.front();
+        tileDrawQueue.pop();
+        contextQueue.pop();
+
+        if (rendered.count(nextTile.get()) == 0) {
+            nextTile->draw(nextContext);
+            rendered.insert(nextTile.get());
+        }
+    }
 }
 
 void Tile::draw(DrawContext &context) {
@@ -98,7 +123,6 @@ void Tile::draw(DrawContext &context) {
     const double yOrigin = context.getCurrentY() + originBisectY;
 
     const double externalAngle = 2.0 * M_PI / ((double)sideCount);
-    const double internalAngle = M_PI * (((double)sideCount) - 2) / ((double)sideCount);
 
     for (unsigned i = 0; i < sideCount; i++) {
         const double currentAngle = originPerpBisector + ((double)i + 0.5)
@@ -108,7 +132,7 @@ void Tile::draw(DrawContext &context) {
         const double y = yOrigin + CIRCUMRADIUS * sin(currentAngle);
         polygon.setPoint(i, sf::Vector2f(x, y));
 
-        TilePtr neighbor = sides[i];
+        const TilePtr neighbor = sides[i];
         if (!neighbor->isVoid()) {
             const double currentPerpBisector = originPerpBisector
                 + ((double)i) * externalAngle * directionMultiplier;
@@ -117,7 +141,9 @@ void Tile::draw(DrawContext &context) {
             const double bisectY = yOrigin + bisectorLength * sin(currentPerpBisector);
             DrawContext newContext = context.mirroredContextForPosition(currentPerpBisector,
                                                                         bisectX, bisectY);
-            neighbor->draw(newContext);
+
+            tileDrawQueue.push(neighbor);
+            contextQueue.push(newContext);
         }
     }
 
@@ -136,10 +162,12 @@ void Tile::draw(DrawContext &context) {
 }
 
 void Tile::destroy() {
-    for (TilePtr tile : sides) {
-        if (!tile->isVoid()) {
+    vector<TilePtr> sideCopy = sides;
+    sides.clear();
+
+    for (TilePtr tile : sideCopy) {
+        if (tile.get() != nullptr && !tile->isVoid()) {
             tile->destroy();
         }
     }
-    sides.clear();
 }

@@ -17,12 +17,12 @@ int main() {
     window->setView(view);
 
     DrawContext context(window);
-    context.setCurrentX(-100);
+
+    // TODO: Load & parse map file
 
     TilePtr root = Tile::createTile(6);
-    //TilePtr root = Tile::createTile(4);
     root->setNeighbor(5, Tile::createTile(8));
-    root->setNeighbor(3, Tile::createTile(4));
+    root->setNeighbor(3, Tile::createTile(6));
     root->setNeighbor(1, Tile::createTile(6));
     root->setNeighbor(2, Tile::createTile(6));
 
@@ -37,7 +37,7 @@ int main() {
         }
 
         window->clear();
-        root->draw(context);
+        Tile::drawAll(root, context);
         window->display();
     }
 
