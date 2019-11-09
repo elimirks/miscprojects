@@ -8,6 +8,7 @@ public:
     VoidTile();
     TilePtr getNeighbor(unsigned num);
     void setNeighbor(unsigned num, TilePtr tile, unsigned neighborEdge);
+    void draw(DrawContext &context);
 
     bool isVoid() {
         return true;

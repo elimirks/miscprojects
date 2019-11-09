@@ -48,7 +48,7 @@ public:
     virtual TilePtr getNeighbor(unsigned num);
     virtual void setNeighbor(unsigned num, TilePtr tile, unsigned neighborEdge);
 
-    void draw(DrawContext &context);
+    virtual void draw(DrawContext &context);
 
     /**
      * Places the tile at the given origin.

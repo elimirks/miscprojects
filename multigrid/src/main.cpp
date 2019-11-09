@@ -23,7 +23,8 @@ int main() {
 
     TilePtr root = Tile::createTile(6);
     root->place(sf::Vector2f(0, 0));
-    //root->setNeighbor(0, Tile::createTile(4), 0);
+    // Place a tile such that the principle bisectors point to each other
+    root->setNeighbor(0, Tile::createTile(4), 0);
     /*
     root->setNeighbor(5, Tile::createTile(8));
     root->setNeighbor(3, Tile::createTile(4));

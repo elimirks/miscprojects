@@ -57,7 +57,7 @@ Tile::Tile(unsigned sideCount) {
 
     this->sideCount = sideCount;
     this->origin = sf::Vector2f(0, 0);
-    this->principleBisectorAngle = -20;
+    this->principleBisectorAngle = -M_PI / 13;
     this->hasPlaced = false;
 
     precomputeGeomtry();
@@ -110,11 +110,14 @@ void Tile::setNeighbor(unsigned num, TilePtr tile, unsigned neighborEdge) {
         exit(1);
     }
 
-    if (neighbors[num].get() != nullptr) {
+    if (!neighbors[num]->isVoid()) {
         fprintf(stderr, "Neighbor already set at %d\n", num);
         exit(1);
     }
 
+    // FIXME: Debugging stuff
+    tile->principleBisectorAngle = 0;
+    tile->origin = sf::Vector2f(250, 0);
     neighbors[num] = tile;
     // TODO: Set proper side index, depending on if there is a principle angle yet
     tile->neighbors[0] = TilePtr(this);
@@ -131,7 +134,7 @@ void Tile::drawAll(TilePtr tile, DrawContext &context) {
         tileDrawQueue.pop();
 
         // Already rendered
-        if (rendered.count(nextTile.get()) != 0) {
+        if (nextTile->isVoid() || rendered.count(nextTile.get()) != 0) {
             continue;
         }
 
@@ -145,13 +148,17 @@ void Tile::drawAll(TilePtr tile, DrawContext &context) {
 }
 
 void Tile::draw(DrawContext &context) {
-    // Creates a regular polygon with `sideCount` corners
-    sf::CircleShape polygon(circumradius, sideCount);
-    polygon.rotate(principleBisectorAngle);
+    sf::ConvexShape polygon;
+    polygon.setPointCount(sideCount);
 
-    const double x = origin.x + SIDE_LEN;
-    const double y = origin.y + SIDE_LEN;
-    polygon.setOrigin(x, y);
+    for (unsigned i = 0; i < sideCount; i++) {
+        const double currentAngle = principleBisectorAngle +
+            ((double)i + 0.5) * externalAngle;
+        
+        const double x = circumradius * cos(currentAngle);
+        const double y = circumradius * sin(currentAngle);
+        polygon.setPoint(i, sf::Vector2f(origin.x + x, origin.y + y));
+    }
 
     // Set fill color based on principle bisector, for aesthetics
     polygon.setFillColor(hsv((180 / M_PI) * principleBisectorAngle, 1, 1));
@@ -164,22 +171,24 @@ void Tile::draw(DrawContext &context) {
 }
 
 void Tile::drawOriginAnnotation(DrawContext &context) {
-    const double originPointSize = 3;
-    sf::CircleShape originPointShape(originPointSize);
+    const double radius = 3;
+    sf::CircleShape originPointShape(radius);
     originPointShape.setFillColor(sf::Color::White);
-    originPointShape.setOrigin(originPointSize - origin.x,
-                               originPointSize - origin.y);
+    originPointShape.setPosition(origin.x - radius, origin.y - radius);
     context.getWindow()->draw(originPointShape);
 }
 
 void Tile::drawBisectorAnnotation(DrawContext &context) {
-    const double lineWidth = 2;
-    sf::RectangleShape line(sf::Vector2f(bisectorLength, lineWidth));
-    line.rotate(principleBisectorAngle);
+    const double bisectX = origin.x + bisectorLength * cos(principleBisectorAngle);
+    const double bisectY = origin.y + bisectorLength * sin(principleBisectorAngle);
 
-    context.getWindow()->draw(line);
+    sf::Vertex line[] = {
+        sf::Vertex(origin),
+        sf::Vertex(sf::Vector2f(bisectX, bisectY))
+    };
+
+    context.getWindow()->draw(line, 2, sf::Lines);
 }
-
 
 void Tile::destroy() {
     vector<TilePtr> sideCopy = neighbors;
