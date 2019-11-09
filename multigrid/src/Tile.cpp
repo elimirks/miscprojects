@@ -8,9 +8,8 @@
 using namespace std;
 
 #include "Tile.hpp"
-#include "VoidTile.hpp"
 
-static const double SIDE_LEN = 80;
+static const double SIDE_LEN = 50;
 
 // Taken from https://en.sfml-dev.org/forums/index.php?topic=7313.0
 sf::Color hsv(int hue, float sat, float val) {
@@ -59,13 +58,13 @@ Tile::Tile(unsigned sideCount) {
 
     this->sideCount = sideCount;
     this->origin = sf::Vector2f(0, 0);
-    this->principleBisectorAngle = -M_PI / 13;
+    this->principleBisectorAngle = 0;
     this->hasPlaced = false;
 
     precomputeGeomtry();
 
     for (unsigned i = 0; i < sideCount; i++) {
-        neighbors.push_back(TilePtr(new VoidTile()));
+        neighbors.push_back(TilePtr(nullptr));
     }
 }
 
@@ -112,7 +111,7 @@ void Tile::setNeighbor(unsigned num, TilePtr tile, unsigned neighborEdge) {
         exit(1);
     }
 
-    if (!neighbors[num]->isVoid()) {
+    if (neighbors[num].get() != nullptr) {
         fprintf(stderr, "Neighbor already set at %d\n", num);
         exit(1);
     }
@@ -147,7 +146,7 @@ void Tile::drawAll(TilePtr tile, DrawContext &context) {
         tileDrawQueue.pop();
 
         // Already rendered
-        if (nextTile->isVoid() || rendered.count(nextTile.get()) != 0) {
+        if (rendered.count(nextTile.get()) != 0) {
             continue;
         }
 
@@ -155,7 +154,9 @@ void Tile::drawAll(TilePtr tile, DrawContext &context) {
         rendered.insert(nextTile.get());
 
         for (TilePtr neighbor : nextTile->neighbors) {
-            tileDrawQueue.push(neighbor);
+            if (neighbor.get() != nullptr) {
+                tileDrawQueue.push(neighbor);
+            }
         }
     }
 }
@@ -208,7 +209,7 @@ void Tile::destroy() {
     neighbors.clear();
 
     for (TilePtr tile : sideCopy) {
-        if (tile.get() != nullptr && !tile->isVoid()) {
+        if (tile.get() != nullptr) {
             tile->destroy();
         }
     }

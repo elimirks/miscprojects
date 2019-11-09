@@ -42,6 +42,5 @@ int main() {
     }
 
     root->destroy();
-
     return 0;
 }
