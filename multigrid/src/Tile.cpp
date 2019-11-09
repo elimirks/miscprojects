@@ -42,7 +42,9 @@ sf::Color hsv(int hue, float sat, float val) {
 }
 
 TilePtr Tile::createTile(unsigned sideCount) {
-    return TilePtr(new Tile(sideCount));
+    TilePtr tile = TilePtr(new Tile(sideCount));
+    tile->thisPointer = tile;
+    return tile;
 }
 
 Tile::Tile() {
@@ -115,12 +117,23 @@ void Tile::setNeighbor(unsigned num, TilePtr tile, unsigned neighborEdge) {
         exit(1);
     }
 
-    // FIXME: Debugging stuff
-    tile->principleBisectorAngle = 0;
-    tile->origin = sf::Vector2f(250, 0);
+    if (!tile->hasPlaced) {
+        const double bisectorAngle = edgeBisectorAngle(num);
+        const double distance = bisectorLength + tile->bisectorLength;
+        const double neighborOriginX = origin.x + distance * cos(bisectorAngle);
+        const double neighborOriginY = origin.y + distance * sin(bisectorAngle);
+        const double mirroredBisectorAngle = bisectorAngle + M_PI;
+        tile->origin = sf::Vector2f(neighborOriginX, neighborOriginY);
+
+        const double neighborPrincipleBisectorAngle = mirroredBisectorAngle -
+            (double)neighborEdge * tile->externalAngle;
+        tile->principleBisectorAngle = neighborPrincipleBisectorAngle;
+
+        tile->hasPlaced = true;
+    }
+
     neighbors[num] = tile;
-    // TODO: Set proper side index, depending on if there is a principle angle yet
-    tile->neighbors[0] = TilePtr(this);
+    tile->neighbors[neighborEdge] = thisPointer;
 }
 
 void Tile::drawAll(TilePtr tile, DrawContext &context) {
@@ -199,4 +212,5 @@ void Tile::destroy() {
             tile->destroy();
         }
     }
+    thisPointer = TilePtr(nullptr);
 }

@@ -13,6 +13,9 @@ typedef shared_ptr<Tile> TilePtr;
 
 class Tile {
 private:
+    // FIXME: Remove this after creating a static addEdge method
+    TilePtr thisPointer;
+
     // Precomputed geometrical information
     // These should be the same for each category of objects - e.g. squares
 
