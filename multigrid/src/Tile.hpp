@@ -13,8 +13,30 @@ typedef shared_ptr<Tile> TilePtr;
 
 class Tile {
 private:
+    // Precomputed geometrical information
+    // These should be the same for each category of objects - e.g. squares
+
+    // External angle of the polygon
+    double externalAngle;
+    // Circumradius of the polygon
+    double circumradius;
+    // Length between origin and any bisection intersection
+    double bisectorLength;
+
+    bool hasPlaced;
+    sf::Vector2f origin;
+    double principleBisectorAngle;
     unsigned short sideCount;
-    vector<TilePtr> sides;
+    vector<TilePtr> neighbors;
+
+    // Helper methods for drawing debug annotations
+    void drawOriginAnnotation(DrawContext &context);
+    void drawBisectorAnnotation(DrawContext &context);
+
+    bool containsNeighbor(TilePtr neighbor);
+    double edgeBisectorAngle(unsigned edgeNum);
+
+    void precomputeGeomtry();
 protected:
     Tile();
     Tile(unsigned sideCount);
@@ -24,9 +46,15 @@ public:
     }
 
     virtual TilePtr getNeighbor(unsigned num);
-    virtual void setNeighbor(unsigned num, TilePtr tile);
+    virtual void setNeighbor(unsigned num, TilePtr tile, unsigned neighborEdge);
 
     void draw(DrawContext &context);
+
+    /**
+     * Places the tile at the given origin.
+     * Must be used when no other tiles are connected.
+     */
+    void place(sf::Vector2f origin);
 
     /**
      * Destroys the graph of connected tiles

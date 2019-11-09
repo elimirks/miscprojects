@@ -10,8 +10,7 @@ using namespace std;
 #include "Tile.hpp"
 #include "VoidTile.hpp"
 
-static queue<TilePtr> tileDrawQueue;
-static queue<DrawContext> contextQueue;
+static const double SIDE_LEN = 80;
 
 // Taken from https://en.sfml-dev.org/forums/index.php?topic=7313.0
 sf::Color hsv(int hue, float sat, float val) {
@@ -50,17 +49,48 @@ Tile::Tile() {
 }
 
 Tile::Tile(unsigned sideCount) {
-    // Restrict to multiples of 2, and at least 4 sides
+    // Restrict to multiples of 2, and at least 4 neighbors
     if (sideCount % 2 != 0 || sideCount <= 2) {
         fprintf(stderr, "Invalid side count: %d\n", sideCount);
         exit(1);
     }
 
     this->sideCount = sideCount;
+    this->origin = sf::Vector2f(0, 0);
+    this->principleBisectorAngle = -20;
+    this->hasPlaced = false;
+
+    precomputeGeomtry();
 
     for (unsigned i = 0; i < sideCount; i++) {
-        sides.push_back(TilePtr(new VoidTile()));
+        neighbors.push_back(TilePtr(new VoidTile()));
     }
+}
+
+void Tile::precomputeGeomtry() {
+    externalAngle = 2.0 * M_PI / ((double)sideCount);
+    circumradius = SIDE_LEN / (2.0 * sin(M_PI / ((double)sideCount)));
+    bisectorLength = circumradius * cos(externalAngle / 2.0);
+}
+
+bool Tile::containsNeighbor(TilePtr neighbor) {
+    return std::find(neighbors.begin(), neighbors.end(), neighbor) != neighbors.end();
+}
+
+void Tile::place(sf::Vector2f origin) {
+    if (hasPlaced) {
+        fprintf(stderr, "Cannot reassign tile origin!\n");
+        exit(1);
+    }
+
+    this->origin = origin;
+    this->hasPlaced = true;
+}
+
+
+double Tile::edgeBisectorAngle(unsigned edgeNum) {
+    const double externalAngle = 2.0 * M_PI / ((double)sideCount);
+    return principleBisectorAngle + edgeNum * externalAngle;
 }
 
 TilePtr Tile::getNeighbor(unsigned num) {
@@ -70,100 +100,90 @@ TilePtr Tile::getNeighbor(unsigned num) {
         exit(1);
     }
 
-    return sides[num];
+    return neighbors[num];
 }
 
-void Tile::setNeighbor(unsigned num, TilePtr tile) {
+void Tile::setNeighbor(unsigned num, TilePtr tile, unsigned neighborEdge) {
     // Restrict to multiples of 2, and non-zero
     if (num >= sideCount) {
         fprintf(stderr, "Invalid side number: %d\n", num);
         exit(1);
     }
 
-    sides[num] = tile;
+    if (neighbors[num].get() != nullptr) {
+        fprintf(stderr, "Neighbor already set at %d\n", num);
+        exit(1);
+    }
+
+    neighbors[num] = tile;
     // TODO: Set proper side index, depending on if there is a principle angle yet
-    tile->sides[0] = TilePtr(this);
+    tile->neighbors[0] = TilePtr(this);
 }
 
 void Tile::drawAll(TilePtr tile, DrawContext &context) {
     set<Tile*> rendered;
-
+    queue<TilePtr> tileDrawQueue;
     tileDrawQueue.push(tile);
-    contextQueue.push(context);
 
+    // Use BFS to draw
     while (!tileDrawQueue.empty()) {
         TilePtr nextTile = tileDrawQueue.front();
-        DrawContext nextContext = contextQueue.front();
         tileDrawQueue.pop();
-        contextQueue.pop();
 
-        if (rendered.count(nextTile.get()) == 0) {
-            nextTile->draw(nextContext);
-            rendered.insert(nextTile.get());
+        // Already rendered
+        if (rendered.count(nextTile.get()) != 0) {
+            continue;
+        }
+
+        nextTile->draw(context);
+        rendered.insert(nextTile.get());
+
+        for (TilePtr neighbor : nextTile->neighbors) {
+            tileDrawQueue.push(neighbor);
         }
     }
 }
 
 void Tile::draw(DrawContext &context) {
-    static const double SIDE_LEN = 80;
-    const double CIRCUMRADIUS = SIDE_LEN / (2.0 * sin(M_PI / ((double)sideCount)));
+    // Creates a regular polygon with `sideCount` corners
+    sf::CircleShape polygon(circumradius, sideCount);
+    polygon.rotate(principleBisectorAngle);
 
-    // Draw an appropriate regular polygon
+    const double x = origin.x + SIDE_LEN;
+    const double y = origin.y + SIDE_LEN;
+    polygon.setOrigin(x, y);
 
-    sf::ConvexShape polygon;
-    polygon.setPointCount(sideCount);
-
-    const double originPerpBisector = context.getPerpBisector();
-    const double directionMultiplier = context.getDirectionMultiplier();
-
-    const double originBisectX = CIRCUMRADIUS * cos(originPerpBisector);
-    const double originBisectY = CIRCUMRADIUS * sin(originPerpBisector);
-    
-    const double xOrigin = context.getCurrentX() + originBisectX;
-    const double yOrigin = context.getCurrentY() + originBisectY;
-
-    const double externalAngle = 2.0 * M_PI / ((double)sideCount);
-
-    for (unsigned i = 0; i < sideCount; i++) {
-        const double currentAngle = originPerpBisector + ((double)i + 0.5)
-            * externalAngle * directionMultiplier;
-        
-        const double x = xOrigin + CIRCUMRADIUS * cos(currentAngle);
-        const double y = yOrigin + CIRCUMRADIUS * sin(currentAngle);
-        polygon.setPoint(i, sf::Vector2f(x, y));
-
-        const TilePtr neighbor = sides[i];
-        if (!neighbor->isVoid()) {
-            const double currentPerpBisector = originPerpBisector
-                + ((double)i) * externalAngle * directionMultiplier;
-            const double bisectorLength = CIRCUMRADIUS * pow(cos(externalAngle / 2.0), 2);
-            const double bisectX = xOrigin + bisectorLength * cos(currentPerpBisector);
-            const double bisectY = yOrigin + bisectorLength * sin(currentPerpBisector);
-            DrawContext newContext = context.mirroredContextForPosition(currentPerpBisector,
-                                                                        bisectX, bisectY);
-
-            tileDrawQueue.push(neighbor);
-            contextQueue.push(newContext);
-        }
-    }
-
-    polygon.setFillColor(hsv((180 / M_PI) * originPerpBisector, 1, 1));
+    // Set fill color based on principle bisector, for aesthetics
+    polygon.setFillColor(hsv((180 / M_PI) * principleBisectorAngle, 1, 1));
     polygon.setOutlineColor(sf::Color::White);
     polygon.setOutlineThickness(2);
-
     context.getWindow()->draw(polygon);
-
-    sf::CircleShape originPointShape(3);
-    originPointShape.setFillColor(sf::Color::White);
-    originPointShape.setOrigin(3 - xOrigin, 3 - yOrigin);
-    context.getWindow()->draw(originPointShape);
-
-    printf("%f, %f\n", xOrigin, yOrigin);
+    
+    drawBisectorAnnotation(context);
+    drawOriginAnnotation(context);
 }
 
+void Tile::drawOriginAnnotation(DrawContext &context) {
+    const double originPointSize = 3;
+    sf::CircleShape originPointShape(originPointSize);
+    originPointShape.setFillColor(sf::Color::White);
+    originPointShape.setOrigin(originPointSize - origin.x,
+                               originPointSize - origin.y);
+    context.getWindow()->draw(originPointShape);
+}
+
+void Tile::drawBisectorAnnotation(DrawContext &context) {
+    const double lineWidth = 2;
+    sf::RectangleShape line(sf::Vector2f(bisectorLength, lineWidth));
+    line.rotate(principleBisectorAngle);
+
+    context.getWindow()->draw(line);
+}
+
+
 void Tile::destroy() {
-    vector<TilePtr> sideCopy = sides;
-    sides.clear();
+    vector<TilePtr> sideCopy = neighbors;
+    neighbors.clear();
 
     for (TilePtr tile : sideCopy) {
         if (tile.get() != nullptr && !tile->isVoid()) {

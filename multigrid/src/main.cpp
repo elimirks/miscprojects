@@ -3,11 +3,9 @@
 #include "Tile.hpp"
 
 int main() {
-    //const int SIZE = 500;
-    //const int WIDTH = SIZE;
-    //const int HEIGHT = SIZE;
-    const int WIDTH = 1920;
-    const int HEIGHT = 1080;
+    const int SIZE = 800;
+    const int WIDTH = SIZE;
+    const int HEIGHT = SIZE;
 
     WindowPtr window(new sf::RenderWindow(sf::VideoMode(WIDTH, HEIGHT), "multigrid"));
 
@@ -24,13 +22,15 @@ int main() {
     // TODO: Load & parse map file
 
     TilePtr root = Tile::createTile(6);
-    root->setNeighbor(0, Tile::createTile(4));
+    root->place(sf::Vector2f(0, 0));
+    //root->setNeighbor(0, Tile::createTile(4), 0);
+    /*
     root->setNeighbor(5, Tile::createTile(8));
     root->setNeighbor(3, Tile::createTile(4));
     root->setNeighbor(1, Tile::createTile(6));
     root->setNeighbor(2, Tile::createTile(6));
-
     root->getNeighbor(5)->setNeighbor(1, Tile::createTile(4));
+    */
 
     while (window->isOpen()) {
         sf::Event event;

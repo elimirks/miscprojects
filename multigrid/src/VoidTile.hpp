@@ -7,7 +7,7 @@ protected:
 public:
     VoidTile();
     TilePtr getNeighbor(unsigned num);
-    void setNeighbor(unsigned num, TilePtr tile);
+    void setNeighbor(unsigned num, TilePtr tile, unsigned neighborEdge);
 
     bool isVoid() {
         return true;
