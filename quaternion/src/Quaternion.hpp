@@ -23,8 +23,10 @@ public:
     Quaternion versor();
     double dot(Quaternion other);
 
-    // FIXME: Make this power for a double, not an int!
-    Quaternion power(int exponent);
+    /**
+     * Get complex components (remove the real component)
+     */
+    Quaternion complexComponents();
 
     static Quaternion identity();
 };
@@ -59,5 +61,8 @@ Quaternion operator"" _j(unsigned long long int num);
 Quaternion operator"" _k(unsigned long long int num);
 
 // cmath compatability
+Quaternion exp(Quaternion q);
+Quaternion log(Quaternion q);
 Quaternion pow(Quaternion q, int exponent);
+Quaternion pow(Quaternion q, double exponent);
 #endif

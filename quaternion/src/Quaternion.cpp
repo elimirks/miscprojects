@@ -50,6 +50,10 @@ double Quaternion::dot(Quaternion other) {
         k() * other.k();
 }
 
+Quaternion Quaternion::complexComponents() {
+    return Quaternion(0, i(), j(), k());
+}
+
 
 
 Quaternion operator - (Quaternion q) {
@@ -161,11 +165,34 @@ Quaternion operator"" _k(unsigned long long int num) {
 
 
 
-Quaternion pow(Quaternion q, int exponent) {
-    // FIXME: Don't use such a naive solution!
-    if (exponent <= 0) {
-        return Quaternion::identity();
-    } else {
-        return q * pow(q, exponent - 1);
+Quaternion exp(Quaternion q) {
+    Quaternion c = q.complexComponents();
+    double cNorm = c.norm();
+
+    if (cNorm == 0) {
+        return Quaternion(exp(q.r()), 0, 0, 0);
     }
+
+    return exp(q.r()) * (cos(cNorm) + c * sin(cNorm) / cNorm);
+}
+
+Quaternion log(Quaternion q) {
+    Quaternion c = q.complexComponents();
+    return log(q.norm()) + c * acos(q.r() / q.norm()) / c.norm();
+}
+
+Quaternion pow(Quaternion q, double exponent) {
+    Quaternion c = q.complexComponents();
+
+    // Uses the polar decomposition to compute the power
+
+    // Poler decomposition angle and versor
+    double phi = acos(q.r() / q.norm());
+    Quaternion cVersor = c.versor();
+
+    return pow(q.norm(), exponent) * (cos(exponent * phi) + cVersor * sin(exponent * phi));
+}
+
+Quaternion pow(Quaternion q, int exponent) {
+    return pow(q, (double)exponent);
 }

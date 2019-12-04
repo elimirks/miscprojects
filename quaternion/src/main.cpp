@@ -31,7 +31,7 @@ void updateCanvas(sf::Image &canvas, Quaternion (*function)(int, time_t)) {
         Quaternion entry = function(i, 0);
         Quaternion versor = entry.versor();
 
-        int y = HEIGHT * (0.5 + versor.r() / 2);
+        int y = HEIGHT * (0.5 + versor.r() / 2.0);
         int r = 255 * (versor.i() + 1) / 2;
         int g = 255 * (versor.j() + 1) / 2;
         int b = 255 * (versor.k() + 1) / 2;
