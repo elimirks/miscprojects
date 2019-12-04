@@ -20,7 +20,13 @@ public:
     Quaternion conjugate();
     Quaternion inverse();
     Quaternion versor();
+    double dot(Quaternion other);
+
+    static Quaternion identity();
 };
+
+// Unary operators
+Quaternion operator - (Quaternion &q);
 
 // Quaternion <-> Quaternion operators
 Quaternion operator + (Quaternion &a, Quaternion &b);
@@ -28,9 +34,15 @@ Quaternion operator - (Quaternion &a, Quaternion &b);
 Quaternion operator * (Quaternion &a, Quaternion &b);
 Quaternion operator / (Quaternion &a, Quaternion &b);
 
-// Quaternion <-> double operators
+// double -> Quaternion operators
+Quaternion operator + (double num, Quaternion &obj);
+Quaternion operator - (double num, Quaternion &obj);
 Quaternion operator * (double num, Quaternion &obj);
-Quaternion operator * (Quaternion &obj, double num);
 Quaternion operator / (double num, Quaternion &obj);
+
+// Quaternion -> double operators
+Quaternion operator + (Quaternion &obj, double num);
+Quaternion operator - (Quaternion &obj, double num);
+Quaternion operator * (Quaternion &obj, double num);
 Quaternion operator / (Quaternion &obj, double num);
 #endif

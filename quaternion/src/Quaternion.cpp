@@ -1,5 +1,9 @@
 #include "Quaternion.hpp"
 
+Quaternion identity() {
+    return Quaternion(1, 0, 0, 0);
+}
+
 Quaternion::Quaternion(double real, double imI, double imJ, double imK) :
     real(real), imI(imI), imJ(imJ), imK(imK) {
 }
@@ -45,6 +49,24 @@ Quaternion Quaternion::versor() {
     return *this / norm();
 }
 
+double Quaternion::dot(Quaternion other) {
+    return r() * other.r() +
+        i() * other.i() +
+        j() * other.j() +
+        k() * other.k();
+}
+
+
+
+Quaternion operator - (Quaternion &q) {
+    return Quaternion(-q.r(),
+                 -q.i(),
+                 -q.j(),
+                 -q.k());
+}
+
+
+
 Quaternion operator + (Quaternion &a, Quaternion &b) {
     return Quaternion(a.r() + b.r(),
                  a.i() + b.i(),
@@ -71,6 +93,20 @@ Quaternion operator / (Quaternion &a, Quaternion &b) {
     return a * bInv;
 }
 
+
+
+Quaternion operator + (double num, Quaternion &obj) {
+    return Quaternion(num + obj.r(),
+                 obj.i(),
+                 obj.j(),
+                 obj.k());
+}
+
+Quaternion operator - (double num, Quaternion &obj) {
+    Quaternion negative = -obj;
+    return num + negative;
+}
+
 Quaternion operator * (double num, Quaternion &obj) {
     return Quaternion(num * obj.r(),
                  num * obj.i(),
@@ -78,13 +114,26 @@ Quaternion operator * (double num, Quaternion &obj) {
                  num * obj.k());
 }
 
-Quaternion operator * (Quaternion &obj, double num) {
-    return num * obj;
-}
-
 Quaternion operator / (double num, Quaternion &obj) {
     Quaternion inv = obj.inverse();
     return num * inv;
+}
+
+
+
+Quaternion operator + (Quaternion &obj, double num) {
+    return num + obj;
+}
+
+Quaternion operator - (Quaternion &obj, double num) {
+    return Quaternion(obj.r() - num,
+                 obj.i(),
+                 obj.j(),
+                 obj.k());
+}
+
+Quaternion operator * (Quaternion &obj, double num) {
+    return num * obj;
 }
 
 Quaternion operator / (Quaternion &obj, double num) {
