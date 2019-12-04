@@ -1,4 +1,5 @@
 SRC = src
+LIB = -lsfml-graphics -lsfml-window -lsfml-system
 OPTS = -g --std=gnu++11 ${LIB}
 BIN = quaternion
 

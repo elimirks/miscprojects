@@ -1,2 +1,7 @@
 * Introduction
-  Something with [[https://en.wikipedia.org/wiki/Quaternion][quaternions]].
+  Fun visualizations with [[https://en.wikipedia.org/wiki/Quaternion][quaternions]].
+  
+  In this project, I plot a vector of quaternions on a two dimensional grid. The X axis reperesents the element in the quaternion vector. The Y axis represents the versor value of the real component of each quaternion. For the red, green, and blue values of each pixel, I used the values of the imaginary components of the versors. for instance, the unit quaternion would be gray (255/2 for each imaginary component). Negative values go to 0, positive values go to 255.
+
+  Example:
+  [[./sample.png]]
