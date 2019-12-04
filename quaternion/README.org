@@ -3,7 +3,13 @@
   
   In this project, I plot a vector of quaternions on a two dimensional grid. The X axis reperesents the element in the quaternion vector. The Y axis represents the versor value of the real component of each quaternion. For the red, green, and blue values of each pixel, I used the values of the imaginary components of the versors. for instance, the unit quaternion would be gray (255/2 for each imaginary component). Negative values go to 0, positive values go to 255.
   
+* Examples
+** Adding complex components
   In the picture below, I started with the quaternion -1 + 0.5k, and added 0.02i for every element in the size 400 quaternion vector.
-  
-* Example
-  [[./sample.png]]
+** Photo
+  [[./add.png]]
+
+** Rotating a quaternion
+   This one is more interesting - I am rotating the -1 + 0.5k quaternion by the 0.999550 + 0.029987i quaternion. Notice that the rotation quaternion is a versor (it has a norm of 1). Since it's nearly entirely a real versor, it rotates slowly around both the real and complex components, which is why the below image is sinusoidal in the Y axis *and* in color space (it rotates through colours)  !
+** Photo
+  [[./rotate.png]]
