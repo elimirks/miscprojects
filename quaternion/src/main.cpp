@@ -16,7 +16,7 @@ void updateCanvas(sf::Image &canvas) {
 
     for (int i = 0; i < WIDTH; i++) {
         /*
-        Quaternion toAdd = Quaternion(0, 0.02, 0, 0);
+        Quaternion toAdd = Quaternion(0, 0.01, 0, 0);
         entry = entry + toAdd;
         entry = entry.versor();
         */
@@ -32,7 +32,9 @@ void updateCanvas(sf::Image &canvas) {
         int g = 255 * (versor.j() + 1) / 2;
         int b = 255 * (versor.k() + 1) / 2;
 
-        canvas.setPixel(i, y, sf::Color(r, g, b));
+        for (int j = y; j < HEIGHT; j++) {
+            canvas.setPixel(i, j, sf::Color(r, g, b));
+        }
     }
 }
 

@@ -5,7 +5,7 @@
   
 * Examples
 ** Adding complex components
-  In the picture below, I started with the quaternion -1 + 0.5k, and added 0.02i for every element in the size 400 quaternion vector.
+  In the picture below, I started with the quaternion -1 - 1k, and added 0.02i for every element in the size 400 quaternion vector.
 ** Photo
   [[./add.png]]
 
