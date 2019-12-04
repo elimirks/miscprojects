@@ -25,6 +25,7 @@ int main() {
     root->place(sf::Vector2f(0, 0));
     root->setNeighbor(5, Tile::createTile(8), 0);
     root->getNeighbor(5)->setNeighbor(2, Tile::createTile(4), 1);
+    root->getNeighbor(5)->setNeighbor(3, Tile::createTile(8), 1);
 
     while (window->isOpen()) {
         sf::Event event;
