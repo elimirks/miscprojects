@@ -10,25 +10,37 @@ const int HEIGHT = 400;
 
 // Sample sequences
 
-auto addSequence = [] (int index, time_t) -> Quaternion {
+auto addSequence = [] (int index, double t) -> Quaternion {
     Quaternion initial = -1 - 1_k;
     return initial + index * 0.02_i;
 };
 
-auto rotateSequence = [] (int index, time_t) -> Quaternion {
+auto rotateSequence = [] (int index, double t) -> Quaternion {
     Quaternion initial = -1 + 0.5_k;
     Quaternion rotation = (100 + 3_i).versor();
     return initial * pow(rotation, index);
 };
 
+auto timeAddSequence = [] (int index, double t) -> Quaternion {
+    Quaternion initial = sin(t) + 1_k * sin(2 * t);
+    return initial + index * 0.02_i;
+};
+
+auto timeRotateSequence = [] (int index, double t) -> Quaternion {
+    Quaternion initial = cos(t) + 0.5_j * sin(t) + 0.5_k * cos(t);
+    Quaternion rotation = (100 + 3_i).versor();
+    return initial * pow(rotation, index);
+};
+
+
 
 // Draw the real part as the vertical coordinate
 // The other components will be RGB values
 
-void updateCanvas(sf::Image &canvas, Quaternion (*function)(int, time_t)) {
+void updateCanvas(sf::Image &canvas, sf::Time time, Quaternion (*function)(int, double)) {
     for (int i = 0; i < WIDTH; i++) {
         // FIXME: Pass in the time!
-        Quaternion entry = function(i, 0);
+        Quaternion entry = function(i, time.asSeconds());
         Quaternion versor = entry.versor();
 
         int y = HEIGHT * (0.5 + versor.r() / 2.0);
@@ -45,8 +57,7 @@ void updateCanvas(sf::Image &canvas, Quaternion (*function)(int, time_t)) {
 int main() {
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "multigrid");
 
-    sf::Image canvas;
-    canvas.create(WIDTH, HEIGHT, sf::Color::Black);
+    sf::Clock clock;
 
     while (window.isOpen()) {
         sf::Event event;
@@ -58,7 +69,10 @@ int main() {
             }
         }
 
-        updateCanvas(canvas, rotateSequence);
+        sf::Image canvas;
+        canvas.create(WIDTH, HEIGHT, sf::Color::Black);
+
+        updateCanvas(canvas, clock.getElapsedTime(), timeAddSequence);
 
         sf::Texture texture;
         texture.loadFromImage(canvas);
