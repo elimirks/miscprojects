@@ -1,6 +1,6 @@
 #include "Quaternion.hpp"
 
-Quaternion identity() {
+Quaternion Quaternion::identity() {
     return Quaternion(1, 0, 0, 0);
 }
 
@@ -36,13 +36,7 @@ Quaternion Quaternion::conjugate() {
 }
 
 Quaternion Quaternion::inverse() {
-    double ns = pow(norm(), 2);
-    Quaternion conj = conjugate();
-
-    return Quaternion(conj.real / ns,
-                 conj.imI  / ns,
-                 conj.imJ  / ns,
-                 conj.imK  / ns);
+    return conjugate() / pow(norm(), 2);
 }
 
 Quaternion Quaternion::versor() {
@@ -58,7 +52,7 @@ double Quaternion::dot(Quaternion other) {
 
 
 
-Quaternion operator - (Quaternion &q) {
+Quaternion operator - (Quaternion q) {
     return Quaternion(-q.r(),
                  -q.i(),
                  -q.j(),
@@ -67,78 +61,111 @@ Quaternion operator - (Quaternion &q) {
 
 
 
-Quaternion operator + (Quaternion &a, Quaternion &b) {
+Quaternion operator + (Quaternion a, Quaternion b) {
     return Quaternion(a.r() + b.r(),
                  a.i() + b.i(),
                  a.j() + b.j(),
                  a.k() + b.k());
 }
 
-Quaternion operator - (Quaternion &a, Quaternion &b) {
+Quaternion operator - (Quaternion a, Quaternion b) {
     return Quaternion(a.r() - b.r(),
                  a.i() - b.i(),
                  a.j() - b.j(),
                  a.k() - b.k());
 }
 
-Quaternion operator * (Quaternion &a, Quaternion &b) {
+Quaternion operator * (Quaternion a, Quaternion b) {
     return Quaternion(a.r() * b.r() - a.i() * b.i() - a.j() * b.j() - a.k() * b.k(),
                  a.r() * b.i() + a.i() * b.r() + a.j() * b.k() - a.k() * b.j(),
                  a.r() * b.j() - a.i() * b.k() + a.j() * b.r() + a.k() * b.i(),
                  a.r() * b.k() + a.i() * b.j() - a.j() * b.i() + a.k() * b.r());
 }
 
-Quaternion operator / (Quaternion &a, Quaternion &b) {
-    Quaternion bInv = b.inverse();
-    return a * bInv;
+Quaternion operator / (Quaternion a, Quaternion b) {
+    return a * b.inverse();
 }
 
 
 
-Quaternion operator + (double num, Quaternion &obj) {
+Quaternion operator + (double num, Quaternion obj) {
     return Quaternion(num + obj.r(),
                  obj.i(),
                  obj.j(),
                  obj.k());
 }
 
-Quaternion operator - (double num, Quaternion &obj) {
+Quaternion operator - (double num, Quaternion obj) {
     Quaternion negative = -obj;
     return num + negative;
 }
 
-Quaternion operator * (double num, Quaternion &obj) {
+Quaternion operator * (double num, Quaternion obj) {
     return Quaternion(num * obj.r(),
                  num * obj.i(),
                  num * obj.j(),
                  num * obj.k());
 }
 
-Quaternion operator / (double num, Quaternion &obj) {
-    Quaternion inv = obj.inverse();
-    return num * inv;
+Quaternion operator / (double num, Quaternion obj) {
+    return num * obj.inverse();
 }
 
 
 
-Quaternion operator + (Quaternion &obj, double num) {
+Quaternion operator + (Quaternion obj, double num) {
     return num + obj;
 }
 
-Quaternion operator - (Quaternion &obj, double num) {
+Quaternion operator - (Quaternion obj, double num) {
     return Quaternion(obj.r() - num,
                  obj.i(),
                  obj.j(),
                  obj.k());
 }
 
-Quaternion operator * (Quaternion &obj, double num) {
+Quaternion operator * (Quaternion obj, double num) {
     return num * obj;
 }
 
-Quaternion operator / (Quaternion &obj, double num) {
+Quaternion operator / (Quaternion obj, double num) {
     return Quaternion(obj.r() / num,
                  obj.i() / num,
                  obj.j() / num,
                  obj.k() / num);
+}
+
+Quaternion operator"" _i(long double num) {
+    return Quaternion(0, num, 0, 0);
+}
+
+Quaternion operator"" _j(long double num) {
+    return Quaternion(0, 0, num, 0);
+}
+
+Quaternion operator"" _k(long double num) {
+    return Quaternion(0, 0, 0, num);
+}
+
+Quaternion operator"" _i(unsigned long long int num) {
+    return Quaternion(0, num, 0, 0);
+}
+
+Quaternion operator"" _j(unsigned long long int num) {
+    return Quaternion(0, 0, num, 0);
+}
+
+Quaternion operator"" _k(unsigned long long int num) {
+    return Quaternion(0, 0, 0, num);
+}
+
+
+
+Quaternion pow(Quaternion q, int exponent) {
+    // FIXME: Don't use such a naive solution!
+    if (exponent <= 0) {
+        return Quaternion::identity();
+    } else {
+        return q * pow(q, exponent - 1);
+    }
 }

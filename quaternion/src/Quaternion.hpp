@@ -1,6 +1,7 @@
 #ifndef __QUATERNION_HPP__
 #define __QUATERNION_HPP__
 
+#include<iomanip> 
 #include <cmath>
 
 /**
@@ -22,27 +23,41 @@ public:
     Quaternion versor();
     double dot(Quaternion other);
 
+    // FIXME: Make this power for a double, not an int!
+    Quaternion power(int exponent);
+
     static Quaternion identity();
 };
 
 // Unary operators
-Quaternion operator - (Quaternion &q);
+Quaternion operator - (Quaternion q);
 
 // Quaternion <-> Quaternion operators
-Quaternion operator + (Quaternion &a, Quaternion &b);
-Quaternion operator - (Quaternion &a, Quaternion &b);
-Quaternion operator * (Quaternion &a, Quaternion &b);
-Quaternion operator / (Quaternion &a, Quaternion &b);
+Quaternion operator + (Quaternion a, Quaternion b);
+Quaternion operator - (Quaternion a, Quaternion b);
+Quaternion operator * (Quaternion a, Quaternion b);
+Quaternion operator / (Quaternion a, Quaternion b);
 
 // double -> Quaternion operators
-Quaternion operator + (double num, Quaternion &obj);
-Quaternion operator - (double num, Quaternion &obj);
-Quaternion operator * (double num, Quaternion &obj);
-Quaternion operator / (double num, Quaternion &obj);
+Quaternion operator + (double num, Quaternion obj);
+Quaternion operator - (double num, Quaternion obj);
+Quaternion operator * (double num, Quaternion obj);
+Quaternion operator / (double num, Quaternion obj);
 
 // Quaternion -> double operators
-Quaternion operator + (Quaternion &obj, double num);
-Quaternion operator - (Quaternion &obj, double num);
-Quaternion operator * (Quaternion &obj, double num);
-Quaternion operator / (Quaternion &obj, double num);
+Quaternion operator + (Quaternion obj, double num);
+Quaternion operator - (Quaternion obj, double num);
+Quaternion operator * (Quaternion obj, double num);
+Quaternion operator / (Quaternion obj, double num);
+
+// Quaternion literals
+Quaternion operator"" _i(long double num);
+Quaternion operator"" _j(long double num);
+Quaternion operator"" _k(long double num);
+Quaternion operator"" _i(unsigned long long int num);
+Quaternion operator"" _j(unsigned long long int num);
+Quaternion operator"" _k(unsigned long long int num);
+
+// cmath compatability
+Quaternion pow(Quaternion q, int exponent);
 #endif

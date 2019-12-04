@@ -7,24 +7,28 @@
 const int WIDTH = 400;
 const int HEIGHT = 400;
 
+
+// Sample sequences
+
+auto addSequence = [] (int index, time_t) -> Quaternion {
+    Quaternion initial = -1 - 1_k;
+    return initial + index * 0.02_i;
+};
+
+auto rotateSequence = [] (int index, time_t) -> Quaternion {
+    Quaternion initial = -1 + 0.5_k;
+    Quaternion rotation = (100 + 3_i).versor();
+    return initial * pow(rotation, index);
+};
+
+
 // Draw the real part as the vertical coordinate
 // The other components will be RGB values
 
-void updateCanvas(sf::Image &canvas) {
-    Quaternion entry(-1, 0, 0, 0.5);
-    entry = entry.versor();
-
+void updateCanvas(sf::Image &canvas, Quaternion (*function)(int, time_t)) {
     for (int i = 0; i < WIDTH; i++) {
-        /*
-        Quaternion toAdd = Quaternion(0, 0.01, 0, 0);
-        entry = entry + toAdd;
-        entry = entry.versor();
-        */
-
-        Quaternion rotation = Quaternion(100, 3, 0, 0).versor();
-        entry = entry * rotation;
-        entry = entry.versor();
-
+        // FIXME: Pass in the time!
+        Quaternion entry = function(i, 0);
         Quaternion versor = entry.versor();
 
         int y = HEIGHT * (0.5 + versor.r() / 2);
@@ -54,7 +58,7 @@ int main() {
             }
         }
 
-        updateCanvas(canvas);
+        updateCanvas(canvas, rotateSequence);
 
         sf::Texture texture;
         texture.loadFromImage(canvas);
