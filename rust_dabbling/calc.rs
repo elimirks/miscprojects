@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::fmt;
 
 enum Token {
+    Assign,
     Add,
     Sub,
     Var(Rc<String>),
@@ -37,6 +38,8 @@ fn tokenize(s: String) -> Token {
         Token::Add
     } else if s == "-" {
         Token::Sub
+    } else if s == "=" {
+        Token::Assign
     } else {
         panic!("crash and burn");
     }
@@ -60,7 +63,7 @@ impl fmt::Display for Expr {
     }
 }
 
-fn evaluate(expr: &Expr, vars: &HashMap<Rc<String>, Expr>) -> f32 {
+fn evaluate(expr: &Expr, vars: &HashMap<Rc<String>, Rc<Expr>>) -> f32 {
     match expr {
         Expr::Val(value) => *value,
         Expr::Add(first, second) => evaluate(&first, vars) + evaluate(&second, vars),
@@ -113,20 +116,46 @@ fn to_expr<'a>(tokens: &mut impl Iterator<Item = &'a Token>) -> Option<Rc<Expr>>
                 };
                 parse_stack.push(Rc::new(Expr::Sub(prev_expr, next_expr)));
             },
+            Token::Assign => {
+                panic!("Cannot assign within an expression");
+            },
         }
     }
 
     return parse_stack.pop();
 }
 
+fn is_stmt_assignment(tokens: &Vec<Token>) -> bool {
+    return match (tokens.get(0), tokens.get(1)) {
+        (Some(Token::Var(_)), Some(Token::Assign)) => true,
+        _                                          => false,
+    }
+}
+
 fn main() {
-    let tokens: Vec<Token> = get_line().split_ascii_whitespace()
-        .map(String::from).map(tokenize).collect();
+    let mut vars: HashMap<Rc<String>, Rc<Expr>> = HashMap::new();
 
-    // FIXME: ! Assignments
-    let vars: HashMap<Rc<String>, Expr> = HashMap::new();
+    loop {
+        let tokens: Vec<Token> = get_line().split_ascii_whitespace()
+            .map(String::from).map(tokenize).collect();
 
-    if let Some(expr) = to_expr(&mut tokens.iter()) {
-        println!("{} = {}", expr, evaluate(&expr, &vars));
+        if is_stmt_assignment(&tokens) {
+            if let Some(Token::Var(name)) = tokens.get(0) {
+                let mut it = tokens.iter();
+                // Skip over the var name and assignment operator
+                it.next();
+                it.next();
+
+                if let Some(expr) = to_expr(&mut it) {
+                    vars.insert(Rc::clone(&name), expr);
+                } else {
+                    panic!("Something terrible has happened");
+                }
+            }
+        } else {
+            if let Some(expr) = to_expr(&mut tokens.iter()) {
+                println!("{} = {}", expr, evaluate(&expr, &vars));
+            }
+        }
     }
 }
