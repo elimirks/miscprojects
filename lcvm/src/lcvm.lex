@@ -10,9 +10,8 @@
 %{
   /* REGEX Variable Initialization */
 %}
-whitespace   [ \t\r\n]+
+whitespace   (;.*[\n]|[ \t\r\n])+
 identifier   ([a-zA-Z0-9_])*
-comment      ;.*
 lambda       \\
 
 %%
@@ -24,7 +23,6 @@ lambda       \\
 "("            return LPAREN;
 ")"            return RPAREN;
 
-{comment} {}
 . {
     const char *yyfilename = "TODO";
     fprintf(stderr, "Invalid token: '%s' on line %d in %s\n",

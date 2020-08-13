@@ -5,6 +5,6 @@ void parse() {
     token_t tokenType;
 
     while ((tokenType = yylex())) {
-        printf("%d ", tokenType);
+        printf("%d: %s\n", tokenType, yytext);
     }
 }
