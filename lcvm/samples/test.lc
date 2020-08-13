@@ -1,0 +1,3 @@
+(\x.\y. ; Comments with semicolon
+  (\z.(\x.z x) (\y.z y)) (x y) ; Whitespace is all treated equal
+)

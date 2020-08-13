@@ -1,0 +1,2 @@
+* INTRO!
+  LCVM is a LambdaCalculusVM
