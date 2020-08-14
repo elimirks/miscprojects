@@ -1,5 +1,5 @@
 %{
-    #include "../src/vm.h"
+    #include "../src/scanner.h"
     /* LCVM Lexer */
     char *yyfilename; // Set in scanner.c
 %}
@@ -16,12 +16,12 @@ lambda       \\
 
 %%
 
-{identifier}   return IDENTIFIER;
-{whitespace}   return WHITESPACE;
-{lambda}       return LAMBDA;
-"."            return PERIOD;
-"("            return LPAREN;
-")"            return RPAREN;
+{identifier}   return TokenTypeIdentifier;
+{whitespace}   return TokenTypeWhitespace;
+{lambda}       return TokenTypeLambda;
+"."            return TokenTypePeriod;
+"("            return TokenTypeLParen;
+")"            return TokenTypeRParen;
 
 . {
     const char *yyfilename = "TODO";
