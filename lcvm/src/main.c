@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "scanner.h"
 #include "vm.h"
 
 int main() {

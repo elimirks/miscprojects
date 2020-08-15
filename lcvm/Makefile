@@ -8,17 +8,18 @@ PROJECT = lcvm
 SRC_DIR = 'src'
 OBJ_DIR = 'obj'
 
-SRCS = src/main.c src/scanner.c src/vm.c
+SRCS = obj/lcvm.tab.c src/main.c src/vm.c
 
 # Targets
-$(PROJECT): buildrepo compileScanner
+$(PROJECT): buildrepo compileParser
 	$(CC) $(OPTS) $(SRCS) -o $@
 
 clean:
 	rm $(PROJECT) $(OBJ_DIR) -Rf
 
-compileScanner:
-	lex -o $(OBJ_DIR)/lcvm.yy.c $(SRC_DIR)/lcvm.lex
+compileParser:
+	lex -o $(OBJ_DIR)/lcvm.yy.c $(SRC_DIR)/lcvm.l
+	bison -o $(OBJ_DIR)/lcvm.tab.c $(SRC_DIR)/lcvm.y
 
 buildrepo:
 	mkdir -p $(OBJ_DIR)
