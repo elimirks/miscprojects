@@ -34,8 +34,12 @@ Expression *root;
 %%
 
 program: expr Whitespace {
-     root = $1;
-};
+    root = $1;
+} | Whitespace expr {
+    root = $2;
+} | Whitespace expr Whitespace {
+    root = $2;
+}
 
 lparen: LParen | LParen Whitespace;
 rparen: RParen | Whitespace RParen;
