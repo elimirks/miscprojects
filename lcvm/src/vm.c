@@ -113,6 +113,10 @@ Expression * evalApplication(Expression *function,
         result = value;
     }
 
+    if (result->type == ExpressionTypeApplication) {
+        result = eval(result, scope);
+    }
+
     free(param);
     return result;
 }

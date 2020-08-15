@@ -1,2 +1,2 @@
 ; Expect to return \y.y
-((\x.x) (\y.y))
+(((\x.x) (\z.z)) ((\y.y) (\f.f)))
