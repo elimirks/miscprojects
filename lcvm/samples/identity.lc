@@ -1,0 +1,2 @@
+; Expect to return \y.y
+((\x.x) (\y.y))

@@ -1,6 +1,8 @@
 #ifndef __SCANNER_H__
 #define __SCANNER_H__
 
+#define MAX_NAME_LEN (1024)
+
 struct Expression;
 
 typedef enum {

@@ -4,14 +4,13 @@
 #include "scanner.h"
 #include "vm.h"
 
-// Variable x
-// Abstraction (\x.M)
-// Application (M N)
-
-// Example:
-//\f.\x.x
-
 int main() {
     Expression *root = parse();
+
+    printf("Input: \n");
     printExpression(root);
+    printf("\n\nResult:\n");
+    Expression *evaluated = evaluateExpression(root);
+    printExpression(evaluated);
+    printf("\n");
 }
