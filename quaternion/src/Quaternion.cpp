@@ -1,3 +1,4 @@
+#include <cmath>
 #include "Quaternion.hpp"
 
 Quaternion Quaternion::identity() {

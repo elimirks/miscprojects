@@ -67,8 +67,8 @@ Expression * constructExpressionFromStackTop() {
         Expression *expr = malloc(sizeof(Expression));
         expr->type = ExpressionTypeAbstraction;
         expr->abstraction = malloc(sizeof(ExpressionAbstraction));
-        expr->abstraction->parameter = stack[i + 1].expression->variable;
-        expr->abstraction->term = stack[i + 2].expression;
+        expr->abstraction->parameter = stack[i + 2].expression->variable;
+        expr->abstraction->term = stack[i + 4].expression;
         return expr;
     } else {
         fprintf(stderr, "Parse error on line %d\n", yylineno);
@@ -87,18 +87,13 @@ Expression * constructVariable(char *identifier) {
     strncpy(expr->variable->identifier, identifier, textLen);
     expr->variable->identifier[textLen] = '\0';
 
-    printf("Constructing variable %s\n", identifier);
-
     return expr;
 }
 
 Expression * parse() {
-    Expression *root = NULL;
     TokenType tokenType;
 
     while ((tokenType = yylex())) {
-        printf("%s\n", yytext);
-
         switch (tokenType) {
         case TokenTypeWhitespace:
             break;
@@ -125,9 +120,9 @@ Expression * parse() {
         }
     }
 
-    if (stackTop != 1) {
+    if (stackTop != 1 || stack[0].isToken) {
         fprintf(stderr, "Something terrible has happened\n");
     }
 
-    return root;
+    return stack[0].expression;
 }

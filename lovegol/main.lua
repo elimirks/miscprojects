@@ -1,8 +1,10 @@
 local grid, gridWidth, gridHeight
 
 local time = 0
-local TICK_PERIOD = 0.5
-local DEAD_FADE_SCALE = 2
+--local TICK_PERIOD = 0.5
+local TICK_PERIOD = 0.1
+--local DEAD_FADE_SCALE = 2
+local DEAD_FADE_SCALE = 1.5
 -- Used for fancy flashy animations.
 -- Stores tuples of x,y coordinate pairs and elapsed times.
 local deadCells = {}
@@ -105,13 +107,14 @@ function loadMap(fileName)
 end
 
 function love.load(args)
-   assert(#args == 1)
+   --assert(#args == 1)
    loadMap(args[1])
    time = 0
 end
 
 function love.draw()
-   love.graphics.setBackgroundColor(230/255/4, 88/255/4, 160/255/4)
+   --love.graphics.setBackgroundColor(230/255/4, 88/255/4, 160/255/4)
+   love.graphics.setBackgroundColor(0.1, 0.1, 0.1)
 
    local boardWidth  = gridWidth * SCALE;
    local boardHeight = gridHeight * SCALE;
@@ -119,10 +122,11 @@ function love.draw()
    local xOffset = (SCREEN_WIDTH - boardWidth) / 2
    local yOffset = (SCREEN_HEIGHT - boardHeight) / 2
 
-   love.graphics.setColor(230/255, 88/255, 160/255)
+   --love.graphics.setColor(230/255, 88/255, 160/255)
+   love.graphics.setColor(0, 0, 0)
    love.graphics.rectangle('fill', xOffset, yOffset, boardWidth, boardHeight)
 
-   love.graphics.setColor(131/255, 192/255, 240/255)
+   love.graphics.setColor(130/255, 192/255, 240/255)
 
    for i=0,(gridWidth * gridHeight - 1) do
       local x = i % gridWidth

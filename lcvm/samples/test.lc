@@ -1,6 +1,6 @@
 (\hello.(\42. ; Comments with semicolon
   ; Identifiers can be numbers, or any number of letters
-  ((\z.(\x.(z x)) (\y.(z y))) (hello 42)) ; Whitespace is all treated equal
+  ((\z.((\x.(z x)) (\y.(z y)))) (hello 42)) ; Whitespace is all treated equal
 )
 )
 
