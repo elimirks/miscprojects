@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "scanner.h"
+#include "vm.h"
 
 // Variable x
 // Abstraction (\x.M)
@@ -11,5 +12,6 @@
 //\f.\x.x
 
 int main() {
-    parse();
+    Expression *root = parse();
+    printExpression(root);
 }

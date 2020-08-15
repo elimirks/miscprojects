@@ -8,7 +8,7 @@ PROJECT = lcvm
 SRC_DIR = 'src'
 OBJ_DIR = 'obj'
 
-SRCS = src/main.c src/scanner.c
+SRCS = src/main.c src/scanner.c src/vm.c
 
 # Targets
 $(PROJECT): buildrepo compileScanner
