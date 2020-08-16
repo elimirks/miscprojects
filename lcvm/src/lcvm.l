@@ -11,8 +11,9 @@
   /* REGEX Variable Initialization */
 %}
 whitespace   (;.*[\n]|[ \t\r\n])+
-identifier   ([a-zA-Z0-9_])*
+identifier   ([a-zA-Z0-9_])+
 lambda       \\
+assignment   :=
 
 %%
 
@@ -22,6 +23,7 @@ lambda       \\
 };
 {whitespace}   return Whitespace;
 {lambda}       return Lambda;
+{assignment}   return Assignment;
 "."            return Period;
 "("            return LParen;
 ")"            return RParen;

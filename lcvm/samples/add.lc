@@ -5,13 +5,8 @@
 ; 3 := λf.λx.f (f (f x))
 ; M N P may be written instead of ((M N) P)
 
-((\0.\succ.(
-    ; Maths go here, should return 1
-    (succ 0)
-)
-; 0
-\f.\x.x
-)
-; succ
-\n.\f.\x.(f ((n f) x))
-)
+0 := \f.\x.x
+succ := \n.\f.\x.(f ((n f) x))
+
+; Maths go here, should return 1
+(succ 0)

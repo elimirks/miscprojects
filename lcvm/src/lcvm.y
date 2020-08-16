@@ -7,6 +7,15 @@ void yyerror(char const *);
 extern int yylex(void);
 
 Expression *root;
+
+typedef struct DefinitionNode {
+    ExpressionVariable *variable;
+    Expression *value;
+
+    struct DefinitionNode *next;
+} DefinitionNode;
+
+DefinitionNode *definitions = NULL;
 %}
 
 %define parse.error verbose
@@ -21,6 +30,7 @@ Expression *root;
 %token Period
 %token LParen
 %token RParen
+%token Assignment
 %token <strVal> Id
 
 %type <exprVal> variable
@@ -28,21 +38,32 @@ Expression *root;
 %type <exprVal> application
 %type <exprVal> expr
 
-/* 
- *Grammar rules and actions
- */
 %%
 
-program: expr Whitespace {
-    root = $1;
-} | Whitespace expr {
-    root = $2;
-} | Whitespace expr Whitespace {
-    root = $2;
-}
+program: optwhitespace optdefinitions expr optwhitespace {
+    root = $3;
+};
 
-lparen: LParen | LParen Whitespace;
-rparen: RParen | Whitespace RParen;
+optdefinitions: | definitions;
+definitions: definition Whitespace
+           | definition Whitespace definitions;
+
+definition: variable optwhitespace Assignment optwhitespace expr {
+    DefinitionNode *newHead = malloc(sizeof(DefinitionNode));
+    newHead->next = definitions;
+    newHead->variable = $1->variable;
+    newHead->value = $5;
+    
+    free($1);
+
+    definitions = newHead;
+};
+
+optwhitespace: | whitespace;
+whitespace: Whitespace | Whitespace whitespace;
+
+lparen: LParen optwhitespace;
+rparen: optwhitespace RParen;
 
 expr: variable | abstraction | application
     | lparen expr rparen {
@@ -62,12 +83,12 @@ variable: Id {
     $$ = expr;
 };
 
-abstraction: Lambda variable Period expr {
+abstraction: Lambda variable Period optwhitespace expr {
     Expression *expr = malloc(sizeof(Expression));
     expr->type = ExpressionTypeAbstraction;
     expr->abstraction = malloc(sizeof(ExpressionAbstraction));
     expr->abstraction->parameter = $2->variable;
-    expr->abstraction->term = $4;
+    expr->abstraction->term = $5;
 
     $$ = expr;
 };
@@ -89,6 +110,33 @@ application: lparen expr Whitespace expr rparen {
 Expression * parse() {
     yyin = stdin;
     yyparse();
+    
+    // Construct bindings for definitions
+    while (definitions != NULL) {
+        DefinitionNode *top = definitions;
+        definitions = definitions->next;
+        
+        Expression *abstractionExpr = malloc(sizeof(Expression));
+        ExpressionAbstraction *abstraction = malloc(sizeof(ExpressionAbstraction));
+        abstractionExpr->type = ExpressionTypeAbstraction;
+        abstractionExpr->abstraction = abstraction;
+        
+        Expression *applicationExpr = malloc(sizeof(Expression));
+        ExpressionApplication *application = malloc(sizeof(ExpressionApplication));
+        applicationExpr->type = ExpressionTypeApplication;
+        applicationExpr->application = application;
+        
+        abstraction->parameter = top->variable;
+        abstraction->term = root;
+        
+        application->function = abstractionExpr;
+        application->parameter = top->value;
+        
+        root = applicationExpr;
+        
+        free(top);
+    }
+    
     return root;
 }
 
