@@ -37,9 +37,9 @@ void printExpression(Expression *expr) {
     case ExpressionTypeApplication:
         printf("(");
         printExpression(expr->application->function);
-        printf(" ");
+        printf(" (");
         printExpression(expr->application->parameter);
-        printf(")");
+        printf("))");
         break;
     case ExpressionTypeAbstraction:
         printf("\\");
@@ -84,6 +84,61 @@ ExpressionAbstraction *evalFunctionToCall(Expression *function,
     }
 }
 
+Expression *fillVarInExpr(char *varId,
+                          Expression *var,
+                          Expression *expr) {
+    switch (expr->type) {
+    case ExpressionTypeVariable:
+        if (strncmp(expr->variable->identifier, varId, MAX_NAME_LEN) == 0) {
+            return var;
+        } else {
+            return expr;
+        }
+    case ExpressionTypeAbstraction: {
+        ExpressionAbstraction *abstraction = expr->abstraction;
+
+        // Variable override, ignore inferrence here
+        if (strncmp(abstraction->parameter->identifier, varId, MAX_NAME_LEN) == 0) {
+            return expr;
+        }
+
+        Expression *filledTerm = fillVarInExpr(varId, var, abstraction->term);
+
+        if (filledTerm != abstraction->term) {
+            ExpressionAbstraction *newAbstraction = malloc(sizeof(ExpressionAbstraction));
+            newAbstraction->parameter = abstraction->parameter;
+            newAbstraction->term = filledTerm;
+
+            Expression *newExpr = malloc(sizeof(Expression));
+            newExpr->type = ExpressionTypeAbstraction;
+            newExpr->abstraction = newAbstraction;
+            return newExpr;
+        } else {
+            return expr;
+        }
+    }
+    case ExpressionTypeApplication: {
+        ExpressionApplication *application = expr->application;
+
+        Expression *filledFunction = fillVarInExpr(varId, var, application->function);
+        Expression *filledParameter = fillVarInExpr(varId, var, application->parameter);
+
+        if (filledFunction != application->function || filledParameter != application->parameter) {
+            ExpressionApplication *newApplication = malloc(sizeof(ExpressionApplication));
+            newApplication->function = filledFunction;
+            newApplication->parameter = filledParameter;
+
+            Expression *newExpr = malloc(sizeof(Expression));
+            newExpr->type = ExpressionTypeApplication;
+            newExpr->application = newApplication;
+            return newExpr;
+        } else {
+            return expr;
+        }
+    }
+    }
+}
+
 Expression * evalApplication(Expression *function,
                              Expression *parameter,
                              ScopeList scope) {
@@ -98,7 +153,8 @@ Expression * evalApplication(Expression *function,
     ScopeList newScope;
     newScope.head = param;
 
-    Expression *result = eval(func->term, newScope);
+    Expression *filledTerm = fillVarInExpr(paramId, parameter, func->term);
+    Expression *result = eval(filledTerm, newScope);
 
     // Perform lookup if var returned
     if (result->type == ExpressionTypeVariable) {

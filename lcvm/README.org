@@ -1,2 +1,4 @@
 * INTRO!
   LCVM is a LambdaCalculusVM
+  TODO:
+  - No more dynamic variable bindings

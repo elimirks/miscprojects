@@ -1,0 +1,10 @@
+; Taken from https://en.wikipedia.org/wiki/Lambda_calculus
+; 0 := λf.λx.x
+; 1 := λf.λx.f x
+; 2 := λf.λx.f (f x)
+; 3 := λf.λx.f (f (f x))
+; M N P may be written instead of ((M N) P)
+
+; FIXME: This evaluated to the 1 expr... but it ain't simplified!
+;\f.\x.(f (((\f.\x.x (f)) (x))))
+(\n.\f.\x.(f ((n f) x)) \f.\x.x)
