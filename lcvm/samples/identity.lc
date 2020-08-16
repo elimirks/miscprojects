@@ -1,2 +1,4 @@
-; Expect to return \y.y
-((\x.x \z.z) (\y.y \f.f))
+; Expect to return \x.x
+id := \y.y
+
+(id \x.x)

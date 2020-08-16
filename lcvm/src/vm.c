@@ -49,141 +49,60 @@ void printExpression(Expression *expr) {
     }
 }
 
-ExpressionAbstraction *evalFunctionToCall(Expression *function,
-                                          ScopeList scope) {
-    switch (function->type) {
-    case ExpressionTypeVariable: {
-        char *identifier = function->variable->identifier;
-        Expression *varExpr = findDeclaration(identifier, scope);
-
-        if (varExpr == NULL) {
-            fprintf(stderr, "Variable %s not found\n", identifier);
-            exit(1);
-        }
-
-        Expression *varValue = eval(varExpr, scope);
-
-        if (varValue->type != ExpressionTypeAbstraction) {
-            fprintf(stderr, "Expected abstraction, got something else");
-            exit(1);
-        }
-
-        return varValue->abstraction;
-    }
-    case ExpressionTypeAbstraction:
-        return function->abstraction;
-    case ExpressionTypeApplication: {
-        Expression *value = eval(function, scope);
-        if (value->type != ExpressionTypeAbstraction) {
-            fprintf(stderr, "Expected abstraction, got something else");
-            exit(1);
-        } else {
-            return value->abstraction;
-        }
-    }
-    }
+Expression * evalVariable(Expression *expr, ScopeList scope) {
+    char *id = expr->variable->identifier;
+    Expression *value = findDeclaration(id, scope);
+    return value == NULL ? expr : value;
 }
 
-Expression *fillVarInExpr(char *varId,
-                          Expression *var,
-                          Expression *expr) {
-    switch (expr->type) {
-    case ExpressionTypeVariable:
-        if (strncmp(expr->variable->identifier, varId, MAX_NAME_LEN) == 0) {
-            return var;
-        } else {
-            return expr;
-        }
-    case ExpressionTypeAbstraction: {
-        ExpressionAbstraction *abstraction = expr->abstraction;
+Expression * evalApplication(Expression *expr, ScopeList scope) {
+    ExpressionApplication *application = expr->application;
+    Expression *evaluatedFunction = eval(application->function, scope);
+    Expression *evaluatedParameter = eval(application->parameter, scope);
 
-        // Variable override, ignore inferrence here
-        if (strncmp(abstraction->parameter->identifier, varId, MAX_NAME_LEN) == 0) {
-            return expr;
-        }
-
-        Expression *filledTerm = fillVarInExpr(varId, var, abstraction->term);
-
-        if (filledTerm != abstraction->term) {
-            ExpressionAbstraction *newAbstraction = malloc(sizeof(ExpressionAbstraction));
-            newAbstraction->parameter = abstraction->parameter;
-            newAbstraction->term = filledTerm;
-
-            Expression *newExpr = malloc(sizeof(Expression));
-            newExpr->type = ExpressionTypeAbstraction;
-            newExpr->abstraction = newAbstraction;
-            return newExpr;
-        } else {
-            return expr;
-        }
+    // Can't evaluate further
+    if (evaluatedFunction->type != ExpressionTypeAbstraction) {
+        Expression *unevaluatedExpr = malloc(sizeof(Expression));
+        unevaluatedExpr->type = ExpressionTypeApplication;
+        unevaluatedExpr->application = malloc(sizeof(ExpressionApplication));
+        unevaluatedExpr->application->function = evaluatedFunction;
+        unevaluatedExpr->application->parameter = evaluatedParameter;
+        return unevaluatedExpr;
     }
-    case ExpressionTypeApplication: {
-        ExpressionApplication *application = expr->application;
 
-        Expression *filledFunction = fillVarInExpr(varId, var, application->function);
-        Expression *filledParameter = fillVarInExpr(varId, var, application->parameter);
+    char *paramId = evaluatedFunction->abstraction->parameter->identifier;
 
-        if (filledFunction != application->function || filledParameter != application->parameter) {
-            ExpressionApplication *newApplication = malloc(sizeof(ExpressionApplication));
-            newApplication->function = filledFunction;
-            newApplication->parameter = filledParameter;
-
-            Expression *newExpr = malloc(sizeof(Expression));
-            newExpr->type = ExpressionTypeApplication;
-            newExpr->application = newApplication;
-            return newExpr;
-        } else {
-            return expr;
-        }
-    }
-    }
-}
-
-Expression * evalApplication(Expression *function,
-                             Expression *parameter,
-                             ScopeList scope) {
-    ExpressionAbstraction *func = evalFunctionToCall(function, scope);
-
-    char *paramId = func->parameter->identifier;
     ScopeListNode *param = malloc(sizeof(ScopeListNode));
     param->name = paramId;
-    param->value = parameter;
+    param->value = evaluatedParameter;
     param->next = scope.head;
 
     ScopeList newScope;
     newScope.head = param;
 
-    Expression *filledTerm = fillVarInExpr(paramId, parameter, func->term);
-    Expression *result = eval(filledTerm, newScope);
+    return eval(evaluatedFunction->abstraction->term, newScope);
+}
 
-    // Perform lookup if var returned
-    if (result->type == ExpressionTypeVariable) {
-        char *id = result->variable->identifier;
-        Expression *value = findDeclaration(id, newScope);
+Expression * evalAbstraction(Expression *expr, ScopeList scope) {
+    ExpressionAbstraction *newAbstraction = malloc(sizeof(ExpressionAbstraction));
+    newAbstraction->parameter = expr->abstraction->parameter;
+    newAbstraction->term = eval(expr->abstraction->term, scope);
 
-        if (value == NULL) {
-            fprintf(stderr, "Variable %s not found\n", id);
-            exit(1);
-        }
-
-        result = value;
-    }
-
-    if (result->type == ExpressionTypeApplication) {
-        result = eval(result, scope);
-    }
-
-    free(param);
-    return result;
+    Expression *newExpr = malloc(sizeof(Expression));
+    newExpr->type = ExpressionTypeAbstraction;
+    newExpr->abstraction = newAbstraction;
+    return newExpr;
 }
 
 Expression * eval(Expression *expr, ScopeList scope) {
-    if (expr->type == ExpressionTypeApplication) {
-        return evalApplication(expr->application->function,
-                               expr->application->parameter,
-                               scope);
-    } else {
-        return expr;
+    switch (expr->type) {
+    case ExpressionTypeVariable:
+        return evalVariable(expr, scope);
+    case ExpressionTypeApplication:
+        return evalApplication(expr, scope);
+    case ExpressionTypeAbstraction: {
+        return evalAbstraction(expr, scope);
+    }
     }
 }
 
