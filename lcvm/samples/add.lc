@@ -5,6 +5,13 @@
 ; 3 := λf.λx.f (f (f x))
 ; M N P may be written instead of ((M N) P)
 
-; FIXME: This evaluated to the 1 expr... but it ain't simplified!
-;\f.\x.(f (((\f.\x.x (f)) (x))))
-(\n.\f.\x.(f ((n f) x)) \f.\x.x)
+((\0.\succ.(
+    ; Maths go here, should return 1
+    (succ 0)
+)
+; 0
+\f.\x.x
+)
+; succ
+\n.\f.\x.(f ((n f) x))
+)
