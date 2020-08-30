@@ -1,22 +1,18 @@
 module Main where
 
-import Data.Char.Unicode
-import Data.String
 import Prelude
 
 import Control.Alt (class Alt)
-import Control.Alternative (class Alternative, class Applicative, empty, (<*>), (<|>))
-import Control.Lazy (class Lazy, defer, fix)
+import Control.Alternative (class Alternative, (<|>))
+import Control.Lazy (class Lazy, fix)
 import Control.Plus (class Plus)
-import Data.Array (cons)
+import Data.Array (snoc)
+import Data.Char.Unicode (isAlphaNum)
 import Data.Foldable (foldl, foldr)
-import Data.Functor (class Functor)
 import Data.List (List(..), null, span)
 import Data.Maybe (Maybe(..))
-import Data.Newtype (unwrap)
 import Data.String.CodeUnits (fromCharArray, toCharArray)
 import Data.Tuple (Tuple(..))
-import Debug.Trace (trace)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -24,7 +20,7 @@ stringToList :: String -> List Char
 stringToList = toCharArray >>> foldr Cons Nil
 
 fromCharList :: List Char -> String
-fromCharList = fromCharArray <<< foldl (\acc it -> acc <> [it]) []
+fromCharList = fromCharArray <<< foldl snoc []
 
 data Variable = Variable String
 
@@ -43,6 +39,15 @@ instance showExpr :: Show Expr where
   show (ExprVariable v) = show v
   show (ExprApplication e1 e2) = "(" <> show e1 <> " " <> show e2 <> ")"
   show (ExprAbstraction v e) = "\\" <> show v <> "." <> show e
+
+instance eqExpr :: Eq Expr where
+  eq (ExprVariable v1) (ExprVariable v2) =
+    v1 == v2
+  eq (ExprApplication a1 a2) (ExprApplication b1 b2) =
+    a1 == b1 && a2 == b2
+  eq (ExprAbstraction a1 a2) (ExprAbstraction b1 b2) =
+    a1 == b1 && a2 == b2
+  eq _ _ = false
 
 data Parser a = Parser ((List Char) -> Maybe (Tuple (List Char) a))
 
@@ -118,7 +123,7 @@ exprApplicationP parser =
     where
       content = ado
         first <- parser
-        _ <- ws
+        _ <- notNull ws
         second <- parser
         in ExprApplication first second
 
