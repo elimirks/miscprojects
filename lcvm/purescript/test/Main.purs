@@ -1,6 +1,7 @@
 module Test.Main where
 
 import Main
+import Parser
 import Prelude
 
 import Data.List (List(..))
@@ -14,6 +15,8 @@ import Test.Unit.Main (runTest)
 
 main :: Effect Unit
 main = do
+  log $ "whoopsie"
+  {-
   runTest do
     suite "charP" do
       test "Should match a character" do
@@ -44,3 +47,4 @@ main = do
       test "Should parse a variable" do
         Assert.equal (Just (Tuple Nil (ExprVariable $ Variable "abc")))
           $ runParser exprP (stringToList "abc")
+-}
