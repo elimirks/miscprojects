@@ -53,7 +53,7 @@ run (Tuple scope app@(ExprApplication target param)) =
 main :: Effect Unit
 main = do
   log $ show do
-    parsedResult <- generateAST "\\y.y"
+    parsedResult <- generateAST "id := (\\x.x)\n id"
     execedResult <- run (Tuple HM.empty parsedResult)
     pure $ prettyPrint execedResult
 

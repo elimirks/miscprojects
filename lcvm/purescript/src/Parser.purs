@@ -30,6 +30,8 @@ instance showVariable :: Show Variable where
 instance eqVariable :: Eq Variable where
   eq (Variable v1) (Variable v2) = v1 == v2
 
+data Constant = Constant Variable Expr
+
 data Expr
   = ExprVariable Variable
   | ExprApplication Expr Expr
@@ -71,7 +73,7 @@ instance parserApply :: Apply Parser where
   -- apply :: forall a b. f (a -> b) -> f a -> f b
   apply (Parser p1) (Parser p2) = 
     Parser $ \input -> do
-      Tuple input' f <- p1 input
+      Tuple input' f  <- p1 input
       Tuple input'' a <- p2 input'
       pure $ Tuple input'' (f a)
 
@@ -91,7 +93,7 @@ instance parserBind :: Bind Parser where
       parserJoin :: forall a. Parser (Parser a) -> Parser a
       parserJoin (Parser p) = Parser $ \input -> do
         (Tuple input' (Parser p')) <- (p input)
-        (Tuple input'' x) <- (p' input')
+        (Tuple input'' x)          <- (p' input')
         pure $ Tuple input'' x
 
 instance parserMonad :: Monad Parser
@@ -100,7 +102,7 @@ charP :: Char -> Parser Char
 charP x = Parser f
   where
     f (Cons y ys) | y == x = Right $ Tuple ys x
-    f _ = Left $ "Expected character " <> fromCharArray [x] <> " was not found"
+    f _ = Left $ "Expected character " <> show x <> " was not found"
 
 spanP :: (Char -> Boolean) -> Parser (List Char)
 spanP f =
@@ -110,10 +112,10 @@ spanP f =
 
 ws :: Parser (List Char)
 ws = spanP (\c -> case c of
-               ' ' -> true
+               ' '  -> true
                '\t' -> true
                '\n' -> true
-               _ -> false)
+               _    -> false)
 
 notNull :: forall a. Parser (List a) -> Parser (List a)
 notNull (Parser p) =
@@ -127,7 +129,7 @@ variableP :: Parser Variable
 variableP = Variable <$> fromCharList <$> notNull (spanP isAlphaNumButNotLambda)
   where
     isAlphaNumButNotLambda 'λ' = false
-    isAlphaNumButNotLambda c = isAlphaNum c
+    isAlphaNumButNotLambda c   = isAlphaNum c
 
 exprVariableP :: Parser Expr
 exprVariableP = ExprVariable <$> variableP
@@ -150,11 +152,11 @@ exprApplicationP parser =
 
 exprAbstractionP :: Parser Expr -> Parser Expr
 exprAbstractionP parser = ado
-  _ <- spanP (\c -> c == '\\' || c == 'λ')
-  _ <- ws
-  var <- variableP
-  _ <- ws
-  _ <- charP '.'
+  _    <- spanP (\c -> c == '\\' || c == 'λ')
+  _    <- ws
+  var  <- variableP
+  _    <- ws
+  _    <- charP '.'
   expr <- parser
   in ExprAbstraction var expr
 
@@ -165,9 +167,33 @@ exprP = fix fullParser
     exprParser p = exprVariableP <|> exprApplicationP p <|> exprAbstractionP p
     parenEater p = charP '(' *> ws *> p <* ws <* charP ')'
 
+constantP :: Parser Constant
+constantP = ado
+  var  <- variableP
+  _    <- ws
+  _    <- charP ':'
+  _    <- charP '='
+  _    <- ws
+  expr <- exprP
+  in Constant var expr
+
+-- TODO: Allow comments
+programP :: Parser Expr
+programP = ado
+  _           <- ws
+  constants   <- sepBy (notNull ws) constantP
+  _           <- ws
+  mainExpr    <- exprP
+  _           <- ws
+  in foldl addConstant mainExpr constants
+    where
+      addConstant :: Expr -> Constant -> Expr
+      addConstant main (Constant var expr) =
+        ExprApplication (ExprAbstraction var main) expr
+
 generateAST :: String -> Either String Expr
 generateAST input = do
-  (Tuple rest ast) <- runParser exprP (stringToList input)
+  (Tuple rest ast) <- runParser programP (stringToList input)
   _ <- if null rest
          then pure unit
          else Left $ "Garbage at end of input: " <> fromCharList rest
