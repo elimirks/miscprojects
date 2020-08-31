@@ -177,7 +177,6 @@ constantP = ado
   expr <- exprP
   in Constant var expr
 
--- TODO: Allow comments
 programP :: Parser Expr
 programP = ado
   _           <- ws
@@ -191,9 +190,25 @@ programP = ado
       addConstant main (Constant var expr) =
         ExprApplication (ExprAbstraction var main) expr
 
+-- Strips anything between "#" and "\n"
+stripComments :: List Char -> List Char
+stripComments = stripNonComment
+  where
+    stripNonComment Nil    = Nil
+    stripNonComment (x:xs) =
+      if x == '#'
+         then stripInComment xs
+         else x : (stripNonComment xs)
+
+    stripInComment Nil    = Nil
+    stripInComment (x:xs) =
+      if x == '\n'
+         then stripNonComment xs
+         else stripInComment xs
+
 generateAST :: String -> Either String Expr
 generateAST input = do
-  (Tuple rest ast) <- runParser programP (stringToList input)
+  (Tuple rest ast) <- runParser programP (stripComments $ stringToList input)
   _ <- if null rest
          then pure unit
          else Left $ "Garbage at end of input: " <> fromCharList rest
