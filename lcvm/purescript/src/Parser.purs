@@ -80,7 +80,7 @@ instance parserAlt :: Alt Parser where
     Parser $ (\input -> p1 input <|> p2 input)
 
 instance parserPlus :: Plus Parser where
-  empty = Parser $ \_ -> Left "Fuck."
+  empty = Parser $ \_ -> Left "Empty parser"
 
 instance parserAlternative :: Alternative Parser
 
@@ -99,10 +99,8 @@ instance parserMonad :: Monad Parser
 charP :: Char -> Parser Char
 charP x = Parser f
   where
-    f (Cons y ys)
-      | y == x = Right $ Tuple ys x
-      | otherwise = Left "Waste"
-    f Nil = Left "Ayayaya"
+    f (Cons y ys) | y == x = Right $ Tuple ys x
+    f _ = Left $ "Expected character " <> fromCharArray [x] <> " was not found"
 
 spanP :: (Char -> Boolean) -> Parser (List Char)
 spanP f =
@@ -122,7 +120,7 @@ notNull (Parser p) =
   Parser $ \input -> do
     Tuple input' xs <- p input
     if null xs
-      then Left "aontsehusenaoth"
+      then Left "Expected multiple values, got nothing"
       else Right $ Tuple input' xs
 
 variableP :: Parser Variable

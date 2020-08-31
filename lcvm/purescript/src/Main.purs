@@ -48,7 +48,7 @@ run (Tuple scope app@(ExprApplication target param)) =
         if (HM.member v scope)
            then Left $ "Variable " <> v <> " is already in scope"
            else run (Tuple (HM.insert v (Bound ranParam) scope) body)
-      _ -> Left "o no"
+      _ -> Left $ "Expected abstraction at " <> prettyPrint app
 
 main :: Effect Unit
 main = do
