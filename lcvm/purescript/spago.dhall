@@ -1,9 +1,5 @@
-{-
-Welcome to a Spago project!
-You can edit this file as you like.
--}
-{ name = "lcvm"
-, dependencies = [ "console", "effect", "psci-support", "maybe", "tuples", "lists", "arrays", "strings", "unicode", "debug", "test-unit", "unordered-collections" ]
+{ name = "halogen-project"
+, dependencies = [ "console", "effect", "halogen", "psci-support", "maybe", "tuples", "lists", "arrays", "strings", "unicode", "debug", "test-unit", "unordered-collections"  ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]
 }

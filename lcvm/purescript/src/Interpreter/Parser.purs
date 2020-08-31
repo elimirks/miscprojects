@@ -1,4 +1,4 @@
-module Parser where
+module Interpreter.Parser where
 
 import Prelude
 
@@ -187,8 +187,8 @@ programP = ado
   in foldl addConstant mainExpr constants
     where
       addConstant :: Expr -> Constant -> Expr
-      addConstant main (Constant var expr) =
-        ExprApplication (ExprAbstraction var main) expr
+      addConstant acc (Constant var expr) =
+        ExprApplication (ExprAbstraction var acc) expr
 
 -- Strips anything between "#" and "\n"
 stripComments :: List Char -> List Char

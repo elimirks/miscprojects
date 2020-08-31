@@ -1,14 +1,15 @@
-; Taken from https://en.wikipedia.org/wiki/Lambda_calculus
-; 0 := λf.λx.x
-; 1 := λf.λx.f x
-; 2 := λf.λx.f (f x)
-; 3 := λf.λx.f (f (f x))
-; M N P may be written instead of ((M N) P)
+# Taken from https://en.wikipedia.org/wiki/Lambda_calculus
+# 0 := λf.λx.x
+# 1 := λf.λx.f x
+# 2 := λf.λx.f (f x)
+# 3 := λf.λx.f (f (f x))
+# M N P may be written instead of ((M N) P)
 
 0 := \f.\x.x
 1 := \f.\x.(f x)
 succ := \n.\f.\x.(f ((n f) x))
 plus := \m.\n.\f.\x.((m f) ((n f) x))
 
-; Maths go here, should return 2
+# Maths go here, should return 2
 ((plus (succ 0)) 1)
+
