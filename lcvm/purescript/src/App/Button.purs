@@ -17,22 +17,18 @@ type State = {
 data Action = Increment | Compile | Update String
 
 baseInput :: String
-baseInput = """# Taken from https://en.wikipedia.org/wiki/Lambda_calculus
-# 0 := λf.λx.x
-# 1 := λf.λx.f x
-# 2 := λf.λx.f (f x)
-# 3 := λf.λx.f (f (f x))
-# M N P may be written instead of ((M N) P)
-
+baseInput = """
 0 := \f.\x.x
 1 := \f.\x.(f x)
-#succ := \n.\f.\x.(f ((n f) x))
-succ := \n.\g.\y.(g ((n g) y))
+2 := \f.\x.(f (f x))
+3 := (succ 2)
+4 := (succ 3)
+succ := \n.\f.\x.(f ((n f) x))
 plus := \m.\n.\f.\x.((m f) ((n f) x))
+mult := \m.\n.\f.(m (n f))
 
-# Maths go here, should return 2
-#((plus (succ 0)) 1)
-(succ 0)
+# Maths go here
+(plus (succ 4) 1)
 """
 
 component :: forall q i o m. H.Component HH.HTML q i o m

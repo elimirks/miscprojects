@@ -178,10 +178,10 @@ programP = ado
   _           <- ws
   mainExpr    <- exprP
   _           <- ws
-  in foldl addConstant mainExpr constants
+  in foldr addConstant mainExpr constants
     where
-      addConstant :: Expr -> Constant -> Expr
-      addConstant acc (Constant var expr) =
+      addConstant :: Constant -> Expr -> Expr
+      addConstant (Constant var expr) acc =
         ExprApplication (ExprAbstraction var acc) expr
 
 -- Strips anything between "#" and "\n"

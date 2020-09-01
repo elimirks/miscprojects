@@ -3,6 +3,7 @@ module Interpreter.Runner where
 import Prelude
 
 import Data.Either (Either(..))
+import Data.HashSet as HS
 import Interpreter.Parser (Expr(..), generateAST)
 
 prettyPrint :: Expr -> String
@@ -26,23 +27,26 @@ populateVar varName varExpr expr@(ExprAbstraction absVar absBody) =
 populateVar varName varExpr (ExprApplication lhs rhs) =
   ExprApplication (populateVar varName varExpr lhs) (populateVar varName varExpr rhs)
 
-run :: Expr -> Either String Expr
-run expr@(ExprVariable name) = pure expr
+run :: HS.HashSet String -> Expr -> Either String Expr
+run scope expr@(ExprVariable name) =
+  if HS.member name scope
+    then pure expr
+    else Left $ "Undefined variable: " <> name
 
-run (ExprAbstraction name body) = do
-  ranBody <- run body
-  pure $ ExprAbstraction name ranBody
+run scope (ExprAbstraction var body) = do
+  ranBody <- run (HS.insert var scope) body
+  pure $ ExprAbstraction var ranBody
 
-run (ExprApplication lhs@(ExprAbstraction lhsVar lhsBody) rhs) =
-  run $ populateVar lhsVar rhs lhsBody
+run scope (ExprApplication lhs@(ExprAbstraction lhsVar lhsBody) rhs) =
+  run scope $ populateVar lhsVar rhs lhsBody
 
-run (ExprApplication lhs rhs) = do
-  ranLhs <- run lhs
-  ranRhs <- run rhs
+run scope (ExprApplication lhs rhs) = do
+  ranLhs <- run scope lhs
+  ranRhs <- run scope rhs
 
   if (ranLhs == lhs) && (ranRhs == rhs)
      then pure $ ExprApplication ranLhs ranRhs
-     else run (ExprApplication ranLhs ranRhs)
+     else run scope (ExprApplication ranLhs ranRhs)
 
 eval :: String -> String
 eval input =
@@ -53,5 +57,5 @@ eval input =
     result = do
       parsedResult <- generateAST input
       --execedResult <- run HM.empty parsedResult
-      execedResult <- run parsedResult
+      execedResult <- run HS.empty parsedResult
       pure $ prettyPrint execedResult

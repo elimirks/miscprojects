@@ -22,14 +22,14 @@ main = do
         Assert.equal "λf.λx.(f x)"
           $ eval """
                  0 := \f.\x.x
-                 succ := \n.\f.\x.(f ((n f) x))
+                 succ := \n.\f.\x.(f (n f x))
                  (succ 0)
                  """
 
       test "Succ Succ 0" do
         Assert.equal "λf.λx.(f (f x))"
           $ eval """
-                 succ := \n.\f.\x.(f ((n f) x))
+                 succ := \n.\f.\x.(f (n f x))
                  (succ λf.λx.(f x))
                  """
 
@@ -40,6 +40,30 @@ main = do
                  1 := \f.\x.(f x)
                  2 := λf.λx.(f (f x))
                  plus := λm.λn.λf.λx.(m f (n f x))
+                 plus2 := (plus 2)
 
-                 (plus 1 2)
+                 (plus2 1)
+                 """
+
+      test "Not allow undefined variables" do
+        Assert.equal "Undefined variable: x"
+          $ eval "(x y)"
+
+      test "Allow constant to use previous constants" do
+        Assert.equal "λx.x"
+          $ eval """
+                 id1 := \y.y
+                 id2 := id1
+
+                 (id2 \x.x)
+                 """
+
+      test "Multiply 2 * 3" do
+        Assert.equal "λf.λx.(f (f (f (f (f (f x))))))"
+          $ eval """
+                 2 := λf.λx.(f (f x))
+                 3 := λf.λx.(f (f (f x)))
+                 mult := \m.\n.\f.(m (n f))
+
+                 (mult 2 3)
                  """
