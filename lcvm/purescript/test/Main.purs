@@ -33,9 +33,8 @@ main = do
                  (succ λf.λx.(f x))
                  """
 
-      {-
       test "Add 1 + 2" do
-        Assert.equal "λf.λx.(f (f x))"
+        Assert.equal "λf.λx.(f (f (f x)))"
           $ eval """
                  0 := \f.\x.x
                  1 := \f.\x.(f x)
@@ -44,4 +43,3 @@ main = do
 
                  (plus 1 2)
                  """
-      -}

@@ -3,52 +3,46 @@ module Interpreter.Runner where
 import Prelude
 
 import Data.Either (Either(..))
-import Data.HashMap as HM
-import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..))
-import Debug.Trace (trace)
-import Interpreter.Parser (Expr(..), Variable(..), exprVariableP, generateAST)
+import Interpreter.Parser (Expr(..), generateAST)
 
 prettyPrint :: Expr -> String
-prettyPrint (ExprVariable (Variable name)) = name
+prettyPrint (ExprVariable name) = name
 prettyPrint (ExprApplication target param) =
   "(" <> prettyPrint target <> " " <> prettyPrint param <> ")"
-prettyPrint (ExprAbstraction (Variable arg) body) =
+prettyPrint (ExprAbstraction arg body) =
   "λ" <> arg <> "." <> prettyPrint body
 
-data Definition = Unbound | Bound Expr
+populateVar :: String -> Expr -> Expr -> Expr
+populateVar varName varExpr expr@(ExprVariable name) =
+  if varName == name
+     then varExpr
+     else expr
 
-type Scope = HM.HashMap String Definition
+populateVar varName varExpr expr@(ExprAbstraction absVar absBody) =
+  if absVar == varName
+     then expr
+     else ExprAbstraction absVar (populateVar varName varExpr absBody)
 
-run :: Scope -> Expr -> Either String Expr
-run scope expr@(ExprVariable (Variable name)) =
-  trace (prettyPrint expr) \_ ->
-  case HM.lookup name scope of
-    Nothing            -> Left $ "Undefined variable: " <> name
-    Just (Bound value) -> Right value
-    _                  -> Right expr
+populateVar varName varExpr (ExprApplication lhs rhs) =
+  ExprApplication (populateVar varName varExpr lhs) (populateVar varName varExpr rhs)
 
-run scope expr@(ExprAbstraction var@(Variable varName) body) =
-  trace (prettyPrint expr) \_ ->
-  do
-    ranBody <- run (HM.insert varName Unbound scope) body
-    pure $ ExprAbstraction var ranBody
+run :: Expr -> Either String Expr
+run expr@(ExprVariable name) = pure expr
 
-run scope expr@(ExprApplication (ExprAbstraction (Variable lhsVar) lhsBody) rhs) =
-  trace (prettyPrint expr) \_ ->
-  do
-    ranRhs <- run scope rhs
-    run (HM.insert lhsVar (Bound ranRhs) scope) lhsBody
+run (ExprAbstraction name body) = do
+  ranBody <- run body
+  pure $ ExprAbstraction name ranBody
 
-run scope expr@(ExprApplication lhs rhs) =
-  trace (prettyPrint expr) \_ ->
-  do
-    ranLhs <- run scope lhs
-    ranRhs <- run scope rhs
+run (ExprApplication lhs@(ExprAbstraction lhsVar lhsBody) rhs) =
+  run $ populateVar lhsVar rhs lhsBody
 
-    if (ranLhs == lhs) && (ranRhs == rhs)
-       then pure expr
-       else run scope $ ExprApplication ranLhs ranRhs
+run (ExprApplication lhs rhs) = do
+  ranLhs <- run lhs
+  ranRhs <- run rhs
+
+  if (ranLhs == lhs) && (ranRhs == rhs)
+     then pure $ ExprApplication ranLhs ranRhs
+     else run (ExprApplication ranLhs ranRhs)
 
 eval :: String -> String
 eval input =
@@ -58,5 +52,6 @@ eval input =
   where
     result = do
       parsedResult <- generateAST input
-      execedResult <- run HM.empty parsedResult
+      --execedResult <- run HM.empty parsedResult
+      execedResult <- run parsedResult
       pure $ prettyPrint execedResult

@@ -22,23 +22,17 @@ stringToList = toCharArray >>> foldr Cons Nil
 fromCharList :: List Char -> String
 fromCharList = fromCharArray <<< foldl snoc []
 
-data Variable = Variable String
-
-instance showVariable :: Show Variable where
-  show (Variable s) = "#" <> s
-
-instance eqVariable :: Eq Variable where
-  eq (Variable v1) (Variable v2) = v1 == v2
+type Variable = String
 
 data Constant = Constant Variable Expr
 
 data Expr
-  = ExprVariable Variable
+  = ExprVariable String
   | ExprApplication Expr Expr
   | ExprAbstraction Variable Expr
 
 instance showExpr :: Show Expr where
-  show (ExprVariable v) = show v
+  show (ExprVariable v) = "#" <> v
   show (ExprApplication e1 e2) = "(" <> show e1 <> " " <> show e2 <> ")"
   show (ExprAbstraction v e) = "\\" <> show v <> "." <> show e
 
@@ -126,7 +120,7 @@ notNull (Parser p) =
       else Right $ Tuple input' xs
 
 variableP :: Parser Variable
-variableP = Variable <$> fromCharList <$> notNull (spanP isAlphaNumButNotLambda)
+variableP = fromCharList <$> notNull (spanP isAlphaNumButNotLambda)
   where
     isAlphaNumButNotLambda 'λ' = false
     isAlphaNumButNotLambda c   = isAlphaNum c
