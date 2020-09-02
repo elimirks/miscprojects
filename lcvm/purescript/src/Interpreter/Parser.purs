@@ -15,6 +15,7 @@ import Data.List (List(..), many, null, span, (:))
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (fromCharArray, toCharArray)
 import Data.Tuple (Tuple(..))
+import Control.MonadZero (class MonadZero)
 
 stringToList :: String -> List Char
 stringToList = toCharArray >>> foldr Cons Nil
@@ -22,21 +23,20 @@ stringToList = toCharArray >>> foldr Cons Nil
 fromCharList :: List Char -> String
 fromCharList = fromCharArray <<< foldl snoc []
 
-type Variable = String
+data Expr a
+  = ExprVariable a
+  | ExprApplication (Expr a) (Expr a)
+  | ExprAbstraction a (Expr a)
 
-data Constant = Constant Variable Expr
+type ExprS = Expr String
+data Constant = Constant String (Expr String)
 
-data Expr
-  = ExprVariable String
-  | ExprApplication Expr Expr
-  | ExprAbstraction Variable Expr
-
-instance showExpr :: Show Expr where
-  show (ExprVariable v) = "#" <> v
+instance showExpr :: Show a => Show (Expr a) where
+  show (ExprVariable v) = show v
   show (ExprApplication e1 e2) = "(" <> show e1 <> " " <> show e2 <> ")"
   show (ExprAbstraction v e) = "\\" <> show v <> "." <> show e
 
-instance eqExpr :: Eq Expr where
+instance eqExpr :: Eq a => Eq (Expr a) where
   eq (ExprVariable v1) (ExprVariable v2) =
     v1 == v2
   eq (ExprApplication a1 a2) (ExprApplication b1 b2) =
@@ -91,6 +91,7 @@ instance parserBind :: Bind Parser where
         pure $ Tuple input'' x
 
 instance parserMonad :: Monad Parser
+instance parserMonadZero :: MonadZero Parser
 
 charP :: Char -> Parser Char
 charP x = Parser f
@@ -119,32 +120,32 @@ notNull (Parser p) =
       then Left "Expected multiple values, got nothing"
       else Right $ Tuple input' xs
 
-variableP :: Parser Variable
+variableP :: Parser String
 variableP = fromCharList <$> notNull (spanP isAlphaNumButNotLambda)
   where
     isAlphaNumButNotLambda 'λ' = false
     isAlphaNumButNotLambda c   = isAlphaNum c
 
-exprVariableP :: Parser Expr
+exprVariableP :: Parser ExprS
 exprVariableP = ExprVariable <$> variableP
 
 sepBy :: forall a b. Parser a -> Parser b -> Parser (List b)
 sepBy sep parser = Cons <$> parser <*> many (sep *> parser) <|> pure Nil
 
 -- (a c)
-exprApplicationP :: Parser Expr -> Parser Expr
+exprApplicationP :: Parser ExprS -> Parser ExprS
 exprApplicationP parser =
   charP '(' *> ws *> (exprsToApplications =<< components) <* ws <* charP ')'
     where
-      components :: Parser (List Expr)
+      components :: Parser (List ExprS)
       components = sepBy (notNull ws) parser
       
-      exprsToApplications :: List Expr -> Parser Expr
+      exprsToApplications :: List ExprS -> Parser ExprS
       exprsToApplications (first:second:rest) =
         pure $ foldl ExprApplication (ExprApplication first second) rest
       exprsToApplications _ = empty
 
-exprAbstractionP :: Parser Expr -> Parser Expr
+exprAbstractionP :: Parser ExprS -> Parser ExprS
 exprAbstractionP parser = ado
   _    <- spanP (\c -> c == '\\' || c == 'λ')
   _    <- ws
@@ -154,7 +155,7 @@ exprAbstractionP parser = ado
   expr <- parser
   in ExprAbstraction var expr
 
-exprP :: Parser Expr
+exprP :: Parser ExprS
 exprP = fix fullParser
   where
     fullParser p = exprParser p <|> parenEater p
@@ -171,17 +172,17 @@ constantP = ado
   expr <- exprP
   in Constant var expr
 
-programP :: Parser Expr
+programP :: Parser ExprS
 programP = ado
   _           <- ws
   constants   <- sepBy (notNull ws) constantP
   _           <- ws
   mainExpr    <- exprP
   _           <- ws
-  in foldr addConstant mainExpr constants
+  in foldl addConstant mainExpr constants
     where
-      addConstant :: Constant -> Expr -> Expr
-      addConstant (Constant var expr) acc =
+      addConstant :: ExprS -> Constant -> ExprS
+      addConstant acc (Constant var expr) =
         ExprApplication (ExprAbstraction var acc) expr
 
 -- Strips anything between "#" and "\n"
@@ -200,7 +201,7 @@ stripComments = stripNonComment
          then stripNonComment xs
          else stripInComment xs
 
-generateAST :: String -> Either String Expr
+generateAST :: String -> Either String ExprS
 generateAST input = do
   (Tuple rest ast) <- runParser programP (stripComments $ stringToList input)
   _ <- if null rest
