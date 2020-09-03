@@ -153,12 +153,3 @@ main = do
 
                  (pred (succ (succ (pred 2))))
                  """
-
-      test "import Math.pow 2 2" do
-        Assert.equal "λf.λx.(f (f (f (f x))))"
-          $ eval """
-                 2 := λf.λx.(f (f x))
-                 pow := λb.λe.(e b)
-
-                 (pow 2 2)
-                 """

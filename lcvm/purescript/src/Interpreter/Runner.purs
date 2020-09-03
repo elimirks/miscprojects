@@ -2,15 +2,14 @@ module Interpreter.Runner where
 
 import Prelude
 
-import Control.Alternative (empty)
 import Control.Monad.State (State, evalState, gets, modify)
-import Data.Either (Either(..), isLeft)
-import Data.Foldable (foldl, maximum)
+import Data.Either (Either(..))
+import Data.Foldable (foldl)
 import Data.HashMap as HM
 import Data.Hashable (class Hashable, hash)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
-import Interpreter.Parser (Expr(..), ExprS, exprVariableP, generateAST)
+import Interpreter.Parser (Expr(..), ExprS, generateAST)
 
 type Id = Int
 data Variable = Variable String Id
@@ -94,6 +93,7 @@ shadowStateIncrement name = do
   pure $ currentVal + 1
 
 convert :: ExprS -> ShadowState ExprR
+
 convert (ExprVariable name) = do
   id <- shadowStateLookup name
   pure $ ExprVariable (Variable name id)
@@ -110,6 +110,9 @@ convert (ExprApplication lhs rhs) = do
 
 runConvert :: ExprS -> ExprR
 runConvert exprs = evalState (convert exprs) HM.empty
+
+runUnconvert :: ExprR -> ExprS
+runUnconvert = map (\(Variable name _) -> name)
 
 eval :: String -> String
 eval input =

@@ -4,7 +4,9 @@ import Prelude
 
 import Control.Alt (class Alt)
 import Control.Alternative (class Alternative, empty, (<|>))
+import Control.Extend (class Extend)
 import Control.Lazy (class Lazy, fix)
+import Control.MonadZero (class MonadZero)
 import Control.MonadZero (guard)
 import Control.Plus (class Plus)
 import Data.Array (snoc)
@@ -15,7 +17,6 @@ import Data.List (List(..), many, null, span, (:))
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (fromCharArray, toCharArray)
 import Data.Tuple (Tuple(..))
-import Control.MonadZero (class MonadZero)
 
 stringToList :: String -> List Char
 stringToList = toCharArray >>> foldr Cons Nil
@@ -44,6 +45,12 @@ instance eqExpr :: Eq a => Eq (Expr a) where
   eq (ExprAbstraction a1 a2) (ExprAbstraction b1 b2) =
     a1 == b1 && a2 == b2
   eq _ _ = false
+
+-- Proof that Expr is a functor
+instance functorExpr :: Functor Expr where
+  map f (ExprVariable value)       = ExprVariable $ f value
+  map f (ExprAbstraction var body) = ExprAbstraction (f var) (map f body)
+  map f (ExprApplication lhs rhs)  = ExprApplication (map f lhs) (map f rhs)
 
 data Parser a = Parser ((List Char) -> Either String (Tuple (List Char) a))
 
@@ -92,6 +99,10 @@ instance parserBind :: Bind Parser where
 
 instance parserMonad :: Monad Parser
 instance parserMonadZero :: MonadZero Parser
+
+-- Unused proof doesn't mean wrong .....
+instance parserExtend :: Extend Parser where
+  extend f w = pure $ f w
 
 charP :: Char -> Parser Char
 charP x = Parser f
