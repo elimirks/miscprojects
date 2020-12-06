@@ -16,3 +16,11 @@ atIndex n (_:xs) = if n < 0
 orElse :: a -> Maybe a -> a
 orElse _ (Just x) = x
 orElse y _        = y
+
+dropEven :: [a] -> [a]
+dropEven []  = []
+dropEven [x] = [x]
+dropEven (x:_:xs) = x:dropEven xs
+
+applyAll :: [a -> b] -> a -> [b]
+applyAll fs x = ($ x) <$> fs

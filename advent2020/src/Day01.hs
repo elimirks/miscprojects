@@ -44,8 +44,8 @@ multiplied3Sum nums = (\(x, y, z) -> x * y * z) <$> find3Sum 2020 nums
 readInput :: IO [Integer]
 readInput = (read <$>) <$> lines <$> readFile "data/day01"
 
-run1 :: IO ()
-run1 = do
+run01 :: IO ()
+run01 = do
   inputNums <- readInput
   putStrLn "2sum:"
   putStrLn $ show $ multiplied2Sum inputNums

@@ -59,7 +59,7 @@ isValidB (Entry (Policy letter posA posB) password) =
 countValidB :: [Entry] -> Integer
 countValidB entries = countPredicate isValidB entries
 
-run2 :: IO ()
-run2 = do
+run02 :: IO ()
+run02 = do
   passwords <- readInput
   putStrLn $ show $ countValidB passwords

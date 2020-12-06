@@ -27,6 +27,7 @@ library
   exposed-modules:
       Day01
       Day02
+      Day03
       Helper
       Lib
       Parser
