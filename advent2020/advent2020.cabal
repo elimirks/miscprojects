@@ -26,7 +26,10 @@ source-repository head
 library
   exposed-modules:
       Day01
+      Day02
+      Helper
       Lib
+      Parser
   other-modules:
       Paths_advent2020
   hs-source-dirs:
