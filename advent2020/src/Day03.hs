@@ -1,4 +1,4 @@
-module Day03 where
+module Day03 (run03) where
 
 import Helper
 

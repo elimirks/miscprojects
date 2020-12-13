@@ -32,10 +32,10 @@ readInput :: IO [Entry]
 readInput = orElse [] <$> parseFile "data/day04" entriesP
 
 isPassport1 :: Entry -> Bool
-isPassport1 (Entry map) = keys == expected1 || keys == expected2
+isPassport1 (Entry fields) = keys == expected1 || keys == expected2
   where
     keys :: [String]
-    keys = sort $ HM.keys map
+    keys = sort $ HM.keys fields
 
     expected1 = ["byr", "cid", "ecl", "eyr", "hcl", "hgt", "iyr", "pid"]
     expected2 = ["byr", "ecl", "eyr", "hcl", "hgt", "iyr", "pid"]
@@ -72,8 +72,8 @@ isFieldValid "hcl" value = isValidColor value
 isFieldValid _ _         = False
 
 isPassport2 :: Entry -> Bool
-isPassport2 entry@(Entry map) =
-  isPassport1 entry && all (uncurry isFieldValid) (HM.toList map)
+isPassport2 entry@(Entry fields) =
+  isPassport1 entry && all (uncurry isFieldValid) (HM.toList fields)
 
 run04 :: IO ()
 run04 = do

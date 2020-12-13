@@ -1,4 +1,4 @@
-module Day02 where
+module Day02 (run02) where
 
 import Data.Maybe
 

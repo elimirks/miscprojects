@@ -1,4 +1,4 @@
-module Day01 where
+module Day01 (run01) where
 
 import qualified Data.HashSet as HS
 import qualified Data.HashMap.Lazy as HM
@@ -47,8 +47,8 @@ readInput = (read <$>) <$> lines <$> readFile "data/day01"
 run01 :: IO ()
 run01 = do
   inputNums <- readInput
-  putStrLn "2sum:"
+  putStrLn "Part 1:"
   putStrLn $ show $ multiplied2Sum inputNums
 
-  putStrLn "3sum:"
+  putStrLn "Part 2:"
   putStrLn $ show $ multiplied3Sum inputNums
