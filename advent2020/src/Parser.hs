@@ -37,6 +37,12 @@ instance Alternative Parser where
   (Parser p1) <|> (Parser p2) =
     Parser $ \input -> p1 input <|> p2 input
 
+eof :: Parser ()
+eof = Parser f
+  where
+    f [] = Just ([], ())
+    f _  = Nothing
+
 anyP :: Parser Char
 anyP = Parser f
   where
@@ -60,13 +66,16 @@ spanP f =
     let (token, rest) = span f input
      in Just (rest, token)
 
-notNull :: Parser [a] -> Parser [a]
-notNull (Parser p) =
+filterP :: (a -> Bool) -> Parser a -> Parser a
+filterP predicate (Parser p) =
   Parser $ \input -> do
-    (input', xs) <- p input
-    if null xs
-      then Nothing
-      else Just (input', xs)
+    (input', parsed) <- p input
+    if predicate parsed
+      then Just (input', parsed)
+      else Nothing
+
+notNull :: Parser [a] -> Parser [a]
+notNull = filterP (not . null)
 
 intP :: Parser Integer
 intP = f <$> notNull (spanP isDigit)
@@ -82,3 +91,6 @@ parseFile :: FilePath -> Parser a -> IO (Maybe a)
 parseFile fileName parser = do
   input <- readFile fileName
   return (snd <$> runParser parser input)
+
+evalParser :: Parser a -> String -> Maybe a
+evalParser p input = snd <$> runParser p input

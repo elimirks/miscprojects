@@ -1,5 +1,7 @@
 module Helper where
 
+import Data.Char
+
 countPredicate :: (a -> Bool) -> [a] -> Integer
 countPredicate predicate = foldr f 0
   where
@@ -24,3 +26,13 @@ dropEven (x:_:xs) = x:dropEven xs
 
 applyAll :: [a -> b] -> a -> [b]
 applyAll fs x = ($ x) <$> fs
+
+safeRead :: String -> Maybe Integer
+safeRead value = if all isDigit value
+  then Just $ read value
+  else Nothing
+
+isDigitWithin :: String -> Integer -> Integer -> Bool
+isDigitWithin s least most = case safeRead s of
+  Just value -> value >= least && value <= most
+  _          -> False
