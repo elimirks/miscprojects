@@ -1,10 +1,10 @@
 module Day05 (run05) where
 
 import Control.Applicative
+import Data.Maybe
 import Data.List
 import qualified Data.HashSet as HS
 
-import Helper
 import Parser
 
 data Half = Lower | Upper
@@ -26,7 +26,7 @@ entriesP :: Parser [Integer]
 entriesP = sepBy (charP '\n') boardingP <* ws <* eof
 
 readInput :: IO [Integer]
-readInput = orElse [] <$> parseFile "data/day05" entriesP
+readInput = fromMaybe [] <$> parseFile "data/day05" entriesP
 
 halfAsInt :: [Half] -> Integer
 halfAsInt []         = 0

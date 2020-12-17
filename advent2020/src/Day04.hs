@@ -1,6 +1,7 @@
 module Day04 (run04) where
 
 import Control.Applicative
+import Data.Maybe
 import Data.Char
 import Data.List
 import qualified Data.HashMap.Lazy as HM
@@ -29,7 +30,7 @@ entriesP :: Parser [Entry]
 entriesP = sepBy (stringP "\n\n") entryP <* ws <* eof
 
 readInput :: IO [Entry]
-readInput = orElse [] <$> parseFile "data/day04" entriesP
+readInput = fromMaybe [] <$> parseFile "data/day04" entriesP
 
 isPassport1 :: Entry -> Bool
 isPassport1 (Entry fields) = keys == expected1 || keys == expected2

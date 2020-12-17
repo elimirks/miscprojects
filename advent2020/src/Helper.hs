@@ -15,10 +15,6 @@ atIndex n (_:xs) = if n < 0
   then Nothing
   else atIndex (n - 1) xs
 
-orElse :: a -> Maybe a -> a
-orElse _ (Just x) = x
-orElse y _        = y
-
 dropEven :: [a] -> [a]
 dropEven []  = []
 dropEven [x] = [x]

@@ -1,12 +1,12 @@
 module Day06 (run06) where
 
+import Data.Maybe
 import Data.List
 import Data.Char
 import Control.Monad
 import qualified Data.HashSet as HS
 
 import Parser
-import Helper
 
 data Group = Group [String]
   deriving Show
@@ -21,7 +21,7 @@ entriesP :: Parser [Group]
 entriesP = sepBy (stringP "\n\n") groupP <* ws <* eof
 
 readInput :: IO [Group]
-readInput = orElse [] <$> parseFile "data/day06" entriesP
+readInput = fromMaybe [] <$> parseFile "data/day06" entriesP
 
 anyAnswerCount :: Group -> Int
 anyAnswerCount (Group answers) = HS.size $ HS.fromList $ join answers

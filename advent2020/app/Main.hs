@@ -11,9 +11,10 @@ import Day03
 import Day04
 import Day05
 import Day06
+import Day07
 
 runners :: [IO ()]
-runners = [run01, run02, run03, run04, run05, run06]
+runners = [run01, run02, run03, run04, run05, run06, run07]
 
 dieWithUsage :: IO a
 dieWithUsage = die "Usage: advent [digit]"

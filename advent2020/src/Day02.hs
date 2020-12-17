@@ -36,7 +36,7 @@ allEntriesP :: Parser [Entry]
 allEntriesP = sepBy (charP '\n') entryP
 
 readInput :: IO [Entry]
-readInput = orElse [] <$> parseFile "data/day02" allEntriesP
+readInput = fromMaybe [] <$> parseFile "data/day02" allEntriesP
 
 isValidA :: Entry -> Bool
 isValidA (Entry (Policy letter minCount maxCount) password) =

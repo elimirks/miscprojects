@@ -74,6 +74,9 @@ filterP predicate (Parser p) =
       then Just (input', parsed)
       else Nothing
 
+optionP :: Parser a -> Parser ()
+optionP p = () <$ p <|> pure ()
+
 notNull :: Parser [a] -> Parser [a]
 notNull = filterP (not . null)
 
