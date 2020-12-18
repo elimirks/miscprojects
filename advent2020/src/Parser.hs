@@ -84,6 +84,12 @@ intP :: Parser Integer
 intP = f <$> notNull (spanP isDigit)
   where f ds = read ds
 
+-- Parse a signed int
+signedP :: Parser Integer
+signedP = (charP '+' *> intP) <|>
+          (charP '-' *> ((0 -) <$> intP)) <|>
+          intP
+
 ws :: Parser String
 ws = spanP isSpace
 
