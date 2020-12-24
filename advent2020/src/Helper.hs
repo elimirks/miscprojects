@@ -32,3 +32,11 @@ isDigitWithin :: String -> Integer -> Integer -> Bool
 isDigitWithin s least most = case safeRead s of
   Just value -> value >= least && value <= most
   _          -> False
+
+filterMaybe :: (a -> Bool) -> Maybe a -> Maybe a
+filterMaybe _ Nothing    = Nothing
+filterMaybe f (Just val) =
+  if f val then
+    Just val
+  else
+    Nothing
