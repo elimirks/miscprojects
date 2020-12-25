@@ -5,7 +5,6 @@ import Data.Char
 import Data.List
 import Data.Maybe
 import qualified Data.HashSet as HS
-import qualified Data.HashMap.Lazy as HM
 
 import Parser
 
@@ -29,9 +28,7 @@ bagP = do
   pure $ adjective <> " " <> colour
 
 bagCountP :: Parser BagCount
-bagCountP = do
-  num <- intP <* ws
-  BagCount num <$> bagP
+bagCountP = BagCount <$> (intP <* ws) <*> bagP
 
 bagCountsP :: Parser [BagCount]
 bagCountsP = notNull (sepBy (charP ',' *> ws) bagCountP)

@@ -15,10 +15,7 @@ data Entry = Entry
     _password :: String }
 
 rangeP :: Parser (Integer, Integer)
-rangeP = do
-  start <- intP <* charP '-'
-  end   <- intP
-  pure (start, end)
+rangeP = (,) <$> (intP <* charP '-') <*> intP
 
 policyP :: Parser Policy
 policyP = do
@@ -61,5 +58,10 @@ countValidB entries = countPredicate isValidB entries
 
 run02 :: IO ()
 run02 = do
-  passwords <- readInput
-  putStrLn $ show $ countValidB passwords
+  input <- readInput
+
+  putStrLn "Part 2.1:"
+  putStrLn $ show $ countValidA input
+
+  putStrLn "Part 3.1:"
+  putStrLn $ show $ countValidB input

@@ -17,10 +17,7 @@ componentP = spanP predicate
   where predicate c = c /= ' ' && c /= ':' && c /= '\n'
 
 metaP :: Parser (String, String)
-metaP = do
-  key   <- componentP <* charP ':'
-  value <- componentP
-  pure $ (key, value)
+metaP = (,) <$> (componentP <* charP ':') <*> componentP
 
 entryP :: Parser Entry
 entryP = Entry . HM.fromList <$> sepBy metaDelimP metaP
@@ -79,7 +76,7 @@ isPassport2 entry@(Entry fields) =
 run04 :: IO ()
 run04 = do
   input <- readInput
-  putStrLn "Part 1:"
+  putStrLn "Part 4.1:"
   putStrLn $ show $ length (filter isPassport1 input)
-  putStrLn "Part 2:"
+  putStrLn "Part 4.2:"
   putStrLn $ show $ length (filter isPassport2 input)

@@ -1,54 +1,42 @@
 module Day01 (run01) where
 
+import Control.Applicative
+import Data.List
 import qualified Data.HashSet as HS
 import qualified Data.HashMap.Lazy as HM
 
--- Finds the sum of the given list that matches a given target
--- O(n) solution
-find2Sum :: Integer -> [Integer] -> Maybe (Integer, Integer)
-find2Sum target nums = findSum' nums
-  where
-    findSum' :: [Integer] -> Maybe (Integer, Integer)
-    findSum' []     = Nothing
-    findSum' (x:xs) = if HS.member x lookupSet
-      then Just (x, target - x)
-      else findSum' xs
+target :: Integer
+target = 2020
 
+-- Finds the sum of the given list that matches the target
+-- O(n) solution
+multiplied2Sum :: [Integer] -> Maybe Integer
+multiplied2Sum nums =
+    (\x -> x * (target - x)) <$> find (flip HS.member lookupSet) nums
+  where
     lookupSet :: HS.HashSet Integer
     lookupSet = HS.fromList $ (target -) <$> nums
 
 -- O(n^2) solution :( so slow, so sad
-find3Sum :: Integer -> [Integer] -> Maybe (Integer, Integer, Integer)
-find3Sum target nums = findSum' nums
-  where
-    findSum' :: [Integer] -> Maybe (Integer, Integer, Integer)
-    findSum' []     = Nothing
-    findSum' (x:xs) =
-      case HM.lookup x lookupMap of
-        Just (y, z) -> Just (x, y, z)
-        Nothing     -> findSum' xs
-
-    -- Mapping from (target - pair) -> pair
-    lookupMap :: HM.HashMap Integer (Integer, Integer)
-    lookupMap = HM.fromList $ do
-      x <- nums
-      y <- nums
-      pure (target - x - y, (x, y))
-
-multiplied2Sum :: [Integer] -> Maybe Integer
-multiplied2Sum nums = (uncurry (*)) <$> find2Sum 2020 nums
-
 multiplied3Sum :: [Integer] -> Maybe Integer
-multiplied3Sum nums = (\(x, y, z) -> x * y * z) <$> find3Sum 2020 nums
+multiplied3Sum nums = findSum' nums
+  where
+    findSum' :: [Integer] -> Maybe Integer
+    findSum' []     = Nothing
+    findSum' (x:xs) = (x *) <$> HM.lookup x lookupMap <|> findSum' xs
+
+    -- Mapping from (target - pair) -> pair multiplication
+    lookupMap :: HM.HashMap Integer Integer
+    lookupMap = HM.fromList [(target - x - y, x * y) | x <- nums, y <- nums]
 
 readInput :: IO [Integer]
 readInput = (read <$>) <$> lines <$> readFile "data/day01"
 
 run01 :: IO ()
 run01 = do
-  inputNums <- readInput
-  putStrLn "Part 1:"
-  putStrLn $ show $ multiplied2Sum inputNums
+  input <- readInput
+  putStrLn "Part 1.1:"
+  putStrLn $ show $ multiplied2Sum input
 
-  putStrLn "Part 2:"
-  putStrLn $ show $ multiplied3Sum inputNums
+  putStrLn "Part 1.2:"
+  putStrLn $ show $ multiplied3Sum input
