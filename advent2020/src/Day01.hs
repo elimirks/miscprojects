@@ -5,6 +5,8 @@ import Data.List
 import qualified Data.HashSet as HS
 import qualified Data.HashMap.Lazy as HM
 
+import Helper
+
 target :: Integer
 target = 2020
 
@@ -29,12 +31,9 @@ multiplied3Sum nums = findSum' nums
     lookupMap :: HM.HashMap Integer Integer
     lookupMap = HM.fromList [(target - x - y, x * y) | x <- nums, y <- nums]
 
-readInput :: IO [Integer]
-readInput = (read <$>) <$> lines <$> readFile "data/day01"
-
 run01 :: IO ()
 run01 = do
-  input <- readInput
+  input <- readInputIntegers "data/day01"
   putStrLn "Part 1.1:"
   putStrLn $ show $ multiplied2Sum input
 

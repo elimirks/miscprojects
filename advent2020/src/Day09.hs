@@ -2,9 +2,9 @@ module Day09 (run09) where
 
 import Data.Maybe
 import Control.Applicative
+import Control.Monad
 
 import Helper
-import Parser
 
 -- Good old brute force solutions... yikes bikes
 
@@ -13,7 +13,7 @@ solve1 []          = Nothing
 solve1 allX@(_:xs) = filterMaybe (not . flip elem combos) target <|> solve1 xs
   where
     preamble = take 25 allX
-    combos = [a + b | a <- preamble, b <- preamble]
+    combos = liftM2 (+) preamble preamble
 
     target :: Maybe Integer
     target = listToMaybe $ drop 25 allX
@@ -33,15 +33,9 @@ solve2 l@(_:xs) target = solve2' (reverse l) <|> solve2 xs target
       else
         solve2' $ tail l'
 
-numsP :: Parser [Integer]
-numsP = sepBy (charP '\n') intP <* ws <* eof
-
-readInput :: IO [Integer]
-readInput = fromMaybe [] <$> parseFile "data/day09" numsP
-
 run09 :: IO ()
 run09 = do
-  input <- readInput
+  input <- readInputIntegers "data/day09"
   putStrLn "Part 9.1:"
   let solution1 = solve1 input
   putStrLn $ show $ solution1

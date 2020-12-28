@@ -40,3 +40,6 @@ filterMaybe f (Just val) =
     Just val
   else
     Nothing
+
+readInputIntegers :: String -> IO [Integer]
+readInputIntegers file = (read <$>) <$> lines <$> readFile file
