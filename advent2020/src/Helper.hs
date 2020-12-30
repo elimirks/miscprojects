@@ -2,7 +2,7 @@ module Helper where
 
 import Data.Char
 
-countPredicate :: (a -> Bool) -> [a] -> Integer
+countPredicate :: Foldable f => (a -> Bool) -> f a -> Integer
 countPredicate predicate = foldr f 0
   where
     f it acc | predicate it = acc + 1

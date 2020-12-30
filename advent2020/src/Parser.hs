@@ -2,8 +2,10 @@ module Parser where
 
 import Data.Char
 import Control.Applicative
+import Control.Monad
+import Control.Monad.Fail
 
--- Plagiarism from https://github.com/tsoding/haskell-json/
+-- Mostly plagiarism from https://github.com/tsoding/haskell-json/
 
 newtype Parser a = Parser
   { runParser :: String -> Maybe (String, a)
@@ -36,6 +38,12 @@ instance Alternative Parser where
   empty = Parser $ \_ -> Nothing
   (Parser p1) <|> (Parser p2) =
     Parser $ \input -> p1 input <|> p2 input
+
+instance MonadPlus Parser where
+  mzero = empty
+
+instance MonadFail Parser where
+  fail _ = mzero
 
 eof :: Parser ()
 eof = Parser f

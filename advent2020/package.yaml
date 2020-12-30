@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - hashable
 - unordered-containers
+- vector
 
 library:
   source-dirs: src
