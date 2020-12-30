@@ -43,3 +43,11 @@ filterMaybe f (Just val) =
 
 readInputIntegers :: String -> IO [Integer]
 readInputIntegers file = (read <$>) <$> lines <$> readFile file
+
+applyUntilNoChange :: Eq a => (a -> a) -> a -> a
+applyUntilNoChange f initial = 
+    if next /= initial
+      then applyUntilNoChange f next
+      else initial
+  where
+    next = f initial
