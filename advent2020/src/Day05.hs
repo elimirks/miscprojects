@@ -6,6 +6,7 @@ import Data.List
 import qualified Data.HashSet as HS
 
 import Parser
+import Helper
 
 data Half = Lower | Upper
   deriving (Show)
@@ -21,12 +22,6 @@ divisionP = many $ lowerP <|> upperP
 
 boardingP :: Parser Integer
 boardingP = halfAsInt <$> filterP ((== 10) . length) divisionP
-
-entriesP :: Parser [Integer]
-entriesP = sepBy (charP '\n') boardingP <* ws <* eof
-
-readInput :: IO [Integer]
-readInput = fromMaybe [] <$> parseFile "data/day05" entriesP
 
 halfAsInt :: [Half] -> Integer
 halfAsInt []         = 0
@@ -45,10 +40,10 @@ findMySeat ints = find f [1..1024]
 
 run05 :: IO ()
 run05 = do
-  seatIds <- readInput
+  input <- parseFileLines "data/day05" boardingP
 
   putStrLn "Part 5.1:"
-  putStrLn $ show $ maximum seatIds
+  putStrLn $ show $ maximum input
 
   putStrLn "Part 5.2:"
-  putStrLn $ show $ findMySeat seatIds
+  putStrLn $ show $ findMySeat input

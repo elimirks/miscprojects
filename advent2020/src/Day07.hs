@@ -3,10 +3,10 @@ module Day07 (run07) where
 import Control.Applicative
 import Data.Char
 import Data.List
-import Data.Maybe
 import qualified Data.HashSet as HS
 
 import Parser
+import Helper
 
 type Bag = String
 
@@ -39,12 +39,6 @@ ruleP = do
   bag <- bagP <* ws <* stringP "contain" <* ws
   Rule bag <$> bagCountsP <* charP '.'
 
-rulesP :: Parser [Rule]
-rulesP = sepBy (charP '\n') ruleP <* ws <* eof
-
-readInput :: IO [Rule]
-readInput = fromMaybe [] <$> parseFile "data/day07" rulesP
-
 -- Inefficient but simple solution... graphs in Haskell are painful
 findAllParents :: [Bag] -> [Rule] -> [Bag]
 findAllParents needles rules =
@@ -69,6 +63,6 @@ countGoldParents rules = length parentsAndSelf - 1
 
 run07 :: IO ()
 run07 = do
-  input <- readInput
+  input <- parseFileLines "data/day07" ruleP
   putStrLn "Part 7.1:"
   putStrLn $ show $ countGoldParents input

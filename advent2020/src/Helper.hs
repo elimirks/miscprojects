@@ -1,6 +1,9 @@
 module Helper where
 
 import Data.Char
+import System.Exit
+
+import Parser
 
 countPredicate :: Foldable f => (a -> Bool) -> f a -> Integer
 countPredicate predicate = foldr f 0
@@ -51,3 +54,12 @@ applyUntilNoChange f initial =
       else initial
   where
     next = f initial
+
+parseFileLines :: String -> Parser a -> IO [a]
+parseFileLines path parser = do
+  let parser' = sepBy (charP '\n') parser <* ws <* eof
+  parsed <- parseFile path parser'
+
+  case parsed of
+    Just parsed' -> pure parsed'
+    _            -> die $ "Failed to parse " <> path

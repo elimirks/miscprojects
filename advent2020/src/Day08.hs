@@ -4,6 +4,7 @@ import Control.Applicative
 import Data.Maybe
 import qualified Data.HashSet as HS
 
+import Helper
 import Parser
 
 data Instruction = Nop | Acc Int | Jmp Int
@@ -66,14 +67,8 @@ jmpP = Jmp . fromIntegral <$> (stringP "jmp" *> ws *> signedP)
 instructionP :: Parser Instruction
 instructionP = nopP <|> accP <|> jmpP
 
-instructionsP :: Parser [Instruction]
-instructionsP = sepBy (charP '\n') instructionP <* ws <* eof
-
-readInput :: IO [Instruction]
-readInput = fromMaybe [] <$> parseFile "data/day08" instructionsP
-
 run08 :: IO ()
 run08 = do
+  input <- parseFileLines "data/day08" instructionP
   putStrLn "Part 8.1:"
-  input <- readInput
   putStrLn $ show $ _accumulator $ runVM . mkVM $ input

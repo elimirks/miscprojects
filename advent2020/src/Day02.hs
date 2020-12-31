@@ -29,12 +29,6 @@ entryP = do
   password <- spanP (/= '\n')
   pure $ Entry policy password
 
-allEntriesP :: Parser [Entry]
-allEntriesP = sepBy (charP '\n') entryP
-
-readInput :: IO [Entry]
-readInput = fromMaybe [] <$> parseFile "data/day02" allEntriesP
-
 isValidA :: Entry -> Bool
 isValidA (Entry (Policy letter minCount maxCount) password) =
     letterCount >= minCount && letterCount <= maxCount
@@ -58,7 +52,7 @@ countValidB entries = countPredicate isValidB entries
 
 run02 :: IO ()
 run02 = do
-  input <- readInput
+  input <- parseFileLines "data/day02" entryP
 
   putStrLn "Part 2.1:"
   putStrLn $ show $ countValidA input
