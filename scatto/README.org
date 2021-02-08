@@ -1,0 +1,2 @@
+* Scatto
+  This will be a collection of Atto parser examples in Scala.
