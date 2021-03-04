@@ -114,12 +114,12 @@ object OSMParser {
   /**
     * Parses mulitple OSM open hour records, delimeted by ';'
     */
-  val recordsP: Parser0[Seq[Record]] =
+  val recordsP: Parser[NonEmptyList[Record]] =
     recordP
-      .repSep0(delimiterP(';'))
+      .repSep(delimiterP(';'))
       .surroundedBy(whitespace0P)
 
-  def parse(input: String): Option[Seq[Record]] = {
+  def parse(input: String): Option[NonEmptyList[Record]] = {
     recordsP.parseAll(input).toOption
   }
 }
