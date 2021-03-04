@@ -1,5 +1,7 @@
 package scatto
 
+import cats.data.NonEmptyList
+
 /**
   * Simplified OSM format
   */
@@ -20,5 +22,5 @@ final case class TimeRange(start: Time, end: Time) extends Serializable
 
 final case class Record(
   days: DayRange,
-  timeRanges: Seq[TimeRange],
+  timeRanges: NonEmptyList[TimeRange],
 ) extends Serializable
