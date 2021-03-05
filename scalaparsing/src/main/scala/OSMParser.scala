@@ -1,4 +1,4 @@
-package scatto
+package scalaparsing
 
 import scala.util.Try
 import cats.implicits._

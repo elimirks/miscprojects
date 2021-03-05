@@ -1,6 +1,0 @@
-* Scatto
-  This will be a collection of cats-parse* parser examples in Scala.
-  
-
-
-  * Originally it was going to be in `Atto`, hence the name `Scatto`

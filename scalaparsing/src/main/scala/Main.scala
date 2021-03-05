@@ -1,4 +1,4 @@
-package scatto
+package scalaparsing
 
 import cats.implicits._
 import pprint.pprintln

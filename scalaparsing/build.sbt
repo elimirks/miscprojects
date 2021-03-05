@@ -1,6 +1,6 @@
-scalaVersion := "2.13.3"
+scalaVersion := "2.12.10"
 
-name := "scatto"
+name := "scalaparsing"
 organization := "com.mirecki.elijah"
 
 libraryDependencies += "com.lihaoyi" %% "pprint" % "0.5.6"
