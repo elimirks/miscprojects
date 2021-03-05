@@ -1,5 +1,3 @@
-package scalaparsing
-
 import scala.util.Try
 import cats.implicits._
 import cats.parse.{Parser0, Parser, Numbers}

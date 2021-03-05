@@ -1,5 +1,3 @@
-package scalaparsing
-
 import cats.data.NonEmptyList
 
 /**

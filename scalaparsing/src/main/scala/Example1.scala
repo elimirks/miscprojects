@@ -1,17 +1,15 @@
-package scalaparsing
-
 import scala.util.Try
 import cats.implicits._
 import cats.parse.{Parser0, Parser, Numbers}
 
 /**
-  * scalaparsing.Example1.simpleDayP.parseAll("Mo")
-  * scalaparsing.Example1.dayP.parseAll("Mo")
-  * scalaparsing.Example1.dayP.parseAll("hello")
-  * scalaparsing.Example1.simpleDayRangeP.parseAll("MoTu")
-  * scalaparsing.Example1.simpleDayRangeP.parseAll("Mo-Tu")
-  * scalaparsing.Example1.dayRangeP.parseAll("Mo-Tu")
-  */
+Example1.simpleDayP.parseAll("Mo")
+Example1.dayP.parseAll("Mo")
+Example1.dayP.parseAll("hello")
+Example1.simpleDayRangeP.parseAll("MoTu")
+Example1.simpleDayRangeP.parseAll("Mo-Tu")
+Example1.dayRangeP.parseAll("Mo-Tu")
+*/
 object Example1 {
   sealed abstract class Day extends Product with Serializable
   final case object Monday extends Day

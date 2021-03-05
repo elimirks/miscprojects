@@ -1,19 +1,17 @@
-package scalaparsing
-
 import scala.util.Try
 import cats.implicits._
 import cats.parse.{Parser0, Parser, Numbers}
 import cats.data.NonEmptyList
 
 /**
-  * scalaparsing.Example2.simpleHourP.parseAll("10")
-  * scalaparsing.Example2.simpleHourP.parseAll("36")
-  * scalaparsing.Example2.hourP.parseAll("36")
-  * scalaparsing.Example2.simpleTimesP.parseAll("10:3011:30")
-  * scalaparsing.Example2.timesP.parseAll("10:30,11:30")
-  * scalaparsing.Example2.times0P.parseAll("10:30,11:30")
-  * scalaparsing.Example2.times0P.parseAll("")
-  */
+Example2.simpleHourP.parseAll("10")
+Example2.simpleHourP.parseAll("36")
+Example2.hourP.parseAll("36")
+Example2.simpleTimesP.parseAll("10:3011:30")
+Example2.timesP.parseAll("10:30,11:30")
+Example2.times0P.parseAll("10:30,11:30")
+Example2.times0P.parseAll("")
+*/
 object Example2 {
   final case class Time(
     hour: BigInt,
