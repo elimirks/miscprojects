@@ -1,6 +1,8 @@
 import cats.implicits._
-import pprint.pprintln
+
+import Helper.parsePrint
+import OSMParser.recordsP
 
 object Main extends App {
-  pprintln(OSMParser.recordsP.parseAll("Mo-Fr 08:00-12:00,13:00-17:30; Sa-Su 10:00 - 14:00"))
+  parsePrint(recordsP, "Mo-Fr 08:00-12:00,13:00-17:30; Sa-Su 10:00 - 14:00")
 }

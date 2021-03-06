@@ -1,15 +1,9 @@
-import scala.util.Try
 import cats.implicits._
-import cats.parse.{Parser0, Parser, Numbers}
+import cats.parse.Parser
 
-/**
-Example1.simpleDayP.parseAll("Mo")
-Example1.dayP.parseAll("Mo")
-Example1.dayP.parseAll("hello")
-Example1.simpleDayRangeP.parseAll("MoTu")
-Example1.simpleDayRangeP.parseAll("Mo-Tu")
-Example1.dayRangeP.parseAll("Mo-Tu")
-*/
+import Helper.parsePrint
+import Example1._
+
 object Example1 {
   sealed abstract class Day extends Product with Serializable
   final case object Monday extends Day
@@ -24,6 +18,7 @@ object Example1 {
 
   /**
     * The `oneOf` combinator tries parsing, one parser after the next
+    * @example parsePrint(simpleDayP, "Mo")
     */
   val simpleDayP: Parser[Unit] =
     Parser.oneOf(List(
@@ -38,6 +33,8 @@ object Example1 {
 
   /**
     * The `as` combinator will return a static value if the parser succeeds
+    * @example parsePrint(dayP, "Mo")
+    * @example parsePrint(dayP, "hello")
     */
   val dayP: Parser[Day] =
     Parser.oneOf(List(
@@ -53,6 +50,8 @@ object Example1 {
   /**
     * We can use for comprehensions to combine parsers
     * This is because Parser is a Monad!
+    * @example parsePrint(simpleDayRangeP, "MoTu")
+    * @example parsePrint(simpleDayRangeP, "Mo-Tu")
     */
   val simpleDayRangeP: Parser[DayRange] = for {
     start <- dayP
@@ -61,9 +60,21 @@ object Example1 {
 
   /**
     * Parse two days, with a hyphen between
+    * @example parsePrint(dayRangeP, "Mo-Tu")
     */
   val dayRangeP: Parser[DayRange] = for {
     start <- dayP <* Parser.char('-')
     end   <- dayP
   } yield DayRange(start, end)
+
+  /**
+    * mapN is another way to combine multiple parsers
+    * For parsers it's faster than using "for". Prefer mapN if possible
+    * @example parsePrint(dayRange2P, "Mo-Tu")
+    */
+  val dayRange2P: Parser[DayRange] =
+    (
+      dayP <* Parser.char('-'),
+      dayP
+    ).mapN(DayRange)
 }
