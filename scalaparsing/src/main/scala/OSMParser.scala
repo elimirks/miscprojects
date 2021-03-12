@@ -3,6 +3,8 @@ import cats.implicits._
 import cats.parse.{Parser0, Parser, Numbers}
 import cats.data.NonEmptyList
 
+import Helper.parsePrint
+
 /**
   * Simplified OSM format parser.
   */
@@ -24,10 +26,8 @@ object OSMParser {
     * Parses an unsigned int with optionally left-padded zeros 
     * Fails for values outside the bounds of Int
     *
-    * @example uintP.parseAll("2343")
-    *        > Right(2343)
-    * @example uintP.parseAll("0004") 
-    *        > Right(4)
+    * @example parsePrint(uintP, "2343")
+    * @example parsePrint(uintP, "0004")
     */
   val uintP: Parser[Int] =
     Numbers.digits.mapFilter(safeToInt)
@@ -36,8 +36,7 @@ object OSMParser {
     * Makes a parser for single character delimiters
     * Ignore surrounding whitespace, and discards the character itself
     *
-    * @example delimiterP('-').parseAll("     - \t")
-    *        > Right(Unit)
+    * @example parsePrint(delimiterP('-'), "     - \t")
     * @param c The delimiter character to parse
     */
   def delimiterP(c: Char): Parser[Unit] =
@@ -47,10 +46,8 @@ object OSMParser {
 
   /**
     * Parses an OSM day strings
-    * @example dayP.parseAll("Mo")
-    *        > Right(Monday)
-    * @example dayP.parseAll("Sa")
-    *        > Right(Saturday)
+    * @example parsePrint(dayP, "Mo")
+    * @example parsePrint(dayP, "Sa")
     */
   val dayP: Parser[Day] =
     Parser.oneOf(List(
@@ -65,8 +62,7 @@ object OSMParser {
 
   /**
     * Parses a day range, delimited with '-'
-    * @example dayRangeP.parseAll("Mo-We")
-    *        > Right(DayRange(Monday, Wednesday))
+    * @example parsePrint(dayRangeP, "Mo-We")
     */
   val dayRangeP: Parser[DayRange] = (
     dayP <* delimiterP('-'),
@@ -75,8 +71,7 @@ object OSMParser {
 
   /**
     * Parses an hour from 0-23
-    * @example hourP.parseAll("3")
-    *        > Right(3)
+    * @example parsePrint(hourP, "3")
     */
   val hourP: Parser[Int] =
     uintP.filter(x => x >= 0 && x <= 23)
@@ -89,8 +84,7 @@ object OSMParser {
 
   /**
     * Parses a timestamp
-    * @example timeP.parseAll("10:30") 
-    *        > Right(Time(10, 30))
+    * @example parsePrint(timeP, "10:30") 
     */
   val timeP: Parser[Time] = (
     hourP <* delimiterP(':'),
@@ -101,8 +95,7 @@ object OSMParser {
     * Parses a time range
     * For example "" turns into:
     * 
-    * @example timeP.parseAll("10:30 - 11:30")
-    *        > TimeRange(Time(10, 30), Time(11, 30))
+    * @example parsePrint(timeRangeP, "10:30 - 11:30")
     */
   val timeRangeP: Parser[TimeRange] = (
     timeP <* delimiterP('-'),
@@ -111,11 +104,7 @@ object OSMParser {
 
   /**
     * Parses multiple time ranges
-    * @example timeRangesP.parseAll("10:30 - 11:30, 12:30-14:00")
-    *        > Right(NonEmptyList(
-    *            TimeRange(Time(10, 30), Time(11, 30)),
-    *            TimeRange(Time(12, 30), Time(14, 00))
-    *          ))
+    * @example parsePrint(timeRangesP, "10:30 - 11:30, 12:30-14:00")
     */
   val timeRangesP: Parser[NonEmptyList[TimeRange]] =
     timeRangeP.repSep(delimiterP(','))
@@ -123,14 +112,7 @@ object OSMParser {
   /**
     * Parses a single OSM opening hour record
     * For example 
-    * @example recordP.parseAll("Mo-We 10:30 - 11:30, 12:45")
-    *        > Right(Record(
-    *            DayRange(Monday, Wednesday),
-    *            NonEmptyList(
-    *              TimeRange(Time(10, 30), Time(11, 30)),
-    *              TimeRange(Time(12, 30), Time(14, 00))
-    *            )
-    *          ))
+    * @example parsePrint(recordP, "Mo-We 10:30 - 11:30, 12:45  - 14:00")
     */
   val recordP: Parser[Record] = (
     dayRangeP <* whitespace0P,
@@ -139,10 +121,12 @@ object OSMParser {
 
   /**
     * Parses mulitple OSM open hour records, delimeted by ';'
-    * @example recordP.parseAll("Mo-We 10:30 - 11:30, 12:45; Sa-Su 10:00-11:00")
+    * @example parsePrint(recordsP, "Mo-Fr 08:00-12:00,13:00-17:30; Sa-Su 10:00 - 14:00")
     */
   val recordsP: Parser[NonEmptyList[Record]] =
     recordP
       .repSep(delimiterP(';'))
       .surroundedBy(whitespace0P)
 }
+
+import OSMParser._

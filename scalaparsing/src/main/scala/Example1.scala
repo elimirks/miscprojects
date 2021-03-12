@@ -2,7 +2,6 @@ import cats.implicits._
 import cats.parse.Parser
 
 import Helper.parsePrint
-import Example1._
 
 object Example1 {
   sealed abstract class Day extends Product with Serializable
@@ -32,13 +31,15 @@ object Example1 {
     ))
 
   /**
-    * The `as` combinator will return a static value if the parser succeeds
+    * The `as` function will return a constant value if the parser succeeds
+    * `.map(_ => x)` is the same as `.as(x)`
+    *
     * @example parsePrint(dayP, "Mo")
     * @example parsePrint(dayP, "hello")
     */
   val dayP: Parser[Day] =
     Parser.oneOf(List(
-      Parser.string("Mo").as(Monday),
+      Parser.string("Mo").map(_ => Monday),
       Parser.string("Tu").as(Tuesday),
       Parser.string("We").as(Wednesday),
       Parser.string("Th").as(Thursday),
@@ -78,3 +79,5 @@ object Example1 {
       dayP
     ).mapN(DayRange)
 }
+
+import Example1._

@@ -5,7 +5,6 @@ import cats.parse.{Parser0, Parser, Numbers}
 import cats.data.NonEmptyList
 
 import Helper.parsePrint
-import Example2._
 
 object Example2 {
   final case class Time(
@@ -84,3 +83,5 @@ object Example2 {
   val times0P: Parser0[Seq[Time]] =
     timeP.repSep0(Parser.char(','))
 }
+
+import Example2._
