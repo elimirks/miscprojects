@@ -1,0 +1,3 @@
+(executable
+ (name camlfuck)
+ (libraries core))
