@@ -3,47 +3,57 @@ type command = PointerLeft
              | Increment
              | Decrement
              | OutputChar
-             | InputChar
+             | Bracket of command list
 
 type env = {
-    pointer: int;
+    pointer: int ref;
     memory: int array;
   }
 
 let env = {
-    pointer = 0;
+    pointer = ref 0;
     memory = Array.make 30000 0
   }
 
 let input = Core.In_channel.read_all "./hello.bf"
 
-let rec parse str index =
-  if index >= String.length str then
-    []
-  else
-    match String.get str index with
-    | '>' -> PointerLeft  :: parse str (index + 1)
-    | '<' -> PointerRight :: parse str (index + 1)
-    | '+' -> Increment    :: parse str (index + 1)
-    | '-' -> Decrement    :: parse str (index + 1)
-    | '.' -> OutputChar   :: parse str (index + 1)
-    | ',' -> InputChar    :: parse str (index + 1)
-    | _   -> []
+let stackParse str =
+  let stack = ref [[]] in
+  let f character =
+    stack := match character with
+    | '>' -> (PointerLeft  :: (List.hd !stack)) :: List.tl !stack
+    | '<' -> (PointerRight :: (List.hd !stack)) :: List.tl !stack
+    | '+' -> (Increment    :: (List.hd !stack)) :: List.tl !stack
+    | '-' -> (Decrement    :: (List.hd !stack)) :: List.tl !stack
+    | '.' -> (OutputChar   :: (List.hd !stack)) :: List.tl !stack
+    | '[' -> [] :: !stack
+    | ']' -> (
+      match !stack with
+      | x::y::xs -> (Bracket (List.rev x) :: y) :: xs
+      | _        -> [] (* wat?! Horrible error handling :] *)
+    )
+    | _   -> !stack
+  in
+  for i = 0 to String.length str - 1 do
+    f str.[i]
+  done;
+  List.hd !stack |> List.rev
 
-let program = parse input 0
+let program = stackParse input
 
-let run c env =
+let step env c =
+  let ptr = env.pointer
+  and mem = env.memory
+  in
   match c with
-  | PointerLeft ->
-     env.pointer = env.pointer - 1
-  | PointerRight ->
-     env.pointer = env.pointer + 1
-  | Increment ->
-     Array.set env.memory env.pointer
-       (Array.get env.memory env.pointer + 1)
-  | Decrement ->
-     Array.set env.memory env.pointer
-       (Array.get env.memory env.pointer - 1)
-  | _   -> ()
+  | PointerLeft  -> ptr := !ptr - 1
+  | PointerRight -> ptr := !ptr + 1
+  | Increment    -> Array.set mem !ptr (Array.get mem !ptr + 1)
+  | Decrement    -> Array.set mem !ptr (Array.get mem !ptr - 1)
+  | OutputChar   -> Printf.printf "%c" (Char.chr (Array.get env.memory 0))
+  (* TODO: Handle Bracket case *)
+  | _            -> ()
 
-let () = print_endline input
+let () =
+  let _ = List.map (step env) program
+  in ()
