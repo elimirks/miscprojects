@@ -8,7 +8,7 @@ PROJECT = kaleidoscope
 SRC_DIR = 'src'
 OBJ_DIR = 'obj'
 
-SRCS = src/main.c
+SRCS = src/main.cpp src/lexer.cpp src/ast.cpp src/parser.cpp
 
 # Targets
 $(PROJECT): buildrepo
