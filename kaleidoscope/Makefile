@@ -1,22 +1,24 @@
 # Compiler
 CC   = clang++
-OPTS = -g -O3 `llvm-config --cxxflags`
+LINKER_FLAGS = -O3 `llvm-config --ldflags --cxxflags --system-libs --libs core`
+CPP_FLAGS = -g -O3 `llvm-config --cxxflags`
 
 # Project name
 PROJECT = kaleidoscope
 
-SRC_DIR = 'src'
-OBJ_DIR = 'obj'
+SRC_FILES := $(wildcard src/*.cpp)
+OBJ_FILES := $(patsubst src/%.cpp,obj/%.o,$(SRC_FILES))
 
-SRCS = src/main.cpp src/lexer.cpp src/ast.cpp src/parser.cpp
+all: obj $(PROJECT)
 
-# Targets
-$(PROJECT): buildrepo
-	$(CC) $(SRCS) -o $@
+$(PROJECT): $(OBJ_FILES)
+	$(CC) $(LINKER_FLAGS) -o $@ $^
+
+obj/%.o: src/%.cpp
+	$(CC) $(CPP_FLAGS) -c -o $@ $<
 
 clean:
-	rm $(PROJECT) $(OBJ_DIR) -Rf
+	rm $(PROJECT) obj -Rf
 
-buildrepo:
-	mkdir -p $(OBJ_DIR)
-
+obj:
+	mkdir -p obj
