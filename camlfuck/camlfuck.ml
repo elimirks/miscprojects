@@ -3,6 +3,7 @@ type command = PointerLeft
              | Increment
              | Decrement
              | OutputChar
+             | InputChar
              | Bracket of command list
 
 type env = {
@@ -10,23 +11,17 @@ type env = {
     memory: int array;
   }
 
-let env = {
-    pointer = ref 0;
-    (* As per the original BF spec, the max size was 30000 *)
-    memory = Array.make 30000 0
-  }
-
-let input = Core.In_channel.read_all "./hello.bf"
-
-let stackParse str =
+let parse program =
   let stack = ref [[]] in
-  let f character =
+  let pushCommand c = (c :: (List.hd !stack)) :: List.tl !stack in
+  let parseChar character =
     stack := match character with
-    | '<' -> (PointerLeft  :: (List.hd !stack)) :: List.tl !stack
-    | '>' -> (PointerRight :: (List.hd !stack)) :: List.tl !stack
-    | '+' -> (Increment    :: (List.hd !stack)) :: List.tl !stack
-    | '-' -> (Decrement    :: (List.hd !stack)) :: List.tl !stack
-    | '.' -> (OutputChar   :: (List.hd !stack)) :: List.tl !stack
+    | '<' -> pushCommand PointerLeft
+    | '>' -> pushCommand PointerRight
+    | '+' -> pushCommand Increment
+    | '-' -> pushCommand Decrement
+    | '.' -> pushCommand OutputChar
+    | ',' -> pushCommand InputChar
     | '[' -> [] :: !stack
     | ']' -> (
       match !stack with
@@ -35,18 +30,20 @@ let stackParse str =
     )
     | _   -> !stack
   in
-  for i = 0 to String.length str - 1 do
-    f str.[i]
+  for i = 0 to String.length program - 1 do
+    parseChar program.[i]
   done;
   List.hd !stack |> List.rev
 
-let program = stackParse input
+let readChar () =
+  try Scanf.scanf "%c" Char.code with
+    End_of_file -> 0
 
-let rec step env c =
+let rec step env command =
   let ptr = env.pointer
   and mem = env.memory
   in
-  match c with
+  match command with
   | PointerLeft  ->
      if !ptr == 0 then
        ()
@@ -55,13 +52,23 @@ let rec step env c =
   | PointerRight -> ptr := !ptr + 1
   | Increment    -> Array.set mem !ptr (Array.get mem !ptr + 1)
   | Decrement    -> Array.set mem !ptr (Array.get mem !ptr - 1)
-  | OutputChar   -> Printf.printf "%c" (Char.chr (Array.get env.memory !ptr))
+  | OutputChar   -> Array.get env.memory !ptr |> Char.chr |> Printf.printf "%c"
+  | InputChar    -> readChar () |> Array.set mem !ptr
   | Bracket body ->
-     while (Array.get env.memory !ptr) != 0 do
-       let _ = List.map (step env) body in
-       ()
+     while Array.get env.memory !ptr != 0 do
+       List.iter (step env) body
      done
 
+let runProgram path =
+  let program = Core.In_channel.read_all path |> parse in
+  let env = {
+      pointer = ref 0;
+      (* As per the original BF spec, the max size was 30000 *)
+      memory = Array.make 30000 0
+    } in
+  List.iter (step env) program
+
 let () =
-  let _ = List.map (step env) program in
-  ()
+  match Sys.argv with
+  | [| _; path |] -> runProgram path
+  | _ -> Printf.printf "Usage: %s [PATH].bf" Sys.argv.(0)
