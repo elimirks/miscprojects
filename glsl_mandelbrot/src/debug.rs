@@ -61,12 +61,13 @@ impl <'a> DebugWindow<'a> {
     }
 
     // The year was 1995.
-    pub fn render(&mut self, curr_time: f32) {
+    pub fn render(&mut self, curr_time: f32, zoom: f32) {
         self.canvas.set_draw_color(Color::RGB(0, 0, 0));
         self.canvas.clear();
 
         let fps_text = self.counter.tick(curr_time);
         self.draw_text(format!("FPS: {}", fps_text), 10, 10, Color::WHITE);
+        self.draw_text(format!("Zoom: {:+.2e}", zoom), 10, 50, Color::WHITE);
 
         self.canvas.present();
     }

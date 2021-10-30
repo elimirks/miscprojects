@@ -141,7 +141,7 @@ fn run(mut elc: EventLoopContext) {
         }
 
         let curr_time = get_current_time(&elc);
-        debug_window.render(curr_time);
+        debug_window.render(curr_time, zoom);
 
         renderer.render(&context, pan_x, pan_y, zoom);
 
