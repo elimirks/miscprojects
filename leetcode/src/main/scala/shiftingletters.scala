@@ -3,14 +3,16 @@ import scala.collection.{mutable => mut}
 object Solution {
   def shiftingLetters(s: String, shifts: Array[Int]): String = {
     val shiftedValues = mut.ArrayBuffer.fill(s.size)('\u0000')
-    var totalShift = 0L
+    var totalShift = 0
 
     // Go from right to left so we can accumulate totalShift
     for (i <- (0 until shifts.size).reverse) {
-      totalShift += shifts(i)
-      val prev = s.charAt(i).toLong - 'a'.toLong
+      totalShift += shifts(i) % 26
+      totalShift %= 26
+
+      val prev = s.charAt(i).toInt - 'a'.toInt
       val wrapped = (prev + totalShift) % 26
-      shiftedValues(i) = (wrapped + 'a'.toLong).toChar
+      shiftedValues(i) = (wrapped + 'a'.toInt).toChar
     }
 
     shiftedValues.mkString
