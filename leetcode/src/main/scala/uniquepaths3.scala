@@ -30,11 +30,11 @@ object Solution {
     toSearch.push((startX, startY, Set((startX, startY))))
 
     /* Augmented DFS to traverse every path, no early termination
-     * So it's worse than O(n).
-     * With DFS, `toSearch` will be at most of length `emptyCount * 3`
-     * ^ since the traversal has to "pick and pop" one of the added nodes
+     * So it's worse than O(n) runtime.
      * With BFS, `toSearch` would get larger, since it eventually has to store
      * every single possible path in memory at once in the worst case.
+     * DFS will use less memory since it doesn't need to store every
+     * possible path at once.
      */
     while (toSearch.nonEmpty) {
       val (x, y, visited) = toSearch.pop()
