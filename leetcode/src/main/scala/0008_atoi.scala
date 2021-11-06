@@ -1,3 +1,4 @@
+// https://leetcode.com/problems/string-to-integer-atoi/
 object Solution {
   def myAtoi(s: String): Int = {
     val trimmed = s.trim

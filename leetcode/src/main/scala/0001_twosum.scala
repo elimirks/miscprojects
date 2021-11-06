@@ -1,7 +1,7 @@
 // Input: nums = [2,7,11,15], target = 9
 // Output: [0,1]
 // Output: Because nums[0] + nums[1] == 9, we return [0, 1].
-
+// https://leetcode.com/problems/two-sum/
 object Solution {
   // O(n)
   def twoSum(nums: Array[Int], target: Int): Array[Int] = {

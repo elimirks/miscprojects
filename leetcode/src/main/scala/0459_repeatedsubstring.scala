@@ -1,7 +1,7 @@
 // Input: s = "abab"
 // Output: true
 // Explanation: It is the substring "ab" twice.
-
+// https://leetcode.com/problems/repeated-substring-pattern/
 object Solution {
   // Assumes str.length - index >= subLen
   def cmp(str: String, index: Int, subLen: Int): Boolean = {

@@ -1,6 +1,7 @@
 // https://leetcode.com/problems/sum-of-absolute-differences-in-a-sorted-array/
 // result[i] is equal to sum(|nums[i]-nums[j]|) where 0 <= j < nums.length
-// NOTE: The leetcode evaluator for this problem is broken
+// NOTE: The leetcode evaluator for this problem doesn't allow extra memory..
+//       So this solution doesn't pass all their test cases
 object Solution {
   def getSumAbsoluteDifferences(nums: Array[Int]): Array[Int] = {
     val res = Array.ofDim[Int](nums.size)

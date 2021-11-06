@@ -1,4 +1,4 @@
-// https://leetcode.com/explore/challenge/card/august-leetcoding-challenge-2021/615/week-3-august-15th-august-21st/3905/
+// https://leetcode.com/problems/sudoku-solver/
 object Solution {
   type Board = Array[Array[Char]]
 

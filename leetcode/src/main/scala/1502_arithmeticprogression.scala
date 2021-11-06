@@ -1,5 +1,6 @@
 import scala.collection.mutable
 
+// https://leetcode.com/problems/can-make-arithmetic-progression-from-sequence/
 // Naive solution: Sort first then check. But that's O(n log n)!
 // Better solution is using a Set: will be O(n)
 object Solution {
