@@ -1,3 +1,5 @@
+package problem24
+
 // Computes the number of mergeSort for the given list
 
 def brute(nums: Array[Int]): Int = {
@@ -66,12 +68,14 @@ def sort(nums: Array[Int]): Array[Int] = {
   nums
 }
 
-println("Brute force:")
-println(brute(Array(2, 3, 8, 6, 1)))
-println(brute(Array(5, 4, 3, 2, 1)))
-println(brute(Array(1, 2, 3, 4, 5)))
+def entry24(): Unit = {
+  println("Brute force:")
+  println(brute(Array(2, 3, 8, 6, 1)))
+  println(brute(Array(5, 4, 3, 2, 1)))
+  println(brute(Array(1, 2, 3, 4, 5)))
 
-println("Divide and conquer inversion:")
-println(sort(Array(2, 3, 8, 6, 1)).mkString(","))
-println(sort(Array(5, 4, 3, 2, 1)).mkString(","))
-println(sort(Array(1, 2, 3, 4, 5)).mkString(","))
+  println("Divide and conquer inversion:")
+  println(sort(Array(2, 3, 8, 6, 1)).mkString(","))
+  println(sort(Array(5, 4, 3, 2, 1)).mkString(","))
+  println(sort(Array(1, 2, 3, 4, 5)).mkString(","))
+}

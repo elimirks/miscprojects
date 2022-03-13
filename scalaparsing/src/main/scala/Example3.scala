@@ -115,7 +115,7 @@ object Example3 {
   val breakfastP: Parser[Int] =
     Parser.oneOf(List(
       pancakeWithSyrupP.backtrack.as(0),
-      waffleWithSyrup2P.as(2)
+      waffleWithSyrupP.as(2)
     )).backtrack
 }
 
