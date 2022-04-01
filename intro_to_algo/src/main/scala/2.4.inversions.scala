@@ -68,7 +68,7 @@ def sort(nums: Array[Int]): Array[Int] = {
   nums
 }
 
-def entry24(): Unit = {
+@main def entry(): Unit = {
   println("Brute force:")
   println(brute(Array(2, 3, 8, 6, 1)))
   println(brute(Array(5, 4, 3, 2, 1)))

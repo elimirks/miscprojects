@@ -169,7 +169,7 @@ def findCrossover(start: Int, f1: SolFun, f2: SolFun): Int = {
   i
 }
 
-@main def entry413(): Unit = {
+@main def entry(): Unit = {
   testSolutions()
 
   // Interestingly enough, the performance of the hybrid solution is
