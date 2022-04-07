@@ -1,6 +1,7 @@
 package problem413
 
 import scala.util.Random
+import util.time
 
 /**
   * Generates an array of random numbers in the given bounds.
@@ -138,13 +139,6 @@ def testSolutions(): Unit = {
     assert(brute == dnc)
     assert(brute == hybrid)
   }
-}
-
-def time[R](block: => R): Long = {
-  val t0 = System.nanoTime()
-  block
-  val t1 = System.nanoTime()
-  t1 - t0
 }
 
 type SolFun = (Array[Int], Int, Int) => (Int, Int, Int)
