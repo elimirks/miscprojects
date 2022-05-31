@@ -1,7 +1,7 @@
 // https://leetcode.com/problems/number-of-steps-to-reduce-a-number-to-zero/
 
 // Trivial solution... is there a trick to do better though?
-object TrivialSolution {
+object Solution {
   def numberOfSteps(num: Int): Int = {
     var acc = num
     var steps = 0
