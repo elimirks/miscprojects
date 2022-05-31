@@ -122,19 +122,19 @@ object Solution {
   // Assumes the params are positive numbers
   def safeDivide(dividend: Long, divisor: Long): Long = {
     var doubled = divisor
-    var pointer = 0
+    var doubleCount = 0
     while (doubled <= dividend) {
       doubled <<= 1
-      pointer += 1
+      doubleCount += 1
     }
     var quotient = 0L
     var acc = dividend
-    while (pointer >= 0 && acc != 0) {
+    while (doubleCount >= 0 && acc != 0) {
       if (doubled <= acc) {
         acc -= doubled
-        quotient += 1L << pointer
+        quotient += 1L << doubleCount
       }
-      pointer -= 1
+      doubleCount -= 1
       doubled >>= 1
     }
     quotient
