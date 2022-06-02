@@ -58,7 +58,6 @@ object PoorMemorySolution {
   }
 }
 
-import scala.collection.mutable
 object Solution {
   def coinChange(coins: Array[Int], amount: Int): Int = {
     val dyn = Array.ofDim[Int](amount + 1)
@@ -76,5 +75,3 @@ object Solution {
     if (dyn(amount) == Int.MaxValue) -1 else dyn(amount)
   }
 }
-
-Solution.coinChange(Array(1, 2, 5), 11)
