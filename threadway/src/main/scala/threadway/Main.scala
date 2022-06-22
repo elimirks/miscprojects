@@ -1,32 +1,15 @@
 package threadway
 
-import java.io.BufferedWriter
 import java.lang.StringBuilder
-import scala.collection.mutable
 import scala.io.Source
 import scala.concurrent.Future
 import scala.concurrent.Await
-import scala.concurrent.blocking
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
-import java.util.concurrent.Executors
-import scala.util.Success
 
 object Main extends App {
   def updateWorld(input: Source): Unit = {
-    /*
-    implicit val ec: ExecutionContext =
-      ExecutionContext.fromExecutor(Executors.newFixedThreadPool(4))
-     */
     implicit val ec: ExecutionContext = ExecutionContext.global
-
-    val things = for (i <- 0 until 10) yield Future {
-      println(s"i: $i")
-      Thread.sleep((i / 2) * 1000)
-      i
-    }
-
-    things.foreach(f => println(Await.result(f, Duration.Inf)))
 
     val lines = input.getLines()
     val first = lines.nextOption.get
@@ -53,7 +36,13 @@ object Main extends App {
       }
     }
 
-    processedRows.foreach(f => println(Await.result(f, Duration.Inf)))
+    /* Since lines gets processed lazily, we need to group and sequence to get
+     * multiple lines processing simultaneously
+     */
+    processedRows.grouped(2)
+      .map(Future.sequence(_))
+      .map(f => Await.result(f, Duration.Inf))
+      .foreach(batch => batch.foreach(println))
 
     above  = middle
     middle = below
