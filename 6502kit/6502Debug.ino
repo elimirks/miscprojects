@@ -1,4 +1,8 @@
-// Taken from https://eater.net/6502
+/* Taken from https://eater.net/6502
+ * Compile with:
+ * arduino-cli compile 6502Debug.ino --fqbn "arduino:avr:mega"
+ * arduino-cli upload 6502Debug.ino --fqbn "arduino:avr:mega" --port /dev/ttyACM0
+ */
 
 const char ADDR[] = {38, 39, 40, 41, 53, 52, 51, 50,
                      49, 48, 47, 46, 45, 44, 43, 42};
@@ -46,3 +50,4 @@ void onClock() {
 
 void loop() {
 }
+
