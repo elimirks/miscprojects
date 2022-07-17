@@ -17,3 +17,8 @@ Code for [Ben Eater's 6502 computer kit](https://eater.net/6502)
 ## 6502 Assembly
 
 See `blink.s` for an minimal example program.
+
+References:
+- https://en.wikibooks.org/wiki/6502_Assembly
+- http://www.6502.org/tutorials/6502opcodes.html
+- https://skilldrick.github.io/easy6502/
