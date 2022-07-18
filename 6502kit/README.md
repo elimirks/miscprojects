@@ -22,3 +22,4 @@ References:
 - https://en.wikibooks.org/wiki/6502_Assembly
 - http://www.6502.org/tutorials/6502opcodes.html
 - https://skilldrick.github.io/easy6502/
+- https://usermanual.wiki/Document/pokeyC012294.3349751284/view
