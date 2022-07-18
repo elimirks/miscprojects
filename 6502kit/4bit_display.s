@@ -1,35 +1,22 @@
-PORTB = $6000
-PORTA = $6001
-DDRB = $6002
-DDRA = $6003
+PORTB = $6000                   ; I/O data register B
+PORTA = $6001                   ; I/O data register A
+DDRB = $6002                    ; Data direction register B
+DDRA = $6003                    ; Data direction register A
 
-E  = %10000000
-RW = %01000000
-RS = %00100000
+E  = %00001000
+RW = %00000100
+RS = %00000010
 
 
   .org $8000
 
 
 reset:
+  ;; Initialize the stack pointer
   ldx #$ff
   txs
 
-  lda #%11111111
-  sta DDRB
-  lda #%11100000
-  sta DDRA
-
-  ;; Set 4-bit operation mode
-  jsr lcd_wait
-  lda #%00100000
-  sta PORTB
-  lda #0
-  sta PORTA
-  lda #E
-  sta PORTA
-  lda #0
-  sta PORTA
+  jsr lcd_init
   ;; Set 4-bit 2-row mode, using the secondary font (non-jp)
   lda #%00101000
   jsr lcd_instruction
@@ -61,86 +48,101 @@ eofspin:
   jmp eofspin
 
 
+lcd_init:
+  ;; Set data direction to all outputs for I/O register B
+  lda #%11111111
+  sta DDRB
+  ;; Set 4-bit operation mode
+  jsr lcd_wait
+  lda #%00100000
+  sta PORTB
+  ora #E
+  sta PORTB
+  and #(~E)
+  sta PORTB
+  rts
+
+
   ;; Only uses the A and Y registers
 lcd_wait:
-  lda #%00000000                 ; Set port B to all input
+  lda #%00001111
   sta DDRB
 lcdbusy:
   lda #RW
-  sta PORTA
+  sta PORTB
   lda #(RW | E)
-  sta PORTA
+  sta PORTB
   ldy PORTB
   ;; Ignore the second nibble
   lda #RW
-  sta PORTA
+  sta PORTB
   lda #(RW | E)
-  sta PORTA
+  sta PORTB
   ;; Check if the busy flag is set
   tya
   and #%10000000
   bne lcdbusy
 
   lda #RW
-  sta PORTA
+  sta PORTB
   lda #%11111111  ; Set port B to all output
   sta DDRB
   rts
 
 
+  ;; The A register is the instruction parameter
 lcd_instruction:
   ;; Wait for the busy flag
   tax
   jsr lcd_wait
   ;; Send MSB
-  stx PORTB
-  lda #0                        ; Clear RS/RW/E bits
-  sta PORTA
-  lda #E                        ; Set E bit to send instruction
-  sta PORTA
-  lda #0                        ; Clear RS/RW/E bits
-  sta PORTA
+  txa
+  and #%11110000                ; Clear RS/RW/E bits
+  sta PORTB
+  ora #E                        ; Set E bit to send instruction
+  sta PORTB
+  and #(~E)
+  sta PORTB
   txa
   ;; Send LSB
   rol
   rol
   rol
   rol
+  and #%11110000
   sta PORTB
-  lda #0                        ; Clear RS/RW/E bits
-  sta PORTA
-  lda #E                        ; Set E bit to send instruction
-  sta PORTA
-  lda #0                        ; Clear RS/RW/E bits
-  sta PORTA
+  ora #E
+  sta PORTB
+  and #(~E)
+  sta PORTB
   rts
 
 
+  ;; The A register is the data character parameter
 lcd_print_char:
   ;; Wait for the busy flag
   tax
   jsr lcd_wait
   ;; Send MSB
-  stx PORTB
-  lda #RS                       ; Clear RS/RW/E bits
-  sta PORTA
-  lda #(RS | E)                 ; Set E bit to send instruction
-  sta PORTA
-  lda #RS                       ; Clear RS/RW/E bits
-  sta PORTA
+  txa
+  and #%11110000                ; Clear RS/RW/E bits
+  sta PORTB
+  ora #(RS | E)                 ; Set E bit and RS to send data
+  sta PORTB
+  and #(~(RS | E))
+  sta PORTB
   txa
   ;; Send LSB
   rol
   rol
   rol
   rol
+  and #%11110000
   sta PORTB
-  lda #RS                       ; Clear RS/RW/E bits
-  sta PORTA
-  lda #(RS | E)                 ; Set E bit to send instruction
-  sta PORTA
-  lda #RS                       ; Clear RS/RW/E bits
-  sta PORTA
+  ora #(RS | E)
+  sta PORTB
+  and #(~(RS | E))
+  sta PORTB
   rts
 
 
