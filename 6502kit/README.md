@@ -5,6 +5,8 @@ Code for [Ben Eater's 6502 computer kit](https://eater.net/6502)
 - fffc-fffd: must be set to 8000, to tell the processer to jump to that starting position
 - fffe-ffff: Unused
 - 6000-600f: IO chip. See section 2 of the data sheet for what each address does.
+- 6002:      Data direction register B, used for the LCD
+- 6000:      IO data register B, used for the LCD
 - 0000-00ff: "Zero page". Faster access memory than the rest of the address space
 - 0100-01ff: Stack
 - 0200-3fff: General purpose RAM
@@ -18,8 +20,16 @@ Code for [Ben Eater's 6502 computer kit](https://eater.net/6502)
 
 See `blink.s` for an minimal example program.
 
+Or if you want to write an actual program, see `base.s` and `i_ate_some_pie.s`
+
 References:
 - https://en.wikibooks.org/wiki/6502_Assembly
 - http://www.6502.org/tutorials/6502opcodes.html
 - https://skilldrick.github.io/easy6502/
 - https://usermanual.wiki/Document/pokeyC012294.3349751284/view
+
+
+## TODO
+
+- https://trobertson.site/6502-power-on-reset/
+- http://wilsonminesco.com/6502primer/RSTreqs.html
