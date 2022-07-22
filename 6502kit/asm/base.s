@@ -30,8 +30,10 @@ _base_reset:
   ldx #$ff
   txs
 
-  ;; Set up port A for outputs, which are connected to LEDs (for now)
-  lda #%11111111
+  ;; Set up port A for outputs on the high bits, inputs on the low bits
+  ;; For now, the high bits are connected to 4 LEDs
+  ;; The low bits are connected to switches
+  lda #%11110000
   sta VIA_DDRA
 
   jsr _base_lcd_init
@@ -150,6 +152,34 @@ lcd_print_char:
   sta VIA_PORTB
   and #(~(VIA_RS | VIA_E))
   sta VIA_PORTB
+  rts
+
+
+  ;; The A register is the value to print in hex
+  ;; Always outputs 2 characters
+lcd_print_hex:
+  ;; TODO: Translate into hex characters.. one nibble at a time!
+  pha
+  ror
+  ror
+  ror
+  ror
+  jsr lcd_print_hex_nibble
+  pla
+  jmp lcd_print_hex_nibble ; No need to jsr here, we want to return after anyways
+lcd_print_hex_nibble:
+  and #$0f
+  cmp #$a
+  bpl _lcd_print_hex_over_10
+
+  clc
+  adc #"0"
+  jsr lcd_print_char
+  rts
+_lcd_print_hex_over_10:
+  clc
+  adc #("A" - 10)
+  jsr lcd_print_char
   rts
 
 
