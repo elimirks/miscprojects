@@ -5,7 +5,7 @@
 ;; initialize then return here to spin ad infinitum:
 ;; ```
 ;;    .include "base.s"
-;;    .org $8000
+;;    .org ORIGIN
 ;;  main:
 ;;    rts
 ;; ```
@@ -21,12 +21,17 @@ VIA_E     = %00001000 ; Enable pin
 VIA_RW    = %00000100 ; Read/Write pin
 VIA_RS    = %00000010 ; Register Select pin
 
+ORIGIN    = $8000     ; EEPROM origin
+STACK_ORG = $0100     ; Program stack origin
 
-  .org $8000
+
+  .org ORIGIN
 
 
 _base_reset:
   ;; Initialize the stack pointer
+  ;; Remember, it grows down. So if you push a byte to the stack, SP := SP-1
+  ;; SP is the index of the NEXT stack element to push, not the most recent
   ldx #$ff
   txs
 
