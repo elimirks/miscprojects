@@ -4,12 +4,12 @@
  * arduino-cli upload 6502Debug.ino --fqbn "arduino:avr:mega" --port /dev/ttyACM0
  */
 
-const char ADDR[] = {29, 41, 31, 42, 34, 35, 33, 32,
+const char ADDR[] = {28, 41, 31, 42, 34, 35, 33, 32,
                      43, 44, 45, 46, 47, 48, 49, 50};
 const char DATA[] = {36, 37, 38, 39, 40, 53, 52, 51};
 
 #define CLOCK 21
-#define READ_WRITE 30
+#define READ_WRITE 29
 
 void setup() {
     for (int n = 0; n < 16; n += 1) {

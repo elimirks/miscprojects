@@ -1,5 +1,5 @@
   .include "base.s"
-  .org $8000
+  .org ORIGIN
 
 main:
   ;; Print message!

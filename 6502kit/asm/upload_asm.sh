@@ -11,4 +11,4 @@ ASM_FILE=$1
 BIN_FILE=/tmp/vasm.bin
 
 vasm6502_oldstyle -Fbin -dotdir $ASM_FILE -o $BIN_FILE && minipro -p AT28C256 -w $BIN_FILE
-rm $BIN_FILE
+#rm $BIN_FILE

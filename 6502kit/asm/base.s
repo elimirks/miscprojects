@@ -13,18 +13,18 @@
 
 ;; VIA chip Enable, Read/Write, and Register Select pins
 ;; https://eater.net/datasheets/w65c22.pdf
-VIA_PORTB = $6000     ; I/O data register B
-VIA_PORTA = $6001     ; I/O data register A
-VIA_DDRB  = $6002     ; Data direction register B
-VIA_DDRA  = $6003     ; Data direction register A
+VIA_PORTB = $8000     ; I/O data register B
+VIA_PORTA = $8001     ; I/O data register A
+VIA_DDRB  = $8002     ; Data direction register B
+VIA_DDRA  = $8003     ; Data direction register A
 VIA_E     = %00001000 ; Enable pin
 VIA_RW    = %00000100 ; Read/Write pin
 VIA_RS    = %00000010 ; Register Select pin
 
-ORIGIN    = $8000     ; EEPROM origin
+ORIGIN    = $c000     ; EEPROM origin
 STACK_ORG = $0100     ; Program stack origin
 
-
+  .org $8000 ; Necessary to fill up the entire 32K
   .org ORIGIN
 
 
