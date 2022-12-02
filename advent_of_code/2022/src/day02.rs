@@ -14,8 +14,10 @@ enum Outcome {
 }
 
 pub fn day02() -> AocResult<()> {
+    golf_solution()?;
+
     let data = std::fs::read_to_string("data/day2_part1.txt")?;
-    let part1_pairs = data.split('\n').filter(|line| !line.is_empty()).map(|line| {
+    let part1_pairs = data.lines().map(|line| {
         let lhs = match line.chars().next() {
             Some('A') => Move::Rock,
             Some('B') => Move::Paper,
@@ -70,4 +72,15 @@ fn compute_score(pairs: &[(Move, Move)]) -> u64 {
             _                             => 0
         }
     }).sum()
+}
+
+fn golf_solution() -> AocResult<()> {
+    let (p1, p2) = std::fs::read_to_string("data/day2_part1.txt")?
+        .lines().map(|l| {
+            ((l.as_bytes()[2] - 'X' as u8) + (l.as_bytes()[0] - 'A' as u8) * 3) as usize
+        }).fold((0, 0), |(a, b), i| {
+            (a + [4,8,3,1,5,9,7,2,6][i], b + [3,4,8,1,5,9,2,6,7][i])
+        });
+    println!("Part 1: {}\nPart 2: {}", p1, p2);
+    Ok(())
 }
