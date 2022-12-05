@@ -2,7 +2,7 @@ use crate::common::*;
 use std::collections::BinaryHeap;
 
 pub fn day01() -> AocResult<()> {
-    let data = std::fs::read_to_string("data/day1_part1.txt")?;
+    let data = std::fs::read_to_string("data/day01.txt")?;
     // Use a binary heap instead of sorting a vec for O(n) performance
     let mut calories: BinaryHeap<u64> = data.split("\n\n").map(|chunk| {
         chunk.split('\n')

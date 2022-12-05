@@ -1,11 +1,24 @@
 mod common;
 mod day01;
 mod day02;
+mod day03;
+mod day04;
+mod day05;
 
-use common::*;
-//use day01::day01;
-use day02::day02;
-
-fn main() -> AocResult<()> {
-    day02()
+fn main() -> common::AocResult<()> {
+    let days = [
+        day01::day01,
+        day02::day02,
+        day03::day03,
+        day04::day04,
+        day05::day05,
+    ];
+    let day_num = std::env::args()
+        .nth(1).expect("Day num is required")
+        .parse::<usize>().expect("Given day num is not an integer");
+    if day_num < 1 || day_num > days.len() {
+        panic!("Invalid day num");
+    }
+    let func = days[day_num - 1];
+    func()
 }
