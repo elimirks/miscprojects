@@ -1,3 +1,4 @@
+use sscanf::sscanf;
 use crate::common::*;
 
 pub fn day05() -> AocResult<()> {
@@ -28,7 +29,7 @@ fn part2(mut stacks: Vec<Vec<char>>, moves: &[(u8, usize, usize)]) -> String {
 }
 
 fn stack_tops(stacks: &[Vec<char>]) -> String {
-    stacks.iter().flat_map(|s| s.last()).collect::<String>()
+    stacks.iter().flat_map(|s| s.last()).collect()
 }
 
 fn parse_header() -> AocResult<Vec<Vec<char>>> {
@@ -51,12 +52,10 @@ fn parse_moves() -> AocResult<Vec<(u8, usize, usize)>> {
     let raw = std::fs::read_to_string("data/day05.txt")?;
     Ok(raw.lines().skip_while(|line| !line.starts_with("move"))
         .map(|line| {
-            let segments = line.split(' ').collect::<Vec<_>>();
-            let amount     = segments[1].parse::<u8>().expect("amount isn't an int");
-            let from_stack = segments[3].parse::<usize>().expect("from_stack isn't an int");
-            let to_stack   = segments[5].parse::<usize>().expect("to_stack isn't an int");
-            (amount, from_stack - 1, to_stack - 1)
+            let (amount, from, to) = sscanf!(line, "move {u8} from {usize} to {usize}")
+                .expect("Invalid move line");
+            (amount, from - 1, to - 1)
         })
-        .collect::<Vec<_>>()
+        .collect()
     )
 }
