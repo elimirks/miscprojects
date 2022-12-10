@@ -4,35 +4,39 @@ use crate::common::*;
 use sscanf::sscanf;
 
 pub fn day09() -> AocResult<()> {
-    println!("Part 1: {}", part1()?);
+    println!("Part 1: {}", solve::<2>()?);
+    println!("Part 2: {}", solve::<10>()?);
     Ok(())
 }
 
-pub fn part1() -> AocResult<usize> {
-    let raw = std::fs::read_to_string("data/day09.txt")?;
+fn solve<const N: usize>() -> AocResult<usize> {
     let mut visited = HashSet::new();
-    let mut head_x: i64 = 0;
-    let mut head_y: i64 = 0;
-    let mut tail_x: i64 = 0;
-    let mut tail_y: i64 = 0;
-    raw.lines().for_each(|line| {
+    let mut rope = vec![(0, 0); N];
+    std::fs::read_to_string("data/day09.txt")?.lines().for_each(|line| {
         let (dir, amount) = sscanf!(line, "{char} {i64}").unwrap();
         for _ in 0..amount {
-            let (dx, dy) = match dir {
-                'R' => (1, 0),
-                'L' => (-1, 0),
-                'U' => (0, -1),
-                'D' => (0, 1),
+            match dir {
+                'L' => rope[0].0 -= 1,
+                'R' => rope[0].0 += 1,
+                'U' => rope[0].1 -= 1,
+                'D' => rope[0].1 += 1,
                 _   => panic!("Invalid direction!"),
-            };
-            head_x += dx;
-            head_y += dy;
-            if i64::abs(head_x - tail_x).max(i64::abs(head_y - tail_y)) > 1 {
-                tail_y = head_y - dy;
-                tail_x = head_x - dx;
             }
-            visited.insert((tail_x, tail_y));
+            propagate_rope(&mut rope);
+            visited.insert(rope.last().unwrap().clone());
         }
     });
     Ok(visited.len())
+}
+
+fn propagate_rope(rope: &mut Vec<(i64, i64)>) {
+    for i in 1..rope.len() {
+        let (hx, hy) = rope[i - 1];
+        let (tx, ty) = rope[i];
+        let (dx, dy) = (hx - tx, hy - ty);
+        if dx.abs() > 1 || dy.abs() > 1 {
+            rope[i].0 += dx.signum();
+            rope[i].1 += dy.signum();
+        }
+    }
 }
