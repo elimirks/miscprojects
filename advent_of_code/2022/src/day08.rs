@@ -61,7 +61,7 @@ fn part1() -> AocResult<usize> {
 }
 
 fn populate_visibility(
-    height_grid: &Vec<Vec<i8>>,
+    height_grid: &[Vec<i8>],
     visible_grid: &mut Vec<Vec<bool>>,
     swap_dims: bool,
     invert_dim2: bool,

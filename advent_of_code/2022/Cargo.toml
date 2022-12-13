@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 sscanf = "0.4"
 itertools = "0.10"
+num = "0.4"

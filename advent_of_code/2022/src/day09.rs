@@ -23,7 +23,7 @@ fn solve<const N: usize>() -> AocResult<usize> {
                 _   => panic!("Invalid direction!"),
             }
             propagate_rope(&mut rope);
-            visited.insert(rope.last().unwrap().clone());
+            visited.insert(*rope.last().unwrap());
         }
     });
     Ok(visited.len())
