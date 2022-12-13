@@ -9,6 +9,8 @@ mod day07;
 mod day08;
 mod day09;
 mod day11;
+mod day12;
+mod day13;
 
 fn main() -> common::AocResult<()> {
     let days = [
@@ -23,6 +25,8 @@ fn main() -> common::AocResult<()> {
         day09::day09,
         day09::day09,
         day11::day11,
+        day12::day12,
+        day13::day13,
     ];
     let day_num = std::env::args()
         .nth(1).expect("Day num is required")
