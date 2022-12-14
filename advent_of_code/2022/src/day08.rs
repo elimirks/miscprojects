@@ -134,6 +134,7 @@ fn scenic_score(x: usize, y: usize, grid: &Vec<Vec<i8>>) -> usize {
         }
     }
     // Look down
+    #[allow(clippy::needless_range_loop)]
     for y in (y+1)..height {
         down_score += 1;
         if grid[y][x] >= tree_height {

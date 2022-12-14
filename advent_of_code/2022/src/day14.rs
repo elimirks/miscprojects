@@ -111,6 +111,7 @@ fn parse() -> AocResult<Map> {
             for x in start_x..=end_x {
                 grid[start_y][x] = true;
             }
+            #[allow(clippy::needless_range_loop)]
             for y in start_y..=end_y {
                 grid[y][start_x] = true;
             }

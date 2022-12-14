@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::common::*;
 
-#[derive(Clone)]
+#[derive(Clone, Eq)]
 enum Packet {
     Value(i64),
     Group(Vec<Packet>),
@@ -55,6 +55,12 @@ impl PartialOrd for Packet {
     }
 }
 
+impl Ord for Packet {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
 impl PartialEq for Packet {
     fn eq(&self, other: &Self) -> bool {
         self.partial_cmp(other) == Some(Ordering::Equal)
@@ -64,6 +70,7 @@ impl PartialEq for Packet {
 pub fn day13() -> AocResult<()> {
     let pairs = parse_root(&std::fs::read_to_string("data/day13.txt")?);
     println!("Part 1: {}", part1(&pairs));
+    println!("Part 2: {}", part2(&pairs));
     Ok(())
 }
 
@@ -74,13 +81,32 @@ fn part1(pairs: &[(Packet, Packet)]) -> usize {
         .sum::<usize>()
 }
 
+fn part2(pairs: &[(Packet, Packet)]) -> usize {
+    let mut all_packets = pairs.iter()
+        .flat_map(|(upper, lower)| vec![upper, lower])
+        .collect::<Vec<_>>();
+    let div_packet_2 = create_divider_packet(2);
+    let div_packet_6 = create_divider_packet(6);
+    all_packets.push(&div_packet_2);
+    all_packets.push(&div_packet_6);
+    all_packets.sort();
+
+    let pos_2 = all_packets.iter().position(|value| *value == &div_packet_2).unwrap();
+    let pos_6 = all_packets.iter().position(|value| *value == &div_packet_6).unwrap();
+    (pos_2 + 1) * (pos_6 + 1)
+}
+
+fn create_divider_packet(value: i64) -> Packet {
+    Packet::Group(vec![Packet::Group(vec![Packet::Value(value)])])
+}
+
 // Recursive descent parser because it's easier to work with
 struct ParseContext {
     chars: Vec<char>,
     pos: usize,
 }
 
-fn parse_root(s: &String) -> Vec<(Packet, Packet)> {
+fn parse_root(s: &str) -> Vec<(Packet, Packet)> {
     let mut pairs = vec![];
     let mut ctx = ParseContext {
         chars: s.chars().collect::<Vec<_>>(),
