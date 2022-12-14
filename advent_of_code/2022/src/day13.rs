@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::common::*;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 enum Packet {
     Value(i64),
     Group(Vec<Packet>),
@@ -45,15 +45,25 @@ impl PartialOrd for Packet {
                         return sub;
                     }
                 }
-                Some(Ordering::Less) // LHS ran out of values first
+                if lhs.len() == rhs.len() {
+                    Some(Ordering::Equal)
+                } else {
+                    Some(Ordering::Less) // LHS ran out of values first
+                }
             },
         }
     }
 }
 
+impl PartialEq for Packet {
+    fn eq(&self, other: &Self) -> bool {
+        self.partial_cmp(other) == Some(Ordering::Equal)
+    }
+}
+
 pub fn day13() -> AocResult<()> {
     let pairs = parse_root(&std::fs::read_to_string("data/day13.txt")?);
-    //println!("Part 1: {}", part1(&pairs));
+    println!("Part 1: {}", part1(&pairs));
     Ok(())
 }
 
@@ -120,18 +130,76 @@ fn parse_int(ctx: &mut ParseContext) -> Packet {
 
 #[cfg(test)]
 mod tests {
+    use more_asserts::*;
     use super::*;
+
     #[test]
     fn test_parsing() {
         let content = std::fs::read_to_string("data/day13.txt").unwrap();
         let pairs = parse_root(&content);
-
         let parsed = pairs.iter().map(|(upper, lower)| {
-        });
-        for (upper, lower) in pairs.iter() {
-            parsed.push_str(&format!("{upper:?}\n"));
-            parsed.push_str(&format!("{lower:?}\n\n"));
-        }
+            format!("{upper:?}\n{lower:?}\n\n")
+        }).collect::<String>();
         assert_eq!(content, parsed);
+    }
+
+    fn parse_packet(s: &str) -> Packet {
+        let mut ctx = ParseContext {
+            chars: s.chars().collect::<Vec<_>>(),
+            pos: 0,
+        };
+        parse_group(&mut ctx)
+    }
+
+    #[test]
+    fn test_comparison_example_case() {
+        assert_lt!(
+            parse_packet("[1,1,3,1,1]"),
+            parse_packet("[1,1,5,1,1]")
+        );
+        assert_lt!(
+            parse_packet("[[1],[2,3,4]]"),
+            parse_packet("[[1],4]")
+        );
+        assert_gt!(
+            parse_packet("[9]"),
+            parse_packet("[[8,7,6]]")
+        );
+        assert_lt!(
+            parse_packet("[[4,4],4,4]"),
+            parse_packet("[[4,4],4,4,4]")
+        );
+        assert_gt!(
+            parse_packet("[7,7,7,7]"),
+            parse_packet("[7,7,7]")
+        );
+        assert_lt!(
+            parse_packet("[]"),
+            parse_packet("[3]")
+        );
+        assert_gt!(
+            parse_packet("[[[]]]"),
+            parse_packet("[[]]")
+        );
+        assert_gt!(
+            parse_packet("[1,[2,[3,[4,[5,6,7]]]],8,9]"),
+            parse_packet("[1,[2,[3,[4,[5,6,0]]]],8,9]")
+        );
+    }
+
+    #[test]
+    fn test_comparison_equality() {
+        assert_eq!(
+            parse_packet("[1]"),
+            parse_packet("[[1]]")
+        );
+        assert_eq!(
+            parse_packet("[[[[[1]]]]]"),
+            parse_packet("[[1]]")
+        );
+        assert_eq!(
+            parse_packet("[[[2]],3,4]"),
+            parse_packet("[2,3,[4]]")
+        );
     }
 }
