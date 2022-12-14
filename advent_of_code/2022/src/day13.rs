@@ -1,6 +1,8 @@
+use std::cmp::Ordering;
+
 use crate::common::*;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 enum Packet {
     Value(i64),
     Group(Vec<Packet>),
@@ -25,49 +27,41 @@ impl std::fmt::Debug for Packet {
     }
 }
 
+impl PartialOrd for Packet {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Packet::Value(lhs), Packet::Value(rhs)) => lhs.partial_cmp(rhs),
+            (lhs @ Packet::Value(_), rhs @ Packet::Group(_)) =>
+                Packet::Group(vec![lhs.clone()]).partial_cmp(rhs),
+            (lhs @ Packet::Group(_), rhs @ Packet::Value(_)) => 
+                lhs.partial_cmp(&Packet::Group(vec![rhs.clone()])),
+            (Packet::Group(lhs), Packet::Group(rhs)) => {
+                for i in 0..lhs.len() {
+                    if i >= rhs.len() {
+                        return Some(Ordering::Greater);
+                    }
+                    let sub = lhs[i].partial_cmp(&rhs[i]);
+                    if sub != Some(Ordering::Equal) {
+                        return sub;
+                    }
+                }
+                Some(Ordering::Less) // LHS ran out of values first
+            },
+        }
+    }
+}
+
 pub fn day13() -> AocResult<()> {
-    let pairs = parse_root(std::fs::read_to_string("data/day13.txt")?);
-    // for (upper, lower) in pairs.iter() {
-    //     println!("============\n{:?}\n{:?}", upper, lower);
-    // }
-    println!("Part 1: {}", part1(&pairs));
+    let pairs = parse_root(&std::fs::read_to_string("data/day13.txt")?);
+    //println!("Part 1: {}", part1(&pairs));
     Ok(())
 }
 
 fn part1(pairs: &[(Packet, Packet)]) -> usize {
-    pairs.iter().enumerate().filter(|(_, (upper, lower))| {
-        is_in_order(upper, lower)
-    }).map(|(index, _)| {
-        println!("{}", index + 1);
-        index + 1
-    }).sum::<usize>()
-}
-
-fn is_in_order(upper: &Packet, lower: &Packet) -> bool {
-    match (upper, lower) {
-        (Packet::Value(lhs), Packet::Value(rhs)) => lhs <= rhs,
-        (lhs @ Packet::Value(_), rhs) =>
-            is_in_order(&Packet::Group(vec![lhs.clone()]), rhs),
-        (lhs, rhs @ Packet::Value(_)) =>
-            is_in_order(lhs, &Packet::Group(vec![rhs.clone()])),
-        (Packet::Group(lhs), Packet::Group(rhs)) => {
-            if lhs.is_empty() && rhs.is_empty() {
-                true
-            } else if lhs.is_empty() {
-                true
-            } else if rhs.is_empty() {
-                false
-            } else {
-                if !is_in_order(&lhs[0], &rhs[0]) {
-                    false
-                } else {
-                    let new_lhs = lhs.iter().skip(1).cloned().collect::<Vec<_>>();
-                    let new_rhs = rhs.iter().skip(1).cloned().collect::<Vec<_>>();
-                    is_in_order(&Packet::Group(new_lhs), &Packet::Group(new_rhs))
-                }
-            }
-        },
-    }
+    pairs.iter().enumerate()
+        .filter(|(_, (upper, lower))| upper <= lower)
+        .map(|(index, _)| index + 1)
+        .sum::<usize>()
 }
 
 // Recursive descent parser because it's easier to work with
@@ -76,7 +70,7 @@ struct ParseContext {
     pos: usize,
 }
 
-fn parse_root(s: String) -> Vec<(Packet, Packet)> {
+fn parse_root(s: &String) -> Vec<(Packet, Packet)> {
     let mut pairs = vec![];
     let mut ctx = ParseContext {
         chars: s.chars().collect::<Vec<_>>(),
@@ -102,9 +96,7 @@ fn parse_group(ctx: &mut ParseContext) -> Packet {
                 ctx.pos += 1;
                 return Packet::Group(content)
             },
-            '[' => {
-                content.push(parse_group(ctx));
-            },
+            '[' => content.push(parse_group(ctx)),
             ',' => ctx.pos += 1,
             // Otherwise, assume it's a digit
             _ => content.push(parse_int(ctx)),
@@ -124,4 +116,22 @@ fn parse_int(ctx: &mut ParseContext) -> Packet {
         }
     }
     Packet::Value(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_parsing() {
+        let content = std::fs::read_to_string("data/day13.txt").unwrap();
+        let pairs = parse_root(&content);
+
+        let parsed = pairs.iter().map(|(upper, lower)| {
+        });
+        for (upper, lower) in pairs.iter() {
+            parsed.push_str(&format!("{upper:?}\n"));
+            parsed.push_str(&format!("{lower:?}\n\n"));
+        }
+        assert_eq!(content, parsed);
+    }
 }
