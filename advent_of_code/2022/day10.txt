@@ -1,0 +1,240 @@
+noop
+addx 15
+noop
+addx -11
+noop
+addx 6
+noop
+addx -3
+noop
+addx 5
+noop
+addx -1
+noop
+addx -8
+noop
+addx 13
+noop
+addx 4
+noop
+noop
+addx -1
+noop
+addx 5
+noop
+addx -1
+noop
+addx 5
+noop
+addx -1
+noop
+addx 5
+noop
+addx -1
+noop
+addx 5
+noop
+addx -1
+noop
+addx -35
+noop
+addx 1
+noop
+addx 24
+noop
+addx -19
+noop
+addx 1
+noop
+addx 16
+noop
+addx -11
+noop
+noop
+noop
+addx 21
+noop
+addx -15
+noop
+noop
+noop
+addx -3
+noop
+addx 9
+noop
+addx 1
+noop
+addx -3
+noop
+addx 8
+noop
+addx 1
+noop
+addx 5
+noop
+noop
+noop
+noop
+noop
+noop
+addx -36
+noop
+noop
+addx 1
+noop
+addx 7
+noop
+noop
+noop
+noop
+addx 2
+noop
+addx 6
+noop
+noop
+noop
+noop
+noop
+noop
+addx 1
+noop
+noop
+noop
+addx 7
+noop
+addx 1
+noop
+noop
+addx -13
+noop
+addx 13
+noop
+addx 7
+noop
+noop
+addx 1
+noop
+addx -33
+noop
+noop
+noop
+noop
+addx 2
+noop
+noop
+noop
+noop
+addx 8
+noop
+noop
+addx -1
+noop
+addx 2
+noop
+addx 1
+noop
+noop
+addx 17
+noop
+addx -9
+noop
+addx 1
+noop
+addx 1
+noop
+addx -3
+noop
+addx 11
+noop
+noop
+noop
+addx 1
+noop
+noop
+addx 1
+noop
+noop
+noop
+addx -13
+noop
+addx -19
+noop
+addx 1
+noop
+addx 3
+noop
+addx 26
+noop
+addx -30
+noop
+addx 12
+noop
+addx -1
+noop
+addx 3
+noop
+addx 1
+noop
+noop
+noop
+noop
+addx -9
+noop
+addx 18
+noop
+addx 1
+noop
+addx 2
+noop
+noop
+noop
+addx 9
+noop
+noop
+noop
+noop
+addx -1
+noop
+addx 2
+noop
+addx -37
+noop
+addx 1
+noop
+addx 3
+noop
+noop
+addx 15
+noop
+addx -21
+noop
+addx 22
+noop
+addx -6
+noop
+addx 1
+noop
+noop
+addx 2
+noop
+addx 1
+noop
+noop
+addx -10
+noop
+noop
+noop
+addx 20
+noop
+addx 1
+noop
+addx 2
+noop
+addx 2
+noop
+addx -6
+noop
+addx -11
+noop
+noop
+noop

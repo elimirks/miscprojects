@@ -34,7 +34,7 @@ pub fn day13() -> AocResult<()> {
     Ok(())
 }
 
-fn part1(pairs: &Vec<(Packet, Packet)>) -> usize {
+fn part1(pairs: &[(Packet, Packet)]) -> usize {
     pairs.iter().enumerate().filter(|(_, (upper, lower))| {
         is_in_order(upper, lower)
     }).map(|(index, _)| {
