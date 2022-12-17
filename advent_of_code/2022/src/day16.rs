@@ -1,21 +1,7 @@
-use std::{collections::{HashMap, HashSet, VecDeque}, rc::Rc};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::common::*;
 use sscanf::sscanf;
-
-struct Node {
-    index: usize,
-    next: Option<Rc<Node>>,
-}
-
-impl Node {
-    fn cons(index: usize, next: &Option<Rc<Node>>) -> Option<Rc<Node>> {
-        Some(Rc::new(Node {
-            index,
-            next: next.clone(),
-        }))
-    }
-}
 
 #[derive(Clone)]
 struct Room {
@@ -27,54 +13,100 @@ struct Room {
 pub fn day16() -> AocResult<()> {
     let rooms = parse()?;
     println!("Part 1: {}", part1(&rooms));
+    println!("Part 2: {}", part2(&rooms));
     Ok(())
 }
 
 fn part1(rooms: &Vec<Room>) -> i64 {
-    let matrix = create_distance_matrix(rooms);
-    for row in matrix.iter() {
-        for &dist in row.iter() {
-            if dist == i64::MAX {
-                print!(" max");
-            } else {
-                print!("{dist: >4}");
-            }
+    let distances = create_distance_matrix(rooms);
+    let valve_rooms = rooms.iter().enumerate().filter_map(|(index, room)| {
+        if room.flow_rate == 0 {
+            None
+        } else {
+            Some(index)
         }
-        println!();
-    }
-    unimplemented!()
+    }).collect::<Vec<usize>>();
+    let flow_rates = rooms.iter()
+        .map(|room| room.flow_rate)
+        .collect::<Vec<_>>();
+    let unvisited = valve_rooms.iter().cloned().collect::<HashSet<_>>();
+    get_max_release(0, 30, unvisited, &distances, &flow_rates)
 }
 
-// TODO: Compute a distance matrix. How many steps to arrive at each node, from each node?
-// Then, iterate over the valves that have non-zero flow rate, and BAM.
-// /Maybe/ this will be fast enough
+fn part2(rooms: &Vec<Room>) -> i64 {
+    let distances = create_distance_matrix(rooms);
+    let valve_rooms = rooms.iter().enumerate().filter_map(|(index, room)| {
+        if room.flow_rate == 0 {
+            None
+        } else {
+            Some(index)
+        }
+    }).collect::<Vec<usize>>();
+    let flow_rates = rooms.iter()
+        .map(|room| room.flow_rate)
+        .collect::<Vec<_>>();
+    let unvisited = valve_rooms.iter().cloned().collect::<HashSet<_>>();
+    get_max_release(0, 30, unvisited, &distances, &flow_rates)
+}
+
+fn get_max_release(
+    index: usize,
+    t_remaining: i64,
+    unvisited: HashSet<usize>,
+    distances: &[Vec<i64>],
+    flow_rates: &[i64],
+) -> i64 {
+    if unvisited.len() == 0 || t_remaining <= 0 {
+        return 0;
+    }
+    let mut ans = 0;
+    for &next in unvisited.iter() {
+        let t_travel = distances[index][next];
+        if t_remaining >= t_travel + 1 {
+            let mut next_unvisited = unvisited.clone();
+            next_unvisited.remove(&next);
+            let next_max_release = get_max_release(
+                next,
+                t_remaining - t_travel - 1,
+                next_unvisited,
+                distances,
+                flow_rates,
+            );
+            let cumulative_rel =
+                flow_rates[next] * (t_remaining - t_travel - 1);
+            ans = ans.max(cumulative_rel + next_max_release);
+        }
+    }
+    ans
+}
+
 fn create_distance_matrix(rooms: &Vec<Room>) -> Vec<Vec<i64>> {
     let dim = rooms.len();
     let mut distances = vec![vec![i64::MAX; dim]; dim];
     for i in 0..dim {
-        distances[i][i] = 0;
+        populate_row_distances(rooms, &mut distances, i);
     }
-    // Populate initial distances
-    for i in 0..dim {
-        for &tunnel in rooms[i].tunnels.iter() {
-            distances[i][tunnel] = 1;
-        }
-    }
-    populate_row_distances(rooms, &mut distances, 0);
     distances
 }
 
 // Populates distances for a row. Guarantees to have the shortest distances
-fn populate_row_distances(rooms: &Vec<Room>, distances: &mut Vec<Vec<i64>>, index: usize) {
-    let mut to_visit = VecDeque::<(usize, usize)>::new();
+fn populate_row_distances(
+    rooms: &[Room],
+    distances: &mut [Vec<i64>],
+    index: usize,
+) {
+    let mut to_visit = VecDeque::<(usize, i64)>::new();
     let mut visited = HashSet::<usize>::new();
     to_visit.push_back((index, 0));
 
     while let Some((next_index, next_dist)) = to_visit.pop_front() {
         if visited.contains(&next_index) {
-            break;
+            continue;
         }
-        // TODO: Breadth first traversal
+        for &tunnel in rooms[next_index].tunnels.iter() {
+            to_visit.push_back((tunnel, next_dist + 1));
+        }
+        distances[index][next_index] = next_dist;
         visited.insert(next_index);
     }
 }
