@@ -18,7 +18,7 @@ pub fn day18() -> AocResult<()> {
     Ok(())
 }
 
-fn part1(unshifted_points: &Vec<(usize, usize, usize)>) -> usize {
+fn part1(unshifted_points: &[(usize, usize, usize)]) -> usize {
     let points = unshifted_points.iter().map(|&(x, y, z)| {
         // So that we don't need to bounds-check
         (x + 1, y + 1, z + 1)
@@ -62,7 +62,7 @@ fn part1(unshifted_points: &Vec<(usize, usize, usize)>) -> usize {
     untouched_sides
 }
 
-fn part2(unshifted_points: &Vec<(usize, usize, usize)>) -> usize {
+fn part2(unshifted_points: &[(usize, usize, usize)]) -> usize {
     let points = unshifted_points.iter().map(|&(x, y, z)| {
         // So that we don't need to bounds-check
         (x + 1, y + 1, z + 1)
