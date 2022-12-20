@@ -159,16 +159,6 @@ mod tests {
     use more_asserts::*;
     use super::*;
 
-    #[test]
-    fn test_parsing() {
-        let content = std::fs::read_to_string("data/day13.txt").unwrap();
-        let pairs = parse_root(&content);
-        let parsed = pairs.iter().map(|(upper, lower)| {
-            format!("{upper:?}\n{lower:?}\n\n")
-        }).collect::<String>();
-        assert_eq!(content, parsed);
-    }
-
     fn parse_packet(s: &str) -> Packet {
         let mut ctx = ParseContext {
             chars: s.chars().collect::<Vec<_>>(),
