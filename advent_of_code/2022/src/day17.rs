@@ -14,12 +14,13 @@ enum Movement {
 struct Rock {
     points: Vec<(usize, usize)>,
     width: usize,
+    height: usize,
 }
 
 pub fn day17() -> AocResult<()> {
     let data = parse(&std::fs::read_to_string("data/day17.txt")?);
     println!("Part 1: {}", part1(&data));
-    println!("Part 2: {}", part2(&data));
+    println!("Part 2: {}", time_closure(|| part2(&data)));
     Ok(())
 }
 
@@ -38,23 +39,28 @@ fn create_rocks() -> Vec<Rock> {
         Rock {
             points: vec![(0, 0), (1, 0), (2, 0), (3, 0)],
             width: 4,
+            height: 1,
         },
         Rock {
             points: vec![(1, 0), (0, 1), (1, 1), (2, 1), (1, 2)],
             width: 3,
+            height: 3,
         },
         Rock {
             // "upside down" since we grow the chamber upwards
             points: vec![(0, 0), (1, 0), (2, 0), (2, 1), (2, 2)],
             width: 3,
+            height: 3,
         },
         Rock {
             points: vec![(0, 0), (0, 1), (0, 2), (0, 3)],
             width: 1,
+            height: 4,
         },
         Rock {
             points: vec![(0, 0), (1, 0), (0, 1), (1, 1)],
             width: 2,
+            height: 2,
         },
     ]
 }
@@ -115,12 +121,12 @@ fn add_rock_to_chamber(
     rock_x: usize,
     rock_y: usize
 ) {
+    while rock_y + rock.height - 1 >= chamber.len() {
+        chamber.push_back([false; CHAMBER_WIDTH]);
+    }
     for &(x, y) in rock.points.iter() {
         let xp = x + rock_x;
         let yp = y + rock_y;
-        while yp >= chamber.len() {
-            chamber.push_back([false; CHAMBER_WIDTH]);
-        }
         chamber[yp][xp] = true;
     }
 }
@@ -200,6 +206,6 @@ fn part1(movements: &[Movement]) -> usize {
 }
 
 fn part2(movements: &[Movement]) -> usize {
-    //solve(movements, 10000000 * 10)
-    solve(movements, 1000000000000)
+    solve(movements, 10000000 * 10)
+    //solve(movements, 1000000000000)
 }
