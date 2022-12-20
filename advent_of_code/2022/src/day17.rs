@@ -5,7 +5,7 @@ use crate::common::*;
 const CHAMBER_WIDTH: usize = 7;
 type Chamber = VecDeque<[bool; CHAMBER_WIDTH]>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Movement {
     Left,
     Right,
@@ -13,6 +13,7 @@ enum Movement {
 
 struct Rock {
     points: Vec<(usize, usize)>,
+    width: usize,
 }
 
 pub fn day17() -> AocResult<()> {
@@ -35,20 +36,25 @@ fn parse(content: &str) -> Vec<Movement> {
 fn create_rocks() -> Vec<Rock> {
     vec![
         Rock {
-            points: vec![(0, 0), (1, 0), (2, 0), (3, 0)]
+            points: vec![(0, 0), (1, 0), (2, 0), (3, 0)],
+            width: 4,
         },
         Rock {
-            points: vec![(1, 0), (0, 1), (1, 1), (2, 1), (1, 2)]
+            points: vec![(1, 0), (0, 1), (1, 1), (2, 1), (1, 2)],
+            width: 3,
         },
         Rock {
             // "upside down" since we grow the chamber upwards
-            points: vec![(0, 0), (1, 0), (2, 0), (2, 1), (2, 2)]
+            points: vec![(0, 0), (1, 0), (2, 0), (2, 1), (2, 2)],
+            width: 3,
         },
         Rock {
-            points: vec![(0, 0), (0, 1), (0, 2), (0, 3)]
+            points: vec![(0, 0), (0, 1), (0, 2), (0, 3)],
+            width: 1,
         },
         Rock {
-            points: vec![(0, 0), (1, 0), (0, 1), (1, 1)]
+            points: vec![(0, 0), (1, 0), (0, 1), (1, 1)],
+            width: 2,
         },
     ]
 }
@@ -64,14 +70,13 @@ fn is_at_rest(
     }).any(|(x, y)| {
         if y > 0 && y < 1 + chamber.len() {
             chamber[y - 1][x]
-        } else if y == 0 {
-            true
         } else {
-            false
+            y == 0
         }
     })
 }
 
+// Assumes rock_x is in bounds for the given rock
 fn rock_collides(
     chamber: &Chamber,
     rock: &Rock,
@@ -81,8 +86,27 @@ fn rock_collides(
     rock.points.iter().map(|&(x, y)| {
         (x + rock_x, y + rock_y)
     }).any(|(x, y)| {
-        x >= CHAMBER_WIDTH || (y < chamber.len() && chamber[y][x])
+        y < chamber.len() && chamber[y][x]
     })
+}
+
+fn clamp_x_movement(
+    rock: &Rock,
+    movement: &Movement,
+    rock_x: usize,
+) -> usize {
+    match movement {
+        Movement::Left => if rock_x > 0 {
+            rock_x - 1
+        } else {
+            0
+        },
+        Movement::Right => if rock_x + rock.width >= CHAMBER_WIDTH {
+            rock_x
+        } else {
+            rock_x + 1
+        },
+    }
 }
 
 fn add_rock_to_chamber(
@@ -139,17 +163,16 @@ fn solve(movements: &[Movement], rock_count: usize) -> usize {
     for i in 0..rock_count {
         let rock = &rocks[i % rocks.len()];
         let mut rock_x = 2;
-        let mut rock_y = chamber.len() + 3;
+
+        // Optimized first 3 moves, since we know it can't hit the floor or other rocks
+        for _ in 0..3 {
+            rock_x = clamp_x_movement(rock, &movements[move_index], rock_x);
+            move_index = (move_index + 1) % movements.len();
+        }
+        let mut rock_y = chamber.len();
 
         loop {
-            let proposed_x = match movements[move_index] {
-                Movement::Left => if rock_x > 0 {
-                    rock_x - 1
-                } else {
-                    0
-                },
-                Movement::Right => rock_x + 1,
-            };
+            let proposed_x = clamp_x_movement(rock, &movements[move_index], rock_x);
             if !rock_collides(&chamber, rock, proposed_x, rock_y) {
                 rock_x = proposed_x;
             }
@@ -163,9 +186,7 @@ fn solve(movements: &[Movement], rock_count: usize) -> usize {
         add_rock_to_chamber(&mut chamber, rock, rock_x, rock_y);
 
         if i % 10000 == 0 {
-            let next_prune = prune_chamber(&mut chamber);
-            amount_pruned += next_prune;
-            rock_y -= next_prune;
+            amount_pruned += prune_chamber(&mut chamber);
         }
         if i % 10000000 == 0 {
             println!("{:.4}%", 100.0 * i as f64 / rock_count as f64);
@@ -179,5 +200,6 @@ fn part1(movements: &[Movement]) -> usize {
 }
 
 fn part2(movements: &[Movement]) -> usize {
-    solve(movements, 10000000 * 10)
+    //solve(movements, 10000000 * 10)
+    solve(movements, 1000000000000)
 }

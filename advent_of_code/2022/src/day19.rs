@@ -240,6 +240,7 @@ fn part1_first_obsidian(
             continue;
         }
         if let Some(best) = best_options.get(&option.0.robots) {
+            #[allow(clippy::comparison_chain)]
             if option.1 == best[0].1 {
                 let mut new_best = best.clone();
                 new_best.push(option.clone());

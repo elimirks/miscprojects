@@ -31,11 +31,12 @@ fn mix_index(vec: &mut Vec<(usize, i64)>, index: usize) {
     // FIXME: Kinda wasteful. I don't think we really need to find it every time
     let old_index = vec.iter().position(|&(i, _)| i == index).unwrap();
     let new_index = wrapping_offset(vec.len(), old_index as i64 + vec[old_index].1);
-    move_in_vec(vec, old_index, new_index);
+    move_in_slice(vec, old_index, new_index);
 }
 
 // Assumes from & to are in bounds of the vec
-fn move_in_vec<T>(vec: &mut Vec<T>, from: usize, to: usize) {
+fn move_in_slice<T>(vec: &mut [T], from: usize, to: usize) {
+    #[allow(clippy::comparison_chain)]
     if to < from {
         // Move backward
         vec[to..=from].rotate_right(1);
@@ -61,15 +62,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_move_in_vec() {
+    fn test_move_in_slice() {
         let mut v = vec![1, 2, 3];
-        move_in_vec(&mut v, 0, 0);
+        move_in_slice(&mut v, 0, 0);
         assert_eq!(vec![1, 2, 3], v);
 
-        move_in_vec(&mut v, 0, 1);
+        move_in_slice(&mut v, 0, 1);
         assert_eq!(vec![2, 1, 3], v);
 
-        move_in_vec(&mut v, 2, 0);
+        move_in_slice(&mut v, 2, 0);
         assert_eq!(vec![3, 2, 1], v);
     }
 
