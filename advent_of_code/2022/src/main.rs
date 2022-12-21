@@ -1,4 +1,5 @@
 #![feature(box_patterns)]
+#![feature(let_chains)]
 mod common;
 mod day01;
 mod day02;
