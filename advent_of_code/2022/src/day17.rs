@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::common::*;
 
 const CHAMBER_WIDTH: u8 = 7;
@@ -171,42 +173,119 @@ fn clamp_x_movement(
     }
 }
 
+// Returns rock_y zero-indexed from the TOP of the chamber
+// I flipped it that way to make caching easier...
+fn drop_rock(
+    chamber: &Chamber,
+    movements: &[Movement],
+    rock: &Rock,
+    mut move_index: usize,
+) -> (usize, usize, usize) {
+    let mut rock_x = 2;
+    // Optimized first 3 moves, since we know it can't hit the floor or other rocks
+    for _ in 0..3 {
+        rock_x = clamp_x_movement(rock, movements[move_index], rock_x);
+        move_index = (move_index + 1) % movements.len();
+    }
+    let mut rock_y = 0;
+    loop {
+        let inv_rock_y = chamber.len() - rock_y;
+        let proposed_x = clamp_x_movement(rock, movements[move_index], rock_x);
+        if !rock_collides(&chamber, rock, proposed_x, inv_rock_y) {
+            rock_x = proposed_x;
+        }
+        move_index = (move_index + 1) % movements.len();
+        if is_at_rest(&chamber, rock, rock_x, inv_rock_y) {
+            break;
+        } else {
+            rock_y += 1;
+        }
+    }
+    (rock_x, rock_y, move_index)
+}
+
+struct Cache {
+    // Maps from (rock_index, move_index) -> (rock_x, rock_y, move_delta)
+    data: Vec<(usize, usize, usize)>,
+    rock_count: usize,
+    move_count: usize,
+}
+
+impl Cache {
+    fn new(rock_count: usize, move_count: usize) -> Cache {
+        Cache {
+            data: vec![(0, 0, 0); rock_count * move_count],
+            rock_count,
+            move_count,
+        }
+    }
+
+    // Returns true if the value changes
+    fn insert(
+        &mut self,
+        rock_index: usize,
+        move_index: usize,
+        entry: (usize, usize, usize),
+    ) -> bool {
+        let key = self.key(rock_index, move_index);
+        if let Some(old) = self.data.get(key) {
+            let has_updated = *old != entry;
+            self.data[key] = entry;
+            has_updated
+        } else {
+            self.data[key] = entry;
+            true
+        }
+    }
+
+    // Assumes the entry exists
+    fn get(
+        &mut self,
+        rock_index: usize,
+        move_index: usize,
+    ) -> (usize, usize, usize) {
+        self.data[self.key(rock_index, move_index)]
+    }
+
+    fn key(&self, rock_index: usize, move_index: usize) -> usize {
+        move_index * self.rock_count + rock_index
+    }
+}
+
 fn solve(movements: &[Movement], rock_count: usize) -> usize {
     let mut move_index = 0;
     let rocks = create_rocks();
     // Lower indices are closer to the bottom
     let mut chamber = Vec::<u8>::new();
     let mut amount_pruned = 0;
+
+    let mut cache = Cache::new(rocks.len(), movements.len());
+
+    let cycle_len = rocks.len() & movements.len();
+    let mut last_cache_change = 0;
     for i in 0..rock_count {
-        let rock = &rocks[i % rocks.len()];
-        let mut rock_x = 2;
+        let rock_index = i % rocks.len();
+        let rock = &rocks[rock_index];
 
-        // Optimized first 3 moves, since we know it can't hit the floor or other rocks
-        for _ in 0..3 {
-            rock_x = clamp_x_movement(rock, movements[move_index], rock_x);
-            move_index = (move_index + 1) % movements.len();
-        }
-        let mut rock_y = chamber.len();
-
-        loop {
-            let proposed_x = clamp_x_movement(rock, movements[move_index], rock_x);
-            if !rock_collides(&chamber, rock, proposed_x, rock_y) {
-                rock_x = proposed_x;
+        let (rock_x, rock_y, new_mi) = if i > last_cache_change + cycle_len {
+            cache.get(rock_index, move_index)
+        } else {
+            let result = drop_rock(&chamber, movements, rock, move_index);
+            if cache.insert(rock_index, move_index, result) {
+                last_cache_change = i;
             }
-            move_index = (move_index + 1) % movements.len();
-            if is_at_rest(&chamber, rock, rock_x, rock_y) {
-                break;
-            } else {
-                rock_y -= 1;
-            }
-        }
-        add_rock_to_chamber(&mut chamber, rock, rock_x, rock_y);
+            result
+        };
+        move_index = new_mi;
+        let inv_rock_y = chamber.len() - rock_y;
+        add_rock_to_chamber(&mut chamber, rock, rock_x, inv_rock_y);
 
         if i % 10000 == 0 {
             amount_pruned += prune_chamber(&mut chamber);
         }
         if i % 10000000 == 0 {
-            println!("{:.4}%", 100.0 * i as f64 / rock_count as f64);
+            println!("{rock_x}, {rock_y}, {new_mi}, {rock_index}");
+            println!("{:.4}%, {last_cache_change}", 100.0 * i as f64 / rock_count as f64);
         }
     }
     amount_pruned + chamber.len()
@@ -217,7 +296,7 @@ fn part1(movements: &[Movement]) -> usize {
 }
 
 fn part2(movements: &[Movement]) -> usize {
-    solve(movements, 1000000000000)
+    solve(movements, 100000000)
 }
 
 #[cfg(test)]
