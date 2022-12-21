@@ -1,9 +1,7 @@
-use std::collections::VecDeque;
-
 use crate::common::*;
 
 const CHAMBER_WIDTH: u8 = 7;
-type Chamber = VecDeque<u8>;
+type Chamber = Vec<u8>;
 
 #[derive(Debug, Copy, Clone)]
 enum Movement {
@@ -113,7 +111,7 @@ fn add_rock_to_chamber(
     rock_y: usize,
 ) {
     while rock_y + rock.points.len() > chamber.len() {
-        chamber.push_back(0);
+        chamber.push(0);
     }
     for (y, mask) in rock.points.iter().enumerate() {
         let yp = y + rock_y;
@@ -121,6 +119,19 @@ fn add_rock_to_chamber(
     }
 }
 
+// fn is_prunable(chamber: &Chamber, x: u8, y: usize) -> bool {
+//     if y < CHAMBER_WIDTH as usize {
+//         false
+//     } else if x >= CHAMBER_WIDTH {
+//         true
+//     } else if chamber[y] & (0b1000000 >> x) == 0 {
+//         false
+//     } else {
+//         is_prunable(chamber, x + 1, y) || 
+//             is_prunable(chamber, x + 1, y + 1) || 
+//             is_prunable(chamber, x + 1, y - 1)
+//     }
+// }
 fn is_prunable(chamber: &Chamber, x: u8, y: usize) -> bool {
     if y < CHAMBER_WIDTH as usize {
         false
@@ -173,7 +184,7 @@ fn solve(movements: &[Movement], rock_count: usize) -> usize {
     let mut move_index = 0;
     let rocks = create_rocks();
     // Lower indices are closer to the bottom
-    let mut chamber = VecDeque::<u8>::new();
+    let mut chamber = Vec::<u8>::new();
     let mut amount_pruned = 0;
     for i in 0..rock_count {
         let rock = &rocks[i % rocks.len()];
@@ -225,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_is_at_rest() {
-        let mut chamber = VecDeque::new();
+        let mut chamber = vec![];
         let rock_1 = Rock::new(vec![0b1111000]);
         let rock_2 = Rock::new(vec![
             0b0100000,
@@ -235,7 +246,7 @@ mod tests {
         assert!(is_at_rest(&chamber, &rock_1, 2, 0));
         assert!(!is_at_rest(&chamber, &rock_1, 2, 1));
 
-        chamber.push_back(0b0011110);
+        chamber.push(0b0011110);
         assert!(is_at_rest(&chamber, &rock_1, 2, 1));
         assert!(!is_at_rest(&chamber, &rock_1, 2, 2));
 
@@ -253,8 +264,8 @@ mod tests {
             0b1110000,
             0b01000000
         ]);
-        let mut chamber = VecDeque::new();
-        chamber.push_back(0b0011110);
+        let mut chamber = vec![];
+        chamber.push(0b0011110);
 
         assert!(rock_collides(&chamber, &rock_1, 2, 0));
         assert!(!rock_collides(&chamber, &rock_1, 2, 1));
