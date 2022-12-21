@@ -217,8 +217,7 @@ fn part1(movements: &[Movement]) -> usize {
 }
 
 fn part2(movements: &[Movement]) -> usize {
-    solve(movements, 10000000 * 10)
-    //solve(movements, 1000000000000)
+    solve(movements, 1000000000000)
 }
 
 #[cfg(test)]
