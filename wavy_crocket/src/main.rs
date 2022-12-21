@@ -22,24 +22,49 @@ fn gen_pure_tone(frequency: f64, wave_count: f64) -> Vec<f64> {
     data
 }
 
+fn amplify(data: &mut Vec<f64>, amount: f64) {
+    for value in data.iter_mut() {
+        *value *= amount;
+    }
+}
+
+fn combine(dest: &mut Vec<f64>, source: &Vec<f64>) {
+    for i in 0..dest.len() {
+        dest[i] += source[i];
+    }
+}
+
+fn decay(data: &mut [f64]) {
+    for i in (0..data.len()).rev() {
+        let x = 1.0 - i as f64 / data.len() as f64;
+        data[i] *= x;
+    }
+}
+
 fn to_wav_sample(sample: &Vec<f64>) -> Vec<Sample> {
     sample.iter()
         .map(|value| (value * Sample::MAX as f64) as Sample)
         .collect::<Vec<_>>()
 }
 
-// http://soundfile.sapp.org/doc/WaveFormat/
-fn main() -> Result<(), Box<dyn Error>> {
+fn gen() -> Vec<f64> {
     let mut data = vec![];
-
     for i in 100..512 {
         let frequency = i as f64;
-        data.extend_from_slice(&to_wav_sample(&gen_pure_tone(frequency, 1.0)));
+        data.extend_from_slice(&gen_pure_tone(frequency, 1.0));
     }
     for i in (100..512).rev() {
         let frequency = i as f64;
-        data.extend_from_slice(&to_wav_sample(&gen_pure_tone(frequency, 1.0)));
+        data.extend_from_slice(&gen_pure_tone(frequency, 1.0));
     }
+    amplify(&mut data, 0.1);
+    decay(&mut data);
+    data
+}
+
+// http://soundfile.sapp.org/doc/WaveFormat/
+fn main() -> Result<(), Box<dyn Error>> {
+    let data = to_wav_sample(&gen());
     let data_size = data.len() * size_of::<Sample>();
 
     let mut file = File::create("out.wav")?;
