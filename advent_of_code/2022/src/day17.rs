@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::common::*;
 
 const CHAMBER_WIDTH: u8 = 7;
@@ -191,11 +189,11 @@ fn drop_rock(
     loop {
         let inv_rock_y = chamber.len() - rock_y;
         let proposed_x = clamp_x_movement(rock, movements[move_index], rock_x);
-        if !rock_collides(&chamber, rock, proposed_x, inv_rock_y) {
+        if !rock_collides(chamber, rock, proposed_x, inv_rock_y) {
             rock_x = proposed_x;
         }
         move_index = (move_index + 1) % movements.len();
-        if is_at_rest(&chamber, rock, rock_x, inv_rock_y) {
+        if is_at_rest(chamber, rock, rock_x, inv_rock_y) {
             break;
         } else {
             rock_y += 1;
@@ -208,7 +206,6 @@ struct Cache {
     // Maps from (rock_index, move_index) -> (rock_x, rock_y, move_delta)
     data: Vec<(usize, usize, usize)>,
     rock_count: usize,
-    move_count: usize,
 }
 
 impl Cache {
@@ -216,7 +213,6 @@ impl Cache {
         Cache {
             data: vec![(0, 0, 0); rock_count * move_count],
             rock_count,
-            move_count,
         }
     }
 
@@ -261,7 +257,7 @@ fn solve(movements: &[Movement], rock_count: usize) -> usize {
 
     let mut cache = Cache::new(rocks.len(), movements.len());
 
-    let cycle_len = rocks.len() & movements.len();
+    let cycle_len = rocks.len() * movements.len();
     let mut last_cache_change = 0;
     for i in 0..rock_count {
         let rock_index = i % rocks.len();
@@ -284,8 +280,7 @@ fn solve(movements: &[Movement], rock_count: usize) -> usize {
             amount_pruned += prune_chamber(&mut chamber);
         }
         if i % 10000000 == 0 {
-            println!("{rock_x}, {rock_y}, {new_mi}, {rock_index}");
-            println!("{:.4}%, {last_cache_change}", 100.0 * i as f64 / rock_count as f64);
+            println!("{:.4}%", 100.0 * i as f64 / rock_count as f64);
         }
     }
     amount_pruned + chamber.len()

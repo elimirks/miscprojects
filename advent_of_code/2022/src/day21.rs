@@ -157,7 +157,7 @@ fn unravel(expr: &Expr, target: Fraction) -> (Box<Expr>, Fraction) {
 }
 
 fn expand_expr(exprs: &HashMap<String, Expr>, expr: &Expr) -> Box<Expr> {
-    reduce_expr(&fold_expr(&exprs, expr))
+    reduce_expr(&fold_expr(exprs, expr))
 }
 
 fn fold_expr(exprs: &HashMap<String, Expr>, expr: &Expr) -> Box<Expr> {
