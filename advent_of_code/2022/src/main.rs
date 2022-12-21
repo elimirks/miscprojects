@@ -1,3 +1,4 @@
+#![feature(box_patterns)]
 mod common;
 mod day01;
 mod day02;
@@ -19,6 +20,7 @@ mod day17;
 mod day18;
 mod day19;
 mod day20;
+mod day21;
 
 fn main() -> common::AocResult<()> {
     let days = [
@@ -42,6 +44,7 @@ fn main() -> common::AocResult<()> {
         day18::day18,
         day19::day19,
         day20::day20,
+        day21::day21,
     ];
     let day_num = std::env::args()
         .nth(1).expect("Day num is required")
