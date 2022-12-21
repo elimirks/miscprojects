@@ -119,20 +119,8 @@ fn add_rock_to_chamber(
     }
 }
 
-// fn is_prunable(chamber: &Chamber, x: u8, y: usize) -> bool {
-//     if y < CHAMBER_WIDTH as usize {
-//         false
-//     } else if x >= CHAMBER_WIDTH {
-//         true
-//     } else if chamber[y] & (0b1000000 >> x) == 0 {
-//         false
-//     } else {
-//         is_prunable(chamber, x + 1, y) || 
-//             is_prunable(chamber, x + 1, y + 1) || 
-//             is_prunable(chamber, x + 1, y - 1)
-//     }
-// }
-fn is_prunable(chamber: &Chamber, x: u8, y: usize) -> bool {
+fn is_prunable(chamber: &Chamber, _x: u8, y: usize) -> bool {
+    /*
     if y < CHAMBER_WIDTH as usize {
         false
     } else if x >= CHAMBER_WIDTH {
@@ -144,6 +132,9 @@ fn is_prunable(chamber: &Chamber, x: u8, y: usize) -> bool {
             is_prunable(chamber, x + 1, y + 1) || 
             is_prunable(chamber, x + 1, y - 1)
     }
+    */
+    // Less accurate but more performant
+    chamber[y] | chamber[y + 1] | chamber[y + 2] == 0b1111111
 }
 
 // Returns the number of rows pruned

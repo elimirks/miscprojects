@@ -12,3 +12,6 @@ num = "0.4"
 more-asserts = "0.3"
 rayon = "1.5"
 bit-set = "0.5"
+
+[profile.release]
+debug = true
