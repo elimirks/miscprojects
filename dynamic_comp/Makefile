@@ -1,6 +1,6 @@
 SRC = src
 LIB =
-OPTS = ${LIB} --std=c17
+OPTS = ${LIB} --std=c17 -g
 SRCS = ${SRC}/main.c
 BIN = dynamic_comp
 
