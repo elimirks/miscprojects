@@ -1,24 +1,23 @@
 use std::collections::{HashSet, HashMap};
-
 use itertools::Itertools;
 
 use crate::common::*;
 
-#[derive(Debug, Copy, Clone)]
-enum Direction {
-    North,
-    South,
-    West,
-    East,
+#[derive(Copy, Clone)]
+enum Dir {
+    N,
+    S,
+    W,
+    E,
 }
 
-impl Direction {
-    fn next(&self) -> Direction {
+impl Dir {
+    fn next(&self) -> Dir {
         match self {
-            Direction::North => Direction::South,
-            Direction::South => Direction::West,
-            Direction::West => Direction::East,
-            Direction::East => Direction::North,
+            Dir::N => Dir::S,
+            Dir::S => Dir::W,
+            Dir::W => Dir::E,
+            Dir::E => Dir::N,
         }
     }
 }
@@ -31,10 +30,10 @@ pub fn day23() -> AocResult<()> {
 }
 
 fn part1(mut elves: Vec<(i64, i64)>) -> i64 {
-    let mut direction = Direction::North;
+    let mut dir = Dir::N;
     for _ in 0..10 {
-        tick(&mut elves, direction);
-        direction = direction.next();
+        tick(&mut elves, dir);
+        dir = dir.next();
     }
     let (min_x, max_x) = elves.iter().map(|p| p.0).minmax().into_option().unwrap();
     let (min_y, max_y) = elves.iter().map(|p| p.1).minmax().into_option().unwrap();
@@ -43,10 +42,10 @@ fn part1(mut elves: Vec<(i64, i64)>) -> i64 {
 }
 
 fn part2(mut elves: Vec<(i64, i64)>) -> i64 {
-    let mut direction = Direction::North;
+    let mut dir = Dir::N;
     let mut round = 1;
-    while tick(&mut elves, direction) {
-        direction = direction.next();
+    while tick(&mut elves, dir) {
+        dir = dir.next();
         round += 1;
     }
     round
@@ -55,23 +54,21 @@ fn part2(mut elves: Vec<(i64, i64)>) -> i64 {
 // Returns true when all the elves are done moving
 fn tick(
     elves: &mut Vec<(i64, i64)>,
-    direction: Direction,
+    dir: Dir,
 ) -> bool {
     let occupied = elves.iter().cloned().collect::<HashSet<_>>();
     let mut proposals = elves.iter()
-        .map(|elf| propose_move(&occupied, elf, direction))
+        .map(|elf| propose_move(&occupied, elf, dir))
         .collect::<Vec<_>>();
     retain_unique_proposals(&mut proposals);
-    // No proposals about where to move... we're done!
-    if proposals.iter().all(|value| value.is_none()) {
-        return false;
-    }
+    let mut has_changed = false;
     for i in 0..elves.len() {
         if let Some(new_point) = proposals[i] {
             elves[i] = new_point;
+            has_changed = true;
         }
     }
-    true
+    has_changed
 }
 
 fn retain_unique_proposals(proposals: &mut [Option<(i64, i64)>]) {
@@ -80,14 +77,13 @@ fn retain_unique_proposals(proposals: &mut [Option<(i64, i64)>]) {
         let new_count = proposal_counts.get(point).unwrap_or(&0) + 1;
         proposal_counts.insert(point, new_count);
     }
-    let unique_points = proposal_counts.iter().filter_map(|(point, count)| {
-        if *count == 1 {
-            Some(**point)
+    let unique_points = proposal_counts.iter().filter_map(|(&&point, &count)| {
+        if count == 1 {
+            Some(point)
         } else {
             None
         }
     }).collect::<HashSet<_>>();
-
     for proposal in proposals.iter_mut() {
         if let Some(point) = proposal {
             if !unique_points.contains(point) {
@@ -100,7 +96,7 @@ fn retain_unique_proposals(proposals: &mut [Option<(i64, i64)>]) {
 fn propose_move(
     occupied: &HashSet<(i64, i64)>,
     elf: &(i64, i64),
-    mut direction: Direction,
+    mut dir: Dir,
 ) -> Option<(i64, i64)> {
     let has_neighbor = (-1..=1).cartesian_product(-1..=1).any(|(x, y)| {
         (x != 0 || y != 0) && occupied.contains(&(elf.0 + x, elf.1 + y))
@@ -109,25 +105,25 @@ fn propose_move(
         return None;
     }
     for _ in 0..4 {
-        let coords_to_check = match direction {
-            Direction::North => &[(-1, -1), (0, -1), (1, -1)],
-            Direction::South => &[(-1, 1), (0, 1), (1, 1)],
-            Direction::West => &[(-1, -1), (-1, 0), (-1, 1)],
-            Direction::East => &[(1, -1), (1, 0), (1, 1)],
+        let coords_to_check = match dir {
+            Dir::N => &[(-1, -1), (0, -1), (1, -1)],
+            Dir::S => &[(-1, 1), (0, 1), (1, 1)],
+            Dir::W => &[(-1, -1), (-1, 0), (-1, 1)],
+            Dir::E => &[(1, -1), (1, 0), (1, 1)],
         };
         if coords_to_check.iter().all(|coord| {
             let x = coord.0 + elf.0;
             let y = coord.1 + elf.1;
             !occupied.contains(&(x, y))
         }) {
-            return Some(match direction {
-                Direction::North => (elf.0, elf.1 - 1),
-                Direction::South => (elf.0, elf.1 + 1),
-                Direction::West => (elf.0 - 1, elf.1),
-                Direction::East => (elf.0 + 1, elf.1),
+            return Some(match dir {
+                Dir::N => (elf.0, elf.1 - 1),
+                Dir::S => (elf.0, elf.1 + 1),
+                Dir::W => (elf.0 - 1, elf.1),
+                Dir::E => (elf.0 + 1, elf.1),
             });
         }
-        direction = direction.next();
+        dir = dir.next();
     }
     None
 }
