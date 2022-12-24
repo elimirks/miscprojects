@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use num::integer::gcd;
 
 use crate::common::*;
 
@@ -72,15 +73,6 @@ impl Fraction {
 impl std::fmt::Debug for Fraction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!("{}/{}", self.num, self.den))
-    }
-}
-
-fn gcd(a: i64, b: i64) -> i64 {
-    let rem = a % b;
-    if rem == 0 {
-        b
-    } else {
-        gcd(b, rem)
     }
 }
 

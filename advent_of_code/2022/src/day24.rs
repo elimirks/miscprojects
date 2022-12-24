@@ -1,4 +1,6 @@
 use std::collections::HashSet;
+use num::integer::gcd;
+
 use crate::common::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -96,15 +98,14 @@ fn create_time_grid(
     let mut time_grid = vec![];
     let height = grid.len() - 2;
     let width = grid[0].len() - 2;
-    // Iterate up to the area, which is the maximum period of all blizzards
-    let area = height * width;
 
-    for _ in 0..area {
+    let period = height * width / gcd(height, width);
+    for _ in 0..period {
         let mut g = grid.clone();
         for bliz in blizzards.iter() {
             g[bliz.y][bliz.x] = true;
         }
-        time_grid.push(g.clone());
+        time_grid.push(g);
         tick_blizzards(&mut blizzards, width, height);
     }
     time_grid
