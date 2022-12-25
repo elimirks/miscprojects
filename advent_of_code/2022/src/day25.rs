@@ -45,6 +45,7 @@ pub fn day25() -> AocResult<()> {
     let nums = parse(&std::fs::read_to_string("data/day25.txt")?);
     let target = nums.iter().map(to_dec).sum();
     println!("Answer: {:?}", to_snafu(target));
+    golf(&std::fs::read_to_string("data/day25.txt")?);
     Ok(())
 }
 
@@ -77,4 +78,24 @@ mod tests {
         assert_eq!(Snafu { digits: vec![1, -2] }, to_snafu(3));
         assert_eq!(Snafu { digits: vec![1, -2, -1, 0, -1, 2] }, to_snafu(1747));
     }
+}
+
+fn golf(s: &str) {
+    let mut num = s.lines().map(|line| {
+        line.bytes().map(|c| match c {
+            b'-' => -1,
+            b'=' => -2,
+            c   => (c - b'0') as i64,
+        }).fold(0, |acc, it| acc * 5 + it)
+    }).sum::<i64>();
+    let mut digits = vec![];
+    while num != 0 {
+        let rem = num % 5;
+        digits.push((rem + 2) % 5 - 2);
+        num = num / 5 + rem / 3;
+    }
+    for d in digits.iter().rev() {
+        print!("{}", ['=', '-', '0', '1', '2'][(d + 2) as usize]);
+    }
+    println!();
 }
