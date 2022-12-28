@@ -23,7 +23,7 @@ impl Scope {
         } else if let Some(parent) = &self.parent {
             parent.borrow().lookup(name)
         } else {
-            Rc::new(SExpr::Atom(0, Value::Nil))
+            Rc::new(SExpr::nil())
         }
     }
 }
@@ -71,11 +71,20 @@ fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
     }
 }
 
+// The result is the last evaluated expr
+fn eval_do(ctx: &mut RunContext, exprs: Vec<Rc<SExpr>>) -> RunResult<Rc<SExpr>> {
+    let mut ctx = RunContext::new();
+    for expr in exprs.iter().take(exprs.len() - 1) {
+        eval(&mut ctx, expr.clone())?;
+    }
+    eval(&mut ctx, exprs.last().unwrap().clone())
+}
+
 fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
     match &*func {
         SExpr::Atom(_, value) => {
             match value {
-                Value::Bulitin(bi) => call_builtin(ctx, *bi, params),
+                Value::Builtin(bi) => call_builtin(ctx, *bi, params),
                 _ => Err(format!("{value:?} is not callable"))
             }
         },
@@ -92,7 +101,7 @@ fn unfold(sexpr: Rc<SExpr>) -> Vec<Rc<SExpr>> {
         values.push(lhs.clone());
         current = rhs.clone();
     }
-    if *current != SExpr::Atom(0, Value::Nil) {
+    if *current != SExpr::Atom(0, Value::nil()) {
         values.push(current);
     }
     values
@@ -101,10 +110,11 @@ fn unfold(sexpr: Rc<SExpr>) -> Vec<Rc<SExpr>> {
 fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
     let mut params = unfold(folded_params);
     match func {
-        Builtin::Nil => Ok(Rc::new(SExpr::Atom(0, Value::Nil))),
+        Builtin::Nil => Ok(Rc::new(SExpr::nil())),
         Builtin::Set => todo!(),
         Builtin::Setg => todo!(),
         Builtin::Fun => todo!(),
+        Builtin::Do => eval_do(ctx, params),
         Builtin::Add | Builtin::Sub | Builtin::Mul | Builtin::Div | Builtin::Mod => {
             if params.len() != 2 {
                 println!("{params:?}");
@@ -158,9 +168,14 @@ fn eval_arithmetic_float(builtin: Builtin, lhs: f64, rhs: f64) -> Value {
 mod tests {
     use super::*;
 
+    // Returns the last evaluated expr
     fn eval_str(s: &str) -> Rc<SExpr> {
-        let expr = Rc::new(parse_expr_str(s));
-        eval(&mut RunContext::new(), expr).unwrap()
+        let exprs = parse_str(s).unwrap()
+            .into_iter()
+            .map(Rc::new)
+            .collect::<Vec<_>>();
+        let mut ctx = RunContext::new();
+        eval_do(&mut ctx, exprs).unwrap()
     }
 
     #[test]
@@ -174,5 +189,12 @@ mod tests {
         assert_eq!("0.0", format!("{:?}", eval_str("(* 0.0 7)")));
         assert_eq!("0.125", format!("{:?}", eval_str("(/ 1 (* 4.0 2))")));
         assert_eq!("2", format!("{:?}", eval_str("(% 42 5)")));
+    }
+
+    #[test]
+    fn test_eval_do() {
+        assert_eq!("2", format!("{:?}", eval_str("(do (% 42 5))")));
+        assert_eq!("2", format!("{:?}", eval_str("(do 6 nil (+ 4 2) (% 42 5))")));
+        assert_eq!("nil", format!("{:?}", eval_str("(do nil)")));
     }
 }

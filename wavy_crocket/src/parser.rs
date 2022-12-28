@@ -5,19 +5,23 @@ type ParseResult<T> = Result<T, String>;
 // FYI: a string is just a list of chars
 #[derive(PartialEq, Clone)]
 pub enum Value {
-    Nil,
     Symbol(String),
-    Bulitin(Builtin),
+    Builtin(Builtin),
     Int(i64),
     Float(f64),
     Char(char),
     Quote(Rc<SExpr>),
 }
 
+impl Value {
+    pub fn nil() -> Value {
+        Value::Builtin(Builtin::Nil)
+    }
+}
+
 impl Debug for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Nil            => f.write_str("nil"),
             Value::Symbol(value)  => f.write_str(value),
             Value::Int(value)     => f.write_str(&value.to_string()),
             Value::Float(value)   => {
@@ -29,12 +33,12 @@ impl Debug for Value {
             },
             Value::Char(value)    => f.write_str(&format!("?{value}")),
             Value::Quote(sexpr)   => f.write_str(&format!("'{sexpr:?}")),
-            Value::Bulitin(value) => value.fmt(f),
+            Value::Builtin(value) => value.fmt(f),
         }
     }
 }
 
-#[derive(PartialEq, Clone, Debug, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum Builtin {
     Nil,
     Add,
@@ -48,12 +52,36 @@ pub enum Builtin {
     Setg,
     // Defines a function in the GLOBAL scope
     Fun,
+    Do,
+}
+
+impl Debug for Builtin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Builtin::Nil => f.write_str(&"nil".to_owned()),
+            Builtin::Add => f.write_str(&"+".to_owned()),
+            Builtin::Sub => f.write_str(&"-".to_owned()),
+            Builtin::Mul => f.write_str(&"*".to_owned()),
+            Builtin::Div => f.write_str(&"/".to_owned()),
+            Builtin::Mod => f.write_str(&"%".to_owned()),
+            Builtin::Set => f.write_str(&"set".to_owned()),
+            Builtin::Setg => f.write_str(&"setg".to_owned()),
+            Builtin::Fun => f.write_str(&"fun".to_owned()),
+            Builtin::Do => f.write_str(&"do".to_owned()),
+        }
+    }
 }
 
 #[derive(PartialEq, Clone)]
 pub enum SExpr {
     Atom(usize, Value),
     S(usize, Rc<SExpr>, Rc<SExpr>),
+}
+
+impl SExpr {
+    pub fn nil() -> SExpr {
+        SExpr::Atom(0, Value::nil())
+    }
 }
 
 impl Debug for SExpr {
@@ -85,6 +113,7 @@ impl ParseContext {
         builtins.insert("set".to_owned(), Builtin::Set);
         builtins.insert("setg".to_owned(), Builtin::Setg);
         builtins.insert("fun".to_owned(), Builtin::Fun);
+        builtins.insert("do".to_owned(), Builtin::Do);
         ParseContext {
             content: content.chars().collect::<Vec<_>>(),
             pos: 0,
@@ -205,7 +234,7 @@ fn parse_string(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     while let Some(c) = ctx.peek() {
         if c == '"' {
             ctx.pos += 1;
-            return Ok(chars.into_iter().rev().fold(SExpr::Atom(pos, Value::Nil), |acc, it| {
+            return Ok(chars.into_iter().rev().fold(SExpr::nil(), |acc, it| {
                 let value = SExpr::Atom(pos, Value::Char(it));
                 SExpr::S(pos, Rc::new(value), Rc::new(acc))
             }));
@@ -225,7 +254,7 @@ fn parse_symbol(ctx: &mut ParseContext) -> ParseResult<Value> {
     }
 
     if let Some(builtin) = ctx.builtins.get(&s) {
-        Ok(Value::Bulitin(*builtin))
+        Ok(Value::Builtin(*builtin))
     } else {
         Ok(Value::Symbol(s))
     }
@@ -261,7 +290,7 @@ fn parse_sexpr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
         parse_ws(ctx);
     }
     ctx.pos += 1;
-    Ok(exprs.into_iter().rev().fold(SExpr::Atom(0, Value::Nil), |acc, it| {
+    Ok(exprs.into_iter().rev().fold(SExpr::nil(), |acc, it| {
         SExpr::S(it.0, Rc::new(it.1), Rc::new(acc))
     }))
 }
