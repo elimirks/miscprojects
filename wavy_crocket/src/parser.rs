@@ -1,15 +1,17 @@
-use std::fmt::{Debug, Write};
+use std::{fmt::{Debug, Write}, rc::Rc};
 
 type ParseResult<T> = Result<T, String>;
 
+// FYI: a string is just a list of chars
 #[derive(PartialEq, Clone)]
-enum Value {
+pub enum Value {
     Nil,
     Symbol(String),
     Int(i64),
     Float(f64),
+    Char(char),
+    Quote(Rc<SExpr>),
 }
-
 
 impl Debug for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -18,21 +20,23 @@ impl Debug for Value {
             Value::Symbol(value) => f.write_str(value),
             Value::Int(value)    => f.write_str(&value.to_string()),
             Value::Float(value)  => f.write_str(&value.to_string()),
+            Value::Char(value)   => f.write_str(&format!("?{value}")),
+            Value::Quote(sexpr)  => f.write_str(&format!("'{sexpr:?}")),
         }
     }
 }
 
 #[derive(PartialEq, Clone)]
-enum SExpr {
-    Atom(Value),
-    S(Box<SExpr>, Box<SExpr>),
+pub enum SExpr {
+    Atom(usize, Value),
+    S(usize, Rc<SExpr>, Rc<SExpr>),
 }
 
 impl Debug for SExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SExpr::Atom(value) => value.fmt(f),
-            SExpr::S(lhs, rhs) => {
+            SExpr::Atom(_, value) => value.fmt(f),
+            SExpr::S(_, lhs, rhs) => {
                 f.write_str(&format!("({:?} . {:?})", lhs, rhs))
             },
         }
@@ -85,12 +89,18 @@ fn parse_ws(ctx: &mut ParseContext) -> bool {
     has_ws
 }
 
-fn is_symbol_start_char(c: char) -> bool {
-    c == '_' || c.is_alphabetic()
-}
-
 fn is_symbol_char(c: char) -> bool {
-    is_symbol_start_char(c) || c.is_digit(10) || c == '-'
+    match c {
+        '_' => true,
+        '+' => true,
+        '-' => true,
+        '/' => true,
+        '*' => true,
+        '%' => true,
+        c if c.is_alphabetic() => true,
+        c if c.is_digit(10) => true,
+        _ => false,
+    }
 }
 
 fn is_digit_char(c: char) -> bool {
@@ -99,10 +109,18 @@ fn is_digit_char(c: char) -> bool {
 
 // Expects to not be at EOF
 fn parse_expr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
+    let pos = ctx.pos;
     match ctx.content[ctx.pos] {
+        '\'' => {
+            ctx.pos += 1;
+            let ex = parse_expr(ctx)?;
+            Ok(SExpr::Atom(pos, Value::Quote(Rc::new(ex))))
+        },
+        '\"' => parse_string(ctx),
+        '?' => Ok(SExpr::Atom(pos, parse_char(ctx)?)),
         '(' => parse_sexpr(ctx),
-        c if c.is_digit(10) || c == '.' => Ok(SExpr::Atom(parse_num(ctx)?)),
-        c if is_symbol_start_char(c) => Ok(SExpr::Atom(parse_symbol(ctx)?)),
+        c if c.is_digit(10) || c == '.' => Ok(SExpr::Atom(pos, parse_num(ctx)?)),
+        c if is_symbol_char(c) => Ok(SExpr::Atom(pos, parse_symbol(ctx)?)),
         c => Err(format!("abcd Unexpected character: {c}")),
     }
 }
@@ -122,6 +140,37 @@ fn parse_num(ctx: &mut ParseContext) -> ParseResult<Value> {
     Err("Invalid integer".to_owned())
 }
 
+// Expects the leading ? to have been parsed
+fn parse_char(ctx: &mut ParseContext) -> ParseResult<Value> {
+    let pos = ctx.pos;
+    ctx.pos += 1;
+    if let Some(c) = ctx.peek() {
+        ctx.pos += 1;
+        Ok(Value::Char(c))
+    } else {
+        Err("Expected character, found EOF".to_owned())
+    }
+}
+
+// Expects the first char to already be a double quote
+fn parse_string(ctx: &mut ParseContext) -> ParseResult<SExpr> {
+    let pos = ctx.pos;
+    ctx.pos += 1;
+    let mut chars = vec![];
+    while let Some(c) = ctx.peek() {
+        if c == '"' {
+            ctx.pos += 1;
+            return Ok(chars.into_iter().rev().fold(SExpr::Atom(pos, Value::Nil), |acc, it| {
+                let value = SExpr::Atom(pos, Value::Char(it));
+                SExpr::S(pos, Rc::new(value), Rc::new(acc))
+            }));
+        }
+        chars.push(c);
+        ctx.pos += 1;
+    }
+    Err("Hit EOF while parsing string".to_owned())
+}
+
 // Assumes the current char is a valid symbol char
 fn parse_symbol(ctx: &mut ParseContext) -> ParseResult<Value> {
     let mut s = String::new();
@@ -129,13 +178,18 @@ fn parse_symbol(ctx: &mut ParseContext) -> ParseResult<Value> {
         s.push(c);
         ctx.pos += 1;
     }
-    Ok(Value::Symbol(s))
+    if s == "nil" {
+        Ok(Value::Nil)
+    } else {
+        Ok(Value::Symbol(s))
+    }
 }
 
 // Assumes we know that the current char is a left paren
 fn parse_sexpr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     ctx.pos += 1;
     parse_ws(ctx);
+    let initial_pos = ctx.pos;
     let lhs = parse_expr(ctx)?;
     parse_ws(ctx);
     // Just something nested inside parens, not an actual SExpr
@@ -152,17 +206,17 @@ fn parse_sexpr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
             return Err("Expected )".to_owned());
         }
         ctx.pos += 1;
-        return Ok(SExpr::S(Box::new(lhs), Box::new(rhs)));
+        return Ok(SExpr::S(initial_pos, Rc::new(lhs), Rc::new(rhs)));
     }
     // Otherwise, assume we're using the list style SExpr syntax
-    let mut exprs = vec![lhs];
+    let mut exprs = vec![(initial_pos, lhs)];
     while ctx.peek() != Some(')') {
-        exprs.push(parse_expr(ctx)?);
+        exprs.push((ctx.pos, parse_expr(ctx)?));
         parse_ws(ctx);
     }
     ctx.pos += 1;
-    Ok(exprs.into_iter().rev().fold(SExpr::Atom(Value::Nil), |acc, it| {
-        SExpr::S(Box::new(it), Box::new(acc))
+    Ok(exprs.into_iter().rev().fold(SExpr::Atom(0, Value::Nil), |acc, it| {
+        SExpr::S(it.0, Rc::new(it.1), Rc::new(acc))
     }))
 }
 
@@ -191,5 +245,21 @@ mod tests {
         assert_eq!("Ok([(x . (y . (42 . nil))), (a . b)])", format!("{:?}", parse_str(
                     "(x y 42)\n(a . b)"
                     )));
+    }
+
+    #[test]
+    fn test_parse_char() {
+        assert_eq!("Ok([?x])", format!("{:?}", parse_str("?x")));
+    }
+
+    #[test]
+    fn test_parse_quote() {
+        assert_eq!("Ok(['(a . b)])", format!("{:?}", parse_str("'(a . b)")));
+        assert_eq!("Ok(['?a])", format!("{:?}", parse_str("'?a")));
+    }
+
+    #[test]
+    fn test_parse_string() {
+        assert_eq!("Ok([(?a . (?b . (?c . nil)))])", format!("{:?}", parse_str("\"abc\"")));
     }
 }

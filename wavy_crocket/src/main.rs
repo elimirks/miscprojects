@@ -1,4 +1,6 @@
+#![feature(box_patterns)]
 mod parser;
+mod interpreter;
 
 use std::mem::size_of;
 use std::{f64::consts::PI, error::Error, fs::File};
