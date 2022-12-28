@@ -1,3 +1,5 @@
+mod parser;
+
 use std::mem::size_of;
 use std::{f64::consts::PI, error::Error, fs::File};
 use std::io::prelude::*;
