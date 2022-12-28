@@ -26,6 +26,10 @@ impl Scope {
             Rc::new(SExpr::nil())
         }
     }
+
+    fn insert(&mut self, name: &String, value: Rc<SExpr>) {
+        self.values.insert(name.clone(), value);
+    }
 }
 
 struct RunContext {
@@ -92,8 +96,9 @@ fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: Rc<SExpr>) -> RunResult<R
     }
 }
 
-// Unfolds an sexpr list into a Vec
-// Unfolding will terminate when it hits an atom value in the rhs
+/// Unfolds an sexpr list into a Vec
+/// Unfolding will terminate when it hits an atom value in the rhs
+/// If a nil is the terminal element, it isn't included in the return vec
 fn unfold(sexpr: Rc<SExpr>) -> Vec<Rc<SExpr>> {
     let mut values = vec![];
     let mut current = sexpr;
@@ -101,7 +106,7 @@ fn unfold(sexpr: Rc<SExpr>) -> Vec<Rc<SExpr>> {
         values.push(lhs.clone());
         current = rhs.clone();
     }
-    if *current != SExpr::Atom(0, Value::nil()) {
+    if !current.is_nil() {
         values.push(current);
     }
     values
@@ -110,10 +115,10 @@ fn unfold(sexpr: Rc<SExpr>) -> Vec<Rc<SExpr>> {
 fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
     let mut params = unfold(folded_params);
     match func {
-        Builtin::Nil => Ok(Rc::new(SExpr::nil())),
-        Builtin::Set => todo!(),
-        Builtin::Setg => todo!(),
         Builtin::Fun => todo!(),
+        Builtin::Nil => Ok(Rc::new(SExpr::nil())),
+        Builtin::Set => eval_set(ctx, ctx.scope.clone(), params),
+        Builtin::Setg => eval_set(ctx, ctx.root_scope().clone(), params),
         Builtin::Do => eval_do(ctx, params),
         Builtin::Add | Builtin::Sub | Builtin::Mul | Builtin::Div | Builtin::Mod => {
             if params.len() != 2 {
@@ -128,6 +133,29 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
                 _ => Err(format!("{func:?} must be called on two values of the same type")),
             }
         },
+    }
+}
+
+fn eval_set(ctx: &mut RunContext, scope: Rc<RefCell<Scope>>, params: Vec<Rc<SExpr>>) -> RunResult<Rc<SExpr>> {
+    if params.len() != 2 {
+        return Err("set must be called on exactly two parameters".to_owned());
+    }
+    if let Some(name) = get_symbol_name(&params[0]) {
+        let set_value = eval(ctx, params[1].clone())?;
+        scope.borrow_mut().insert(&name, set_value.clone());
+        Ok(set_value)
+    } else {
+        Err("The first param to `set` must be a symbol".to_owned())
+    }
+}
+
+fn get_symbol_name(sexpr: &SExpr) -> Option<&String> {
+    match sexpr {
+        SExpr::Atom(_, value) => match value {
+            Value::Symbol(name) => Some(name),
+            _ => None,
+        },
+        SExpr::S(_, _, _) => None,
     }
 }
 
@@ -196,5 +224,10 @@ mod tests {
         assert_eq!("2", format!("{:?}", eval_str("(do (% 42 5))")));
         assert_eq!("2", format!("{:?}", eval_str("(do 6 nil (+ 4 2) (% 42 5))")));
         assert_eq!("nil", format!("{:?}", eval_str("(do nil)")));
+    }
+
+    #[test]
+    fn test_eval_set() {
+        assert_eq!("8", format!("{:?}", eval_str("(set x 4) (+ x x)")));
     }
 }

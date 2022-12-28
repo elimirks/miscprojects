@@ -2,7 +2,7 @@ use std::{fmt::{Debug, Write}, rc::Rc, collections::HashMap};
 
 type ParseResult<T> = Result<T, String>;
 
-// FYI: a string is just a list of chars
+/// FYI: a string is just a list of chars
 #[derive(PartialEq, Clone)]
 pub enum Value {
     Symbol(String),
@@ -16,6 +16,10 @@ pub enum Value {
 impl Value {
     pub fn nil() -> Value {
         Value::Builtin(Builtin::Nil)
+    }
+
+    pub fn is_nil(&self) -> bool {
+        *self == Value::nil()
     }
 }
 
@@ -46,11 +50,11 @@ pub enum Builtin {
     Mul,
     Div,
     Mod,
-    // Sets a value in the current scope
+    /// Sets a value in the current scope
     Set,
-    // Sets a value in the global scope
+    /// Sets a value in the global scope
     Setg,
-    // Defines a function in the GLOBAL scope
+    /// Defines a function in the GLOBAL scope
     Fun,
     Do,
 }
@@ -81,6 +85,10 @@ pub enum SExpr {
 impl SExpr {
     pub fn nil() -> SExpr {
         SExpr::Atom(0, Value::nil())
+    }
+
+    pub fn is_nil(&self) -> bool {
+        *self == SExpr::nil()
     }
 }
 
@@ -144,7 +152,7 @@ fn parse(mut ctx: ParseContext) -> ParseResult<Vec<SExpr>> {
     Ok(exprs)
 }
 
-// Returns true if it parsed any amount of whitespace
+/// Returns true if it parsed any amount of whitespace
 fn parse_ws(ctx: &mut ParseContext) -> bool {
     let mut has_ws = false;
     while !ctx.at_end() {
@@ -176,7 +184,7 @@ fn is_digit_char(c: char) -> bool {
     c == '.' || c.is_digit(10)
 }
 
-// Expects to not be at EOF
+/// Expects to not be at EOF
 fn parse_expr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     let pos = ctx.pos;
     match ctx.content[ctx.pos] {
@@ -194,7 +202,7 @@ fn parse_expr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     }
 }
 
-// For use in tests
+/// For use in tests
 pub fn parse_expr_str(s: &str) -> SExpr {
     parse_expr(&mut ParseContext::new(s)).expect("Failed parsing expr")
 }
@@ -214,7 +222,7 @@ fn parse_num(ctx: &mut ParseContext) -> ParseResult<Value> {
     Err("Invalid integer".to_owned())
 }
 
-// Expects the leading ? to have been parsed
+/// Expects the leading ? to have been parsed
 fn parse_char(ctx: &mut ParseContext) -> ParseResult<Value> {
     let pos = ctx.pos;
     ctx.pos += 1;
@@ -226,7 +234,7 @@ fn parse_char(ctx: &mut ParseContext) -> ParseResult<Value> {
     }
 }
 
-// Expects the first char to already be a double quote
+/// Expects the first char to already be a double quote
 fn parse_string(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     let pos = ctx.pos;
     ctx.pos += 1;
@@ -245,7 +253,7 @@ fn parse_string(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     Err("Hit EOF while parsing string".to_owned())
 }
 
-// Assumes the current char is a valid symbol char
+/// Assumes the current char is a valid symbol char
 fn parse_symbol(ctx: &mut ParseContext) -> ParseResult<Value> {
     let mut s = String::new();
     while let Some(c) = ctx.peek().filter(|&c| is_symbol_char(c)) {
@@ -260,7 +268,7 @@ fn parse_symbol(ctx: &mut ParseContext) -> ParseResult<Value> {
     }
 }
 
-// Assumes we know that the current char is a left paren
+/// Assumes we know that the current char is a left paren
 fn parse_sexpr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     ctx.pos += 1;
     parse_ws(ctx);
