@@ -20,7 +20,13 @@ impl Debug for Value {
             Value::Nil            => f.write_str("nil"),
             Value::Symbol(value)  => f.write_str(value),
             Value::Int(value)     => f.write_str(&value.to_string()),
-            Value::Float(value)   => f.write_str(&value.to_string()),
+            Value::Float(value)   => {
+                if value % 1.0 == 0.0 {
+                    f.write_str(&format!("{}.0", value.floor()))
+                } else {
+                    f.write_str(&value.to_string())
+                }
+            },
             Value::Char(value)    => f.write_str(&format!("?{value}")),
             Value::Quote(sexpr)   => f.write_str(&format!("'{sexpr:?}")),
             Value::Bulitin(value) => value.fmt(f),
@@ -268,6 +274,7 @@ mod tests {
     fn test_parse_num() {
         assert_eq!("1234", format!("{:?}", parse_expr_str("1234")));
         assert_eq!("3.14", format!("{:?}", parse_expr_str("3.14")));
+        assert_eq!("3.0", format!("{:?}", parse_expr_str("3.000")));
     }
 
     #[test]

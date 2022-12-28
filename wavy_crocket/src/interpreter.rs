@@ -171,6 +171,7 @@ mod tests {
         assert_eq!("2", format!("{:?}", eval_str("(/ 5 2)")));
         assert_eq!("8", format!("{:?}", eval_str("(* 4 2)")));
         assert_eq!("0", format!("{:?}", eval_str("(/ 1 (* 7 9))")));
+        assert_eq!("0.0", format!("{:?}", eval_str("(* 0.0 7)")));
         assert_eq!("0.125", format!("{:?}", eval_str("(/ 1 (* 4.0 2))")));
         assert_eq!("2", format!("{:?}", eval_str("(% 42 5)")));
     }
