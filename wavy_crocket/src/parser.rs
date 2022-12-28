@@ -39,12 +39,12 @@ impl Debug for Value {
             Value::Char(value)    => f.write_str(&format!("?{value}")),
             Value::Quote(sexpr)   => f.write_str(&format!("'{sexpr:?}")),
             Value::Function(args, body) => {
-                f.write_str(&"(lambda (".to_owned())?;
+                f.write_str("(lambda (")?;
                 f.write_str(&args.join(" "))?;
-                f.write_str(&") ".to_owned())?;
+                f.write_str(" )")?;
                 let body_strs = body.iter().map(|expr| format!("{expr:?}")).collect::<Vec<_>>();
                 f.write_str(&body_strs.join(" "))?;
-                f.write_str(&")".to_owned())?;
+                f.write_str(")")?;
                 Ok(())
             },
             Value::Builtin(value) => value.fmt(f),
@@ -52,7 +52,7 @@ impl Debug for Value {
     }
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub enum Builtin {
     Nil,
     Add,
@@ -67,22 +67,24 @@ pub enum Builtin {
     Do,
     Lambda,
     Defun,
+    Putc,
 }
 
 impl Debug for Builtin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Builtin::Nil => f.write_str(&"nil".to_owned()),
-            Builtin::Add => f.write_str(&"+".to_owned()),
-            Builtin::Sub => f.write_str(&"-".to_owned()),
-            Builtin::Mul => f.write_str(&"*".to_owned()),
-            Builtin::Div => f.write_str(&"/".to_owned()),
-            Builtin::Mod => f.write_str(&"%".to_owned()),
-            Builtin::Set => f.write_str(&"set".to_owned()),
-            Builtin::Setg => f.write_str(&"setg".to_owned()),
-            Builtin::Do => f.write_str(&"do".to_owned()),
-            Builtin::Lambda => f.write_str(&"lambda".to_owned()),
-            Builtin::Defun => f.write_str(&"defun".to_owned()),
+            Builtin::Nil => f.write_str("nil"),
+            Builtin::Add => f.write_str("+"),
+            Builtin::Sub => f.write_str("-"),
+            Builtin::Mul => f.write_str("*"),
+            Builtin::Div => f.write_str("/"),
+            Builtin::Mod => f.write_str("%"),
+            Builtin::Set => f.write_str("set"),
+            Builtin::Setg => f.write_str("setg"),
+            Builtin::Do => f.write_str("do"),
+            Builtin::Lambda => f.write_str("lambda"),
+            Builtin::Defun => f.write_str("defun"),
+            Builtin::Putc => f.write_str("putc"),
         }
     }
 }
@@ -134,6 +136,7 @@ impl ParseContext {
         builtins.insert("lambda".to_owned(), Builtin::Lambda);
         builtins.insert("do".to_owned(), Builtin::Do);
         builtins.insert("defun".to_owned(), Builtin::Defun);
+        builtins.insert("putc".to_owned(), Builtin::Putc);
         ParseContext {
             content: content.chars().collect::<Vec<_>>(),
             pos: 0,
@@ -186,14 +189,13 @@ fn is_symbol_char(c: char) -> bool {
         '/' => true,
         '*' => true,
         '%' => true,
-        c if c.is_alphabetic() => true,
-        c if c.is_digit(10) => true,
+        c if c.is_alphanumeric() => true,
         _ => false,
     }
 }
 
 fn is_digit_char(c: char) -> bool {
-    c == '.' || c.is_digit(10)
+    c == '.' || c.is_ascii_digit()
 }
 
 /// Expects to not be at EOF
@@ -208,15 +210,10 @@ fn parse_expr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
         '\"' => parse_string(ctx),
         '?' => Ok(SExpr::Atom(pos, parse_char(ctx)?)),
         '(' => parse_sexpr(ctx),
-        c if c.is_digit(10) || c == '.' => Ok(SExpr::Atom(pos, parse_num(ctx)?)),
+        c if c.is_ascii_digit() || c == '.' => Ok(SExpr::Atom(pos, parse_num(ctx)?)),
         c if is_symbol_char(c) => Ok(SExpr::Atom(pos, parse_symbol(ctx)?)),
-        c => Err(format!("abcd Unexpected character: {c}")),
+        c => Err(format!("Unexpected character: {c}")),
     }
-}
-
-/// For use in tests
-pub fn parse_expr_str(s: &str) -> SExpr {
-    parse_expr(&mut ParseContext::new(s)).expect("Failed parsing expr")
 }
 
 fn parse_num(ctx: &mut ParseContext) -> ParseResult<Value> {
@@ -236,7 +233,6 @@ fn parse_num(ctx: &mut ParseContext) -> ParseResult<Value> {
 
 /// Expects the leading ? to have been parsed
 fn parse_char(ctx: &mut ParseContext) -> ParseResult<Value> {
-    let pos = ctx.pos;
     ctx.pos += 1;
     if let Some(c) = ctx.peek() {
         ctx.pos += 1;
@@ -318,6 +314,10 @@ fn parse_sexpr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn parse_expr_str(s: &str) -> SExpr {
+        parse_expr(&mut ParseContext::new(s)).expect("Failed parsing expr")
+    }
 
     #[test]
     fn test_parse_num() {

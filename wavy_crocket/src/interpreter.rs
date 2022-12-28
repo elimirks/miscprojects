@@ -20,7 +20,7 @@ impl Scope {
 
     fn lookup(&self, name: &String) -> Rc<SExpr> {
         if let Some(value) = self.values.get(name) {
-            return value.clone();
+            value.clone()
         } else if let Some(parent) = &self.parent {
             parent.borrow().lookup(name)
         } else {
@@ -28,8 +28,8 @@ impl Scope {
         }
     }
 
-    fn insert(&mut self, name: &String, value: Rc<SExpr>) {
-        self.values.insert(name.clone(), value);
+    fn insert(&mut self, name: &str, value: Rc<SExpr>) {
+        self.values.insert(name.to_string(), value);
     }
 }
 
@@ -57,9 +57,13 @@ impl RunContext {
     }
 }
 
-fn run(root_sexprs: Vec<SExpr>) -> RunContext {
+pub fn run(root_sexprs: Vec<SExpr>) -> RunResult<()> {
     let mut context = RunContext::new();
-    context
+    let exprs = root_sexprs.into_iter().map(|sexpr| {
+        Rc::new(sexpr)
+    }).collect::<Vec<_>>();
+    eval_do(&mut context, &exprs)?;
+    Ok(())
 }
 
 fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
@@ -100,7 +104,7 @@ fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: Rc<SExpr>) -> RunResult<R
                 Value::Function(args, body) => {
                     let unfolded = unfold(params);
                     if unfolded.len() != args.len() {
-                        return Err(format!("Function call parameter length mismatch"));
+                        return Err("Function call parameter length mismatch".to_owned());
                     }
                     let parent_scope = ctx.scope.clone();
                     let mut fun_scope = Scope::new(Some(parent_scope.clone()));
@@ -139,35 +143,39 @@ fn unfold(sexpr: Rc<SExpr>) -> Vec<Rc<SExpr>> {
     values
 }
 
-// Expects the given value to be an S-value, not an atom
-fn eval_cdr(expr: Rc<SExpr>) -> Rc<SExpr> {
-    match &*expr {
-        SExpr::S(_, _, rhs) => rhs.clone(),
-        SExpr::Atom(_, _) => unreachable!(),
-    }
-}
-
 fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
     let mut params = unfold(folded_params);
     match func {
         Builtin::Lambda => eval_lambda(params),
         Builtin::Defun => {
             if params.len() < 3 {
-                return Err(format!("defun must have at least three params"));
+                return Err("defun must have at least three params".to_owned());
             }
             if is_symbol(&params[0]) {
                 let fun_sym = params[0].clone();
                 params.remove(0);
                 let fun = eval_lambda(params.clone())?;
-                eval_set(ctx, ctx.root_scope().clone(), vec![fun_sym, fun])
+                eval_set(ctx, ctx.root_scope(), vec![fun_sym, fun])
             } else {
                 Err("The first param to defun be a symbol".to_owned())
             }
         },
         Builtin::Nil => Ok(Rc::new(SExpr::nil())),
         Builtin::Set => eval_set(ctx, ctx.scope.clone(), params),
-        Builtin::Setg => eval_set(ctx, ctx.root_scope().clone(), params),
+        Builtin::Setg => eval_set(ctx, ctx.root_scope(), params),
         Builtin::Do => eval_do(ctx, &params),
+        Builtin::Putc => {
+            if params.len() != 1 {
+                return Err("putc must accept exactly 1 char argument".to_owned());
+            }
+            let param = eval(ctx, params[0].clone())?; 
+            if let Some(c) = get_expr_char(&param) {
+                print!("{c}");
+                Ok(Rc::new(SExpr::nil()))
+            } else {
+                Err("putc must accept exactly 1 char argument".to_owned())
+            }
+        },
         Builtin::Add | Builtin::Sub | Builtin::Mul | Builtin::Div | Builtin::Mod => {
             if params.len() != 2 {
                 return Err(format!("Call to {func:?} must have two params"));
@@ -176,23 +184,30 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
             let rhs = eval(ctx, params[1].clone())?;
             match (&*lhs, &*rhs) {
                 (SExpr::Atom(_, lhs), SExpr::Atom(_, rhs)) =>
-                    Ok(Rc::new(SExpr::Atom(0, eval_arithmetic(ctx, func, lhs.clone(), rhs.clone())?))),
+                    Ok(Rc::new(SExpr::Atom(0, eval_arithmetic(func, lhs.clone(), rhs.clone())?))),
                 _ => Err(format!("{func:?} must be called on two values of the same type")),
             }
         },
     }
 }
 
+fn get_expr_char(expr: &SExpr) -> Option<char> {
+    match expr {
+        SExpr::Atom(_, Value::Char(c)) => Some(*c),
+        _ => None,
+    }
+}
+
 fn eval_lambda(mut params: Vec<Rc<SExpr>>) -> RunResult<Rc<SExpr>> {
     if params.len() < 2 {
-        return Err(format!("function definitions must have at least two params"));
+        return Err("function definitions must have at least two params".to_owned());
     }
     let mut arg_names = vec![];
     for arg in unfold(params[0].clone()).iter() {
         if let Some(name) = get_symbol_name(arg) {
             arg_names.push(name.clone());
         } else {
-            return Err(format!("The first param of a function definition must by a symbol list"));
+            return Err("The first param of a function definition must by a symbol list".to_owned());
         }
     }
     params.remove(0);
@@ -206,7 +221,7 @@ fn eval_set(ctx: &mut RunContext, scope: Rc<RefCell<Scope>>, params: Vec<Rc<SExp
     }
     if let Some(name) = get_symbol_name(&params[0]) {
         let set_value = eval(ctx, params[1].clone())?;
-        scope.borrow_mut().insert(&name, set_value.clone());
+        scope.borrow_mut().insert(name, set_value.clone());
         Ok(set_value)
     } else {
         Err("The first param to `set` must be a symbol".to_owned())
@@ -228,7 +243,7 @@ fn is_symbol(sexpr: &SExpr) -> bool {
 }
 
 // Assumes the given builtin is a valid arithmetic op
-fn eval_arithmetic(ctx: &RunContext, builtin: Builtin, lhs: Value, rhs: Value) -> RunResult<Value> {
+fn eval_arithmetic(builtin: Builtin, lhs: Value, rhs: Value) -> RunResult<Value> {
     match (lhs, rhs) {
         (Value::Int(lhs), Value::Int(rhs))     => Ok(eval_arithmetic_int(builtin, lhs, rhs)),
         (Value::Int(lhs), Value::Float(rhs))   => Ok(eval_arithmetic_float(builtin, lhs as f64, rhs)),

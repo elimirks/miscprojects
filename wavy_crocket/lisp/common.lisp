@@ -1,1 +1,6 @@
 (defun add (a b) (+ a b))
+(putc ?h)
+(putc ?e)
+(putc ?l)
+(putc ?l)
+(putc ?o)
