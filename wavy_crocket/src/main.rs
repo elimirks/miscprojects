@@ -108,6 +108,7 @@ use std::error::Error;
 // }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    //unsafe { backtrace_on_stack_overflow::enable() };
     let content = std::fs::read_to_string("lisp/common.lisp")?;
     let root_exprs = parser::parse_str(&content)?;
     interpreter::run(root_exprs)?;

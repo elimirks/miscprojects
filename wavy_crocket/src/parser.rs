@@ -41,7 +41,7 @@ impl Debug for Value {
             Value::Function(args, body) => {
                 f.write_str("(lambda (")?;
                 f.write_str(&args.join(" "))?;
-                f.write_str(" )")?;
+                f.write_str(") ")?;
                 let body_strs = body.iter().map(|expr| format!("{expr:?}")).collect::<Vec<_>>();
                 f.write_str(&body_strs.join(" "))?;
                 f.write_str(")")?;
@@ -68,6 +68,14 @@ pub enum Builtin {
     Lambda,
     Defun,
     Putc,
+    If,
+    Car,
+    Cdr,
+    Cons,
+    Debug,
+    IsFalsy,
+    IsEq,
+    Exit,
 }
 
 impl Debug for Builtin {
@@ -85,6 +93,14 @@ impl Debug for Builtin {
             Builtin::Lambda => f.write_str("lambda"),
             Builtin::Defun => f.write_str("defun"),
             Builtin::Putc => f.write_str("putc"),
+            Builtin::If => f.write_str("if"),
+            Builtin::Car => f.write_str("car"),
+            Builtin::Cdr => f.write_str("cdr"),
+            Builtin::Cons => f.write_str("cons"),
+            Builtin::Debug => f.write_str("debug"),
+            Builtin::IsFalsy => f.write_str("false?"),
+            Builtin::Exit => f.write_str("exit"),
+            Builtin::IsEq => f.write_str("eq?"),
         }
     }
 }
@@ -100,8 +116,15 @@ impl SExpr {
         SExpr::Atom(0, Value::nil())
     }
 
+    pub fn truthy() -> SExpr {
+        SExpr::Atom(0, Value::Char('t'))
+    }
+
     pub fn is_nil(&self) -> bool {
-        *self == SExpr::nil()
+        match self {
+            SExpr::Atom(_, value) => value.is_nil(),
+            SExpr::S(_, _, _) => false,
+        }
     }
 }
 
@@ -137,6 +160,14 @@ impl ParseContext {
         builtins.insert("do".to_owned(), Builtin::Do);
         builtins.insert("defun".to_owned(), Builtin::Defun);
         builtins.insert("putc".to_owned(), Builtin::Putc);
+        builtins.insert("if".to_owned(), Builtin::If);
+        builtins.insert("car".to_owned(), Builtin::Car);
+        builtins.insert("cdr".to_owned(), Builtin::Cdr);
+        builtins.insert("cons".to_owned(), Builtin::Cons);
+        builtins.insert("debug".to_owned(), Builtin::Debug);
+        builtins.insert("false?".to_owned(), Builtin::IsFalsy);
+        builtins.insert("eq?".to_owned(), Builtin::IsEq);
+        builtins.insert("exit".to_owned(), Builtin::Exit);
         ParseContext {
             content: content.chars().collect::<Vec<_>>(),
             pos: 0,
@@ -172,6 +203,10 @@ fn parse_ws(ctx: &mut ParseContext) -> bool {
     let mut has_ws = false;
     while !ctx.at_end() {
         let c = ctx.content[ctx.pos];
+        if c == ';' {
+            parse_comment(ctx);
+            continue;
+        }
         if c != ' ' && c != '\n' && c != '\t' {
             break;
         }
@@ -179,6 +214,13 @@ fn parse_ws(ctx: &mut ParseContext) -> bool {
         ctx.pos += 1;
     }
     has_ws
+}
+
+fn parse_comment(ctx: &mut ParseContext) {
+    while ctx.peek() != Some('\n') {
+        ctx.pos += 1;
+    }
+    ctx.pos += 1;
 }
 
 fn is_symbol_char(c: char) -> bool {
@@ -189,6 +231,7 @@ fn is_symbol_char(c: char) -> bool {
         '/' => true,
         '*' => true,
         '%' => true,
+        '?' => true,
         c if c.is_alphanumeric() => true,
         _ => false,
     }
@@ -200,6 +243,9 @@ fn is_digit_char(c: char) -> bool {
 
 /// Expects to not be at EOF
 fn parse_expr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
+    if ctx.at_end() {
+        return Err("Hit EOF while parsing expr".to_owned());
+    }
     let pos = ctx.pos;
     match ctx.content[ctx.pos] {
         '\'' => {
@@ -250,10 +296,11 @@ fn parse_string(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     while let Some(c) = ctx.peek() {
         if c == '"' {
             ctx.pos += 1;
-            return Ok(chars.into_iter().rev().fold(SExpr::nil(), |acc, it| {
+            let sexpr = chars.into_iter().rev().fold(SExpr::nil(), |acc, it| {
                 let value = SExpr::Atom(pos, Value::Char(it));
                 SExpr::S(pos, Rc::new(value), Rc::new(acc))
-            }));
+            });
+            return Ok(SExpr::Atom(pos, Value::Quote(Rc::new(sexpr))));
         }
         chars.push(c);
         ctx.pos += 1;
@@ -280,6 +327,11 @@ fn parse_symbol(ctx: &mut ParseContext) -> ParseResult<Value> {
 fn parse_sexpr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     ctx.pos += 1;
     parse_ws(ctx);
+    // To allow the empty list
+    if ctx.peek() == Some(')') {
+        ctx.pos += 1;
+        return Ok(SExpr::Atom(ctx.pos - 2, Value::Builtin(Builtin::Nil)));
+    }
     let initial_pos = ctx.pos;
     let lhs = parse_expr(ctx)?;
     parse_ws(ctx);

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc, collections::HashMap};
+use std::{fmt::Debug, cell::RefCell, rc::Rc, collections::HashMap, process::exit};
 
 use crate::parser::*;
 
@@ -33,12 +33,17 @@ impl Scope {
     }
 }
 
-#[derive(Debug)]
 struct RunContext {
     scope: Rc<RefCell<Scope>>,
 }
 
 impl RunContext {
+    fn new() -> Self {
+        RunContext {
+            scope: Rc::new(RefCell::new(Scope::new(None))),
+        }
+    }
+
     fn root_scope(&self) -> Rc<RefCell<Scope>> {
         let mut root = self.scope.clone();
         while root.borrow().parent.is_some() {
@@ -49,11 +54,20 @@ impl RunContext {
     }
 }
 
-impl RunContext {
-    fn new() -> Self {
-        RunContext {
-            scope: Rc::new(RefCell::new(Scope::new(None))),
+impl Debug for RunContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RunContext:\n")?;
+        let mut frame_index = 0;
+        let mut current = Some(self.scope.clone());
+        while let Some(scope) = current {
+            f.write_str(&format!("Stack frame {frame_index}:\n"))?;
+            for (name, value) in scope.borrow().values.iter() {
+                f.write_str(&format!("{name} -> {value:?}\n"))?;
+            }
+            current = scope.borrow().parent.clone();
+            frame_index += 1;
         }
+        Ok(())
     }
 }
 
@@ -72,6 +86,7 @@ fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
             match value {
                 Value::Symbol(name) => {
                     let value = ctx.scope.borrow().lookup(name);
+                    assert!(get_symbol_name(&value) != Some(name));
                     eval(ctx, value)
                 },
                 _ => Ok(expr.clone()),
@@ -97,10 +112,6 @@ fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: Rc<SExpr>) -> RunResult<R
         SExpr::Atom(_, value) => {
             match value {
                 Value::Builtin(bi) => call_builtin(ctx, *bi, params),
-                Value::Symbol(name) => {
-                    let func = ctx.scope.borrow().lookup(name);
-                    call(ctx, func, params)
-                },
                 Value::Function(args, body) => {
                     let unfolded = unfold(params);
                     if unfolded.len() != args.len() {
@@ -108,15 +119,12 @@ fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: Rc<SExpr>) -> RunResult<R
                     }
                     let parent_scope = ctx.scope.clone();
                     let mut fun_scope = Scope::new(Some(parent_scope.clone()));
-                    for (arg, param) in args.iter().zip(unfolded.iter()) {
-                        fun_scope.insert(arg, param.clone());
+                    for (name, param) in args.iter().zip(unfolded.iter()) {
+                        fun_scope.insert(name, eval(ctx, param.clone())?);
                     }
                     ctx.scope = Rc::new(RefCell::new(fun_scope));
-                    println!("Push!");
-                    println!("{ctx:?}");
                     let result = eval_do(ctx, body)?;
                     ctx.scope = parent_scope;
-                    println!("Pop!");
                     Ok(result)
                 },
                 _ => Err(format!("{value:?} is not callable"))
@@ -176,13 +184,107 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
                 Err("putc must accept exactly 1 char argument".to_owned())
             }
         },
+        Builtin::Debug => {
+            if params.len() != 1 {
+                return Err("debug must accept exactly 1 char argument".to_owned());
+            }
+            let param = eval(ctx, params[0].clone())?; 
+            eprintln!("DEBUG: {param:?}");
+            Ok(Rc::new(SExpr::nil()))
+        },
+        Builtin::If => {
+            if params.len() != 3 {
+                return Err("if takes exactly 3 parameters".to_owned());
+            }
+            let cond = eval(ctx, params[0].clone())?;
+            if is_truthy(cond) {
+                eval(ctx, params[1].clone())
+            } else {
+                eval(ctx, params[2].clone())
+            }
+        },
+        Builtin::Car => {
+            if params.len() != 1 {
+                Err(format!("{func:?} accepts exactly 1 argument"))
+            } else {
+                let arg = eval(ctx, params[0].clone())?;
+                if let Some(car) = get_car(&arg) {
+                    Ok(car)
+                } else {
+                    Err("The argument to car must be a quoted sexpr".to_owned())
+                }
+            }
+        },
+        Builtin::Cdr => {
+            if params.len() != 1 {
+                Err(format!("{func:?} accepts exactly 1 argument"))
+            } else {
+                let arg = eval(ctx, params[0].clone())?;
+                if let Some(car) = get_cdr(&arg) {
+                    Ok(car)
+                } else {
+                    Err("The argument to cdr must be a quoted sexpr".to_owned())
+                }
+            }
+        },
+        Builtin::Cons => {
+            if params.len() != 2 {
+                Err(format!("{func:?} accepts exactly 2 argument"))
+            } else {
+                let head = eval(ctx, params[0].clone())?;
+                let tail_expr = eval(ctx, params[1].clone())?;
+                if let Some(tail) = try_unquote(tail_expr) {
+                    Ok(Rc::new(SExpr::Atom(0, Value::Quote(Rc::new(SExpr::S(0, head, tail))))))
+                } else {
+                    Err(format!("The second arg of {func:?} must be a quoted list"))
+                }
+            }
+        },
+        Builtin::IsFalsy => {
+            if params.len() != 1 {
+                Err(format!("{func:?} accepts exactly 1 argument"))
+            } else {
+                let arg = eval(ctx, params[0].clone())?;
+                if is_truthy(arg) {
+                    Ok(Rc::new(SExpr::nil()))
+                } else {
+                    Ok(Rc::new(SExpr::Atom(0, Value::Char('t'))))
+                }
+            }
+        },
+        Builtin::IsEq => {
+            if params.len() != 2 {
+                Err(format!("{func:?} accepts exactly 2 arguments"))
+            } else {
+                let lhs = eval(ctx, params[0].clone())?;
+                let rhs = eval(ctx, params[0].clone())?;
+                if lhs == rhs {
+                    Ok(Rc::new(SExpr::truthy()))
+                } else {
+                    Ok(Rc::new(SExpr::nil()))
+                }
+            }
+        },
+        Builtin::Exit => {
+            if params.len() != 1 {
+                return Err(format!("{func:?} accepts exactly 1 argument"));
+            }
+            let arg = eval(ctx, params[0].clone())?;
+            if let Some(status) = get_int(arg).filter(|v| *v >= 0 && *v <= 255) {
+                exit(status as i32);
+            } else {
+                Err(format!("{func:?} must be called on an int value between 0-255"))
+            }
+        },
         Builtin::Add | Builtin::Sub | Builtin::Mul | Builtin::Div | Builtin::Mod => {
             if params.len() != 2 {
                 return Err(format!("Call to {func:?} must have two params"));
             }
             let lhs = eval(ctx, params[0].clone())?;
+            let lhsp = dequote(ctx, lhs)?;
             let rhs = eval(ctx, params[1].clone())?;
-            match (&*lhs, &*rhs) {
+            let rhsp = dequote(ctx, rhs)?;
+            match (&*lhsp, &*rhsp) {
                 (SExpr::Atom(_, lhs), SExpr::Atom(_, rhs)) =>
                     Ok(Rc::new(SExpr::Atom(0, eval_arithmetic(func, lhs.clone(), rhs.clone())?))),
                 _ => Err(format!("{func:?} must be called on two values of the same type")),
@@ -191,9 +293,73 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
     }
 }
 
+fn try_unquote(expr: Rc<SExpr>) -> Option<Rc<SExpr>> {
+    match &*expr {
+        SExpr::Atom(_, Value::Quote(inner)) => Some(inner.clone()),
+        _ => None,
+    }
+}
+
+/// Attempts to dequote the given sexpr as much as possible
+fn dequote(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
+    match &*expr {
+        SExpr::Atom(_, Value::Quote(inner)) => {
+            let res = eval(ctx, inner.clone())?;
+            dequote(ctx, res)
+        },
+        _ => Ok(expr.clone()),
+    }
+}
+
+fn is_truthy(sexpr: Rc<SExpr>) -> bool {
+    match &*sexpr {
+        SExpr::Atom(_, value) => match value {
+            Value::Int(value)   => *value != 0,
+            Value::Float(value) => *value != 0.0,
+            Value::Char(value)  => *value != '\0',
+            Value::Builtin(Builtin::Nil) => false,
+            Value::Quote(inner) => is_truthy(inner.clone()),
+            _                   => true,
+        },
+        SExpr::S(_, _, _) => true,
+    }
+}
+
+fn get_int(sexpr: Rc<SExpr>) -> Option<i64> {
+    match &*sexpr {
+        SExpr::Atom(_, Value::Int(value)) => Some(*value),
+        _ => None,
+    }
+}
+
+fn get_car(expr: &SExpr) -> Option<Rc<SExpr>> {
+    match expr {
+        SExpr::Atom(pos, Value::Quote(inner)) => {
+            match &*inner.clone() {
+                SExpr::S(_, lhs, _) => Some(Rc::new(SExpr::Atom(*pos, Value::Quote(lhs.clone())))),
+                _ => None,
+            }
+        },
+        _ => None,
+    }
+}
+
+fn get_cdr(expr: &SExpr) -> Option<Rc<SExpr>> {
+    match expr {
+        SExpr::Atom(pos, Value::Quote(inner)) => {
+            match &*inner.clone() {
+                SExpr::S(_, _, rhs) => Some(Rc::new(SExpr::Atom(*pos, Value::Quote(rhs.clone())))),
+                _ => None,
+            }
+        },
+        _ => None,
+    }
+}
+
 fn get_expr_char(expr: &SExpr) -> Option<char> {
     match expr {
         SExpr::Atom(_, Value::Char(c)) => Some(*c),
+        SExpr::Atom(_, Value::Quote(inner)) => get_expr_char(inner),
         _ => None,
     }
 }
@@ -321,5 +487,11 @@ mod tests {
     fn test_eval_fun() {
         assert_eq!("3", format!("{:?}", eval_str("(defun add (a b) (+ a b)) (add 1 2)")));
         assert_eq!("3", format!("{:?}", eval_str("((lambda (a b) (+ a b)) 1 2)")));
+    }
+
+    #[test]
+    fn test_eval_if() {
+        assert_eq!("?f", format!("{:?}", eval_str("(if nil ?t ?f)")));
+        assert_eq!("?t", format!("{:?}", eval_str("(if ?t ?t ?f)")));
     }
 }
