@@ -1,4 +1,4 @@
-use std::{fmt::{Debug, Write}, rc::Rc, collections::HashMap};
+use std::{fmt::Debug, rc::Rc, collections::HashMap};
 
 type ParseResult<T> = Result<T, String>;
 
@@ -11,6 +11,7 @@ pub enum Value {
     Float(f64),
     Char(char),
     Quote(Rc<SExpr>),
+    Function(Vec<String>, Vec<Rc<SExpr>>),
 }
 
 impl Value {
@@ -37,6 +38,15 @@ impl Debug for Value {
             },
             Value::Char(value)    => f.write_str(&format!("?{value}")),
             Value::Quote(sexpr)   => f.write_str(&format!("'{sexpr:?}")),
+            Value::Function(args, body) => {
+                f.write_str(&"(lambda (".to_owned())?;
+                f.write_str(&args.join(" "))?;
+                f.write_str(&") ".to_owned())?;
+                let body_strs = body.iter().map(|expr| format!("{expr:?}")).collect::<Vec<_>>();
+                f.write_str(&body_strs.join(" "))?;
+                f.write_str(&")".to_owned())?;
+                Ok(())
+            },
             Value::Builtin(value) => value.fmt(f),
         }
     }
@@ -54,9 +64,9 @@ pub enum Builtin {
     Set,
     /// Sets a value in the global scope
     Setg,
-    /// Defines a function in the GLOBAL scope
-    Fun,
     Do,
+    Lambda,
+    Defun,
 }
 
 impl Debug for Builtin {
@@ -70,8 +80,9 @@ impl Debug for Builtin {
             Builtin::Mod => f.write_str(&"%".to_owned()),
             Builtin::Set => f.write_str(&"set".to_owned()),
             Builtin::Setg => f.write_str(&"setg".to_owned()),
-            Builtin::Fun => f.write_str(&"fun".to_owned()),
             Builtin::Do => f.write_str(&"do".to_owned()),
+            Builtin::Lambda => f.write_str(&"lambda".to_owned()),
+            Builtin::Defun => f.write_str(&"defun".to_owned()),
         }
     }
 }
@@ -120,8 +131,9 @@ impl ParseContext {
         builtins.insert("%".to_owned(), Builtin::Mod);
         builtins.insert("set".to_owned(), Builtin::Set);
         builtins.insert("setg".to_owned(), Builtin::Setg);
-        builtins.insert("fun".to_owned(), Builtin::Fun);
+        builtins.insert("lambda".to_owned(), Builtin::Lambda);
         builtins.insert("do".to_owned(), Builtin::Do);
+        builtins.insert("defun".to_owned(), Builtin::Defun);
         ParseContext {
             content: content.chars().collect::<Vec<_>>(),
             pos: 0,

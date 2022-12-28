@@ -4,6 +4,7 @@ use crate::parser::*;
 
 type RunResult<T> = Result<T, String>;
 
+#[derive(Debug)]
 struct Scope {
     values: HashMap<String, Rc<SExpr>>,
     parent: Option<Rc<RefCell<Scope>>>,
@@ -32,6 +33,7 @@ impl Scope {
     }
 }
 
+#[derive(Debug)]
 struct RunContext {
     scope: Rc<RefCell<Scope>>,
 }
@@ -63,10 +65,13 @@ fn run(root_sexprs: Vec<SExpr>) -> RunContext {
 fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
     match &*expr {
         SExpr::Atom(_, value) => {
-            Ok(match value {
-                Value::Symbol(name) => ctx.scope.borrow().lookup(name),
-                _ => expr.clone(),
-            })
+            match value {
+                Value::Symbol(name) => {
+                    let value = ctx.scope.borrow().lookup(name);
+                    eval(ctx, value)
+                },
+                _ => Ok(expr.clone()),
+            }
         },
         SExpr::S(_, lhs, rhs) => {
             let func = eval(ctx, lhs.clone())?;
@@ -76,12 +81,11 @@ fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
 }
 
 // The result is the last evaluated expr
-fn eval_do(ctx: &mut RunContext, exprs: Vec<Rc<SExpr>>) -> RunResult<Rc<SExpr>> {
-    let mut ctx = RunContext::new();
+fn eval_do(ctx: &mut RunContext, exprs: &Vec<Rc<SExpr>>) -> RunResult<Rc<SExpr>> {
     for expr in exprs.iter().take(exprs.len() - 1) {
-        eval(&mut ctx, expr.clone())?;
+        eval(ctx, expr.clone())?;
     }
-    eval(&mut ctx, exprs.last().unwrap().clone())
+    eval(ctx, exprs.last().unwrap().clone())
 }
 
 fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
@@ -89,9 +93,32 @@ fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: Rc<SExpr>) -> RunResult<R
         SExpr::Atom(_, value) => {
             match value {
                 Value::Builtin(bi) => call_builtin(ctx, *bi, params),
+                Value::Symbol(name) => {
+                    let func = ctx.scope.borrow().lookup(name);
+                    call(ctx, func, params)
+                },
+                Value::Function(args, body) => {
+                    let unfolded = unfold(params);
+                    if unfolded.len() != args.len() {
+                        return Err(format!("Function call parameter length mismatch"));
+                    }
+                    let parent_scope = ctx.scope.clone();
+                    let mut fun_scope = Scope::new(Some(parent_scope.clone()));
+                    for (arg, param) in args.iter().zip(unfolded.iter()) {
+                        fun_scope.insert(arg, param.clone());
+                    }
+                    ctx.scope = Rc::new(RefCell::new(fun_scope));
+                    println!("Push!");
+                    println!("{ctx:?}");
+                    let result = eval_do(ctx, body)?;
+                    ctx.scope = parent_scope;
+                    println!("Pop!");
+                    Ok(result)
+                },
                 _ => Err(format!("{value:?} is not callable"))
             }
         },
+        // NOTE: This might just be a matter of evaluating the LHS and recursing
         SExpr::S(_, _, _) => todo!(),
     }
 }
@@ -112,28 +139,65 @@ fn unfold(sexpr: Rc<SExpr>) -> Vec<Rc<SExpr>> {
     values
 }
 
+// Expects the given value to be an S-value, not an atom
+fn eval_cdr(expr: Rc<SExpr>) -> Rc<SExpr> {
+    match &*expr {
+        SExpr::S(_, _, rhs) => rhs.clone(),
+        SExpr::Atom(_, _) => unreachable!(),
+    }
+}
+
 fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
     let mut params = unfold(folded_params);
     match func {
-        Builtin::Fun => todo!(),
+        Builtin::Lambda => eval_lambda(params),
+        Builtin::Defun => {
+            if params.len() < 3 {
+                return Err(format!("defun must have at least three params"));
+            }
+            if is_symbol(&params[0]) {
+                let fun_sym = params[0].clone();
+                params.remove(0);
+                let fun = eval_lambda(params.clone())?;
+                eval_set(ctx, ctx.root_scope().clone(), vec![fun_sym, fun])
+            } else {
+                Err("The first param to defun be a symbol".to_owned())
+            }
+        },
         Builtin::Nil => Ok(Rc::new(SExpr::nil())),
         Builtin::Set => eval_set(ctx, ctx.scope.clone(), params),
         Builtin::Setg => eval_set(ctx, ctx.root_scope().clone(), params),
-        Builtin::Do => eval_do(ctx, params),
+        Builtin::Do => eval_do(ctx, &params),
         Builtin::Add | Builtin::Sub | Builtin::Mul | Builtin::Div | Builtin::Mod => {
             if params.len() != 2 {
-                println!("{params:?}");
                 return Err(format!("Call to {func:?} must have two params"));
             }
             let lhs = eval(ctx, params[0].clone())?;
             let rhs = eval(ctx, params[1].clone())?;
             match (&*lhs, &*rhs) {
                 (SExpr::Atom(_, lhs), SExpr::Atom(_, rhs)) =>
-                    Ok(Rc::new(SExpr::Atom(0, eval_arithmetic(func, lhs.clone(), rhs.clone())?))),
+                    Ok(Rc::new(SExpr::Atom(0, eval_arithmetic(ctx, func, lhs.clone(), rhs.clone())?))),
                 _ => Err(format!("{func:?} must be called on two values of the same type")),
             }
         },
     }
+}
+
+fn eval_lambda(mut params: Vec<Rc<SExpr>>) -> RunResult<Rc<SExpr>> {
+    if params.len() < 2 {
+        return Err(format!("function definitions must have at least two params"));
+    }
+    let mut arg_names = vec![];
+    for arg in unfold(params[0].clone()).iter() {
+        if let Some(name) = get_symbol_name(arg) {
+            arg_names.push(name.clone());
+        } else {
+            return Err(format!("The first param of a function definition must by a symbol list"));
+        }
+    }
+    params.remove(0);
+    let f = Value::Function(arg_names, params);
+    Ok(Rc::new(SExpr::Atom(0, f)))
 }
 
 fn eval_set(ctx: &mut RunContext, scope: Rc<RefCell<Scope>>, params: Vec<Rc<SExpr>>) -> RunResult<Rc<SExpr>> {
@@ -159,13 +223,20 @@ fn get_symbol_name(sexpr: &SExpr) -> Option<&String> {
     }
 }
 
+fn is_symbol(sexpr: &SExpr) -> bool {
+    get_symbol_name(sexpr).is_some()
+}
+
 // Assumes the given builtin is a valid arithmetic op
-fn eval_arithmetic(builtin: Builtin, lhs: Value, rhs: Value) -> RunResult<Value> {
+fn eval_arithmetic(ctx: &RunContext, builtin: Builtin, lhs: Value, rhs: Value) -> RunResult<Value> {
     match (lhs, rhs) {
         (Value::Int(lhs), Value::Int(rhs))     => Ok(eval_arithmetic_int(builtin, lhs, rhs)),
         (Value::Int(lhs), Value::Float(rhs))   => Ok(eval_arithmetic_float(builtin, lhs as f64, rhs)),
         (Value::Float(lhs), Value::Int(rhs))   => Ok(eval_arithmetic_float(builtin, lhs, rhs as f64)),
         (Value::Float(lhs), Value::Float(rhs)) => Ok(eval_arithmetic_float(builtin, lhs, rhs)),
+        (lhs, rhs) if lhs.is_nil() || rhs.is_nil() => {
+            Err("Cannot perform arithmetic on nil".to_owned())
+        },
         _ => unreachable!()
     }
 }
@@ -203,7 +274,7 @@ mod tests {
             .map(Rc::new)
             .collect::<Vec<_>>();
         let mut ctx = RunContext::new();
-        eval_do(&mut ctx, exprs).unwrap()
+        eval_do(&mut ctx, &exprs).unwrap()
     }
 
     #[test]
@@ -229,5 +300,11 @@ mod tests {
     #[test]
     fn test_eval_set() {
         assert_eq!("8", format!("{:?}", eval_str("(set x 4) (+ x x)")));
+    }
+
+    #[test]
+    fn test_eval_fun() {
+        assert_eq!("3", format!("{:?}", eval_str("(defun add (a b) (+ a b)) (add 1 2)")));
+        assert_eq!("3", format!("{:?}", eval_str("((lambda (a b) (+ a b)) 1 2)")));
     }
 }
