@@ -1,4 +1,4 @@
-use std::{fmt::{Debug, Write}, rc::Rc};
+use std::{fmt::{Debug, Write}, rc::Rc, collections::HashMap};
 
 type ParseResult<T> = Result<T, String>;
 
@@ -7,6 +7,7 @@ type ParseResult<T> = Result<T, String>;
 pub enum Value {
     Nil,
     Symbol(String),
+    Bulitin(Builtin),
     Int(i64),
     Float(f64),
     Char(char),
@@ -16,14 +17,31 @@ pub enum Value {
 impl Debug for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Nil           => f.write_str("nil"),
-            Value::Symbol(value) => f.write_str(value),
-            Value::Int(value)    => f.write_str(&value.to_string()),
-            Value::Float(value)  => f.write_str(&value.to_string()),
-            Value::Char(value)   => f.write_str(&format!("?{value}")),
-            Value::Quote(sexpr)  => f.write_str(&format!("'{sexpr:?}")),
+            Value::Nil            => f.write_str("nil"),
+            Value::Symbol(value)  => f.write_str(value),
+            Value::Int(value)     => f.write_str(&value.to_string()),
+            Value::Float(value)   => f.write_str(&value.to_string()),
+            Value::Char(value)    => f.write_str(&format!("?{value}")),
+            Value::Quote(sexpr)   => f.write_str(&format!("'{sexpr:?}")),
+            Value::Bulitin(value) => value.fmt(f),
         }
     }
+}
+
+#[derive(PartialEq, Clone, Debug, Copy)]
+pub enum Builtin {
+    Nil,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    // Sets a value in the current scope
+    Set,
+    // Sets a value in the global scope
+    Setg,
+    // Defines a function in the GLOBAL scope
+    Fun,
 }
 
 #[derive(PartialEq, Clone)]
@@ -43,12 +61,31 @@ impl Debug for SExpr {
     }
 }
 
-struct ParseContext {
+pub struct ParseContext {
     content: Vec<char>,
     pos: usize,
+    builtins: HashMap<String, Builtin>,
 }
 
 impl ParseContext {
+    fn new(content: &str) -> ParseContext {
+        let mut builtins = HashMap::new();
+        builtins.insert("nil".to_owned(), Builtin::Nil);
+        builtins.insert("+".to_owned(), Builtin::Add);
+        builtins.insert("-".to_owned(), Builtin::Sub);
+        builtins.insert("*".to_owned(), Builtin::Mul);
+        builtins.insert("/".to_owned(), Builtin::Div);
+        builtins.insert("%".to_owned(), Builtin::Mod);
+        builtins.insert("set".to_owned(), Builtin::Set);
+        builtins.insert("setg".to_owned(), Builtin::Setg);
+        builtins.insert("fun".to_owned(), Builtin::Fun);
+        ParseContext {
+            content: content.chars().collect::<Vec<_>>(),
+            pos: 0,
+            builtins,
+        }
+    }
+
     fn at_end(&self) -> bool {
         self.pos >= self.content.len()
     }
@@ -58,11 +95,8 @@ impl ParseContext {
     }
 }
 
-fn parse_str(s: &str) -> ParseResult<Vec<SExpr>> {
-    parse(ParseContext {
-        content: s.chars().collect::<Vec<_>>(),
-        pos: 0,
-    })
+pub fn parse_str(s: &str) -> ParseResult<Vec<SExpr>> {
+    parse(ParseContext::new(s))
 }
 
 fn parse(mut ctx: ParseContext) -> ParseResult<Vec<SExpr>> {
@@ -125,17 +159,22 @@ fn parse_expr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     }
 }
 
+// For use in tests
+pub fn parse_expr_str(s: &str) -> SExpr {
+    parse_expr(&mut ParseContext::new(s)).expect("Failed parsing expr")
+}
+
 fn parse_num(ctx: &mut ParseContext) -> ParseResult<Value> {
     let mut s = String::new();
     while let Some(c) = ctx.peek().filter(|&c| is_digit_char(c)) {
         s.push(c);
         ctx.pos += 1;
     }
-    if let Ok(value) = s.parse::<f64>() {
-        return Ok(Value::Float(value));
-    }
     if let Ok(value) = s.parse::<i64>() {
         return Ok(Value::Int(value));
+    }
+    if let Ok(value) = s.parse::<f64>() {
+        return Ok(Value::Float(value));
     }
     Err("Invalid integer".to_owned())
 }
@@ -178,8 +217,9 @@ fn parse_symbol(ctx: &mut ParseContext) -> ParseResult<Value> {
         s.push(c);
         ctx.pos += 1;
     }
-    if s == "nil" {
-        Ok(Value::Nil)
+
+    if let Some(builtin) = ctx.builtins.get(&s) {
+        Ok(Value::Bulitin(*builtin))
     } else {
         Ok(Value::Symbol(s))
     }
@@ -226,22 +266,15 @@ mod tests {
 
     #[test]
     fn test_parse_num() {
-        assert_eq!("Ok([1234])", format!("{:?}", parse_str("1234")));
-        assert_eq!("Ok([3.14])", format!("{:?}", parse_str("3.14")));
+        assert_eq!("1234", format!("{:?}", parse_expr_str("1234")));
+        assert_eq!("3.14", format!("{:?}", parse_expr_str("3.14")));
     }
 
     #[test]
     fn test_parse_sexpr() {
-        assert_eq!("Ok([(x . y)])", format!("{:?}", parse_str(
-                    "(x . y)"
-                    )));
-
-        assert_eq!("Ok([(x . (y . nil))])", format!("{:?}", parse_str(
-                    "(x y)"
-                    )));
-        assert_eq!("Ok([(x . (y . (42 . nil)))])", format!("{:?}", parse_str(
-                    "(x y 42)"
-                    )));
+        assert_eq!("(x . y)", format!("{:?}", parse_expr_str("(x . y)")));
+        assert_eq!("(x . (y . nil))", format!("{:?}", parse_expr_str("(x y)")));
+        assert_eq!("(x . (y . (42 . nil)))", format!("{:?}", parse_expr_str("(x y 42)")));
         assert_eq!("Ok([(x . (y . (42 . nil))), (a . b)])", format!("{:?}", parse_str(
                     "(x y 42)\n(a . b)"
                     )));
@@ -249,17 +282,19 @@ mod tests {
 
     #[test]
     fn test_parse_char() {
-        assert_eq!("Ok([?x])", format!("{:?}", parse_str("?x")));
+        assert_eq!("?x", format!("{:?}", parse_expr_str("?x")));
     }
 
     #[test]
     fn test_parse_quote() {
-        assert_eq!("Ok(['(a . b)])", format!("{:?}", parse_str("'(a . b)")));
-        assert_eq!("Ok(['?a])", format!("{:?}", parse_str("'?a")));
+        assert_eq!("'(a . b)", format!("{:?}", parse_expr_str("'(a.b)")));
+        assert_eq!("'(a . b)", format!("{:?}", parse_expr_str("'(a. b)")));
+        assert_eq!("'(a . b)", format!("{:?}", parse_expr_str("'(a   .   b)")));
+        assert_eq!("'?a", format!("{:?}", parse_expr_str("'?a")));
     }
 
     #[test]
     fn test_parse_string() {
-        assert_eq!("Ok([(?a . (?b . (?c . nil)))])", format!("{:?}", parse_str("\"abc\"")));
+        assert_eq!("(?a . (?b . (?c . nil)))", format!("{:?}", parse_expr_str("\"abc\"")));
     }
 }
