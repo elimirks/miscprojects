@@ -1,4 +1,4 @@
-use std::{fmt::Debug, cell::RefCell, rc::Rc, collections::HashMap, process::exit};
+use std::{fmt::Debug, cell::RefCell, rc::Rc, collections::{HashMap, HashSet}, process::exit};
 
 use crate::parser::*;
 
@@ -35,12 +35,14 @@ impl Scope {
 
 struct RunContext {
     scope: Rc<RefCell<Scope>>,
+    required_paths: HashSet<String>,
 }
 
 impl RunContext {
     fn new() -> Self {
         RunContext {
             scope: Rc::new(RefCell::new(Scope::new(None))),
+            required_paths: HashSet::new(),
         }
     }
 
@@ -71,13 +73,28 @@ impl Debug for RunContext {
     }
 }
 
-pub fn run(root_sexprs: Vec<SExpr>) -> RunResult<()> {
-    let mut context = RunContext::new();
-    let exprs = root_sexprs.into_iter().map(|sexpr| {
-        Rc::new(sexpr)
-    }).collect::<Vec<_>>();
-    eval_do(&mut context, &exprs)?;
-    Ok(())
+pub fn run(file_path: &str) -> RunResult<()> {
+    run_with_context(&mut RunContext::new(), file_path)
+}
+
+fn run_with_context(ctx: &mut RunContext, file_path: &str) -> RunResult<()> {
+    let cwd = std::env::current_dir()
+        .expect("Can't find cwd!");
+    let path = format!("{}/{file_path}.lisp", cwd.to_str().unwrap());
+    if ctx.required_paths.contains(&path) {
+        return Ok(());
+    }
+    ctx.required_paths.insert(path.clone());
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        let root_exprs = parse_str(&content)?;
+        let exprs = root_exprs.into_iter().map(|sexpr| {
+            Rc::new(sexpr)
+        }).collect::<Vec<_>>();
+        eval_do(ctx, &exprs)?;
+        Ok(())
+    } else {
+        Err(format!("Failed reading {path}"))
+    }
 }
 
 fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
@@ -101,6 +118,9 @@ fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
 
 // The result is the last evaluated expr
 fn eval_do(ctx: &mut RunContext, exprs: &Vec<Rc<SExpr>>) -> RunResult<Rc<SExpr>> {
+    if exprs.len() == 0 {
+        return Ok(Rc::new(SExpr::nil()));
+    }
     for expr in exprs.iter().take(exprs.len() - 1) {
         eval(ctx, expr.clone())?;
     }
@@ -130,8 +150,7 @@ fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: Rc<SExpr>) -> RunResult<R
                 _ => Err(format!("{value:?} is not callable"))
             }
         },
-        // NOTE: This might just be a matter of evaluating the LHS and recursing
-        SExpr::S(_, _, _) => todo!(),
+        SExpr::S(_, _, _) => unreachable!(),
     }
 }
 
@@ -276,14 +295,22 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
                 Err(format!("{func:?} must be called on an int value between 0-255"))
             }
         },
+        Builtin::Require => {
+            if params.len() != 1 {
+                return Err(format!("{func:?} accepts exactly 1 argument"));
+            }
+            let file_path = try_get_string(params[0].clone())?;
+            run_with_context(ctx, &file_path)?;
+            Ok(Rc::new(SExpr::nil()))
+        },
         Builtin::Add | Builtin::Sub | Builtin::Mul | Builtin::Div | Builtin::Mod => {
             if params.len() != 2 {
                 return Err(format!("Call to {func:?} must have two params"));
             }
             let lhs = eval(ctx, params[0].clone())?;
-            let lhsp = dequote(ctx, lhs)?;
+            let lhsp = try_unquote(lhs).unwrap();
             let rhs = eval(ctx, params[1].clone())?;
-            let rhsp = dequote(ctx, rhs)?;
+            let rhsp = try_unquote(rhs).unwrap();
             match (&*lhsp, &*rhsp) {
                 (SExpr::Atom(_, lhs), SExpr::Atom(_, rhs)) =>
                     Ok(Rc::new(SExpr::Atom(0, eval_arithmetic(func, lhs.clone(), rhs.clone())?))),
@@ -293,21 +320,27 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
     }
 }
 
+fn try_get_string(expr: Rc<SExpr>) -> RunResult<String> {
+    let chars = if let Some(unquoted) = try_unquote(expr) {
+        unfold(unquoted)
+    } else {
+        return Err("Expected a string here!".to_owned());
+    };
+    let mut s = String::new();
+    for c_expr in chars.iter() {
+        if let Some(c) = get_expr_char(c_expr) {
+            s.push(c);
+        } else {
+            return Err("Expected a string here!".to_owned());
+        }
+    }
+    Ok(s)
+}
+
 fn try_unquote(expr: Rc<SExpr>) -> Option<Rc<SExpr>> {
     match &*expr {
         SExpr::Atom(_, Value::Quote(inner)) => Some(inner.clone()),
         _ => None,
-    }
-}
-
-/// Attempts to dequote the given sexpr as much as possible
-fn dequote(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
-    match &*expr {
-        SExpr::Atom(_, Value::Quote(inner)) => {
-            let res = eval(ctx, inner.clone())?;
-            dequote(ctx, res)
-        },
-        _ => Ok(expr.clone()),
     }
 }
 

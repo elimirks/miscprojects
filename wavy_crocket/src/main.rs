@@ -2,7 +2,7 @@
 mod parser;
 mod interpreter;
 
-use std::error::Error;
+use std::{error::Error, process::exit};
 
 // use std::mem::size_of;
 // use std::io::prelude::*;
@@ -109,8 +109,11 @@ use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
     //unsafe { backtrace_on_stack_overflow::enable() };
-    let content = std::fs::read_to_string("lisp/common.lisp")?;
-    let root_exprs = parser::parse_str(&content)?;
-    interpreter::run(root_exprs)?;
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() != 2 {
+        println!("Usage: {} path/to/generator{{.lisp}}", args[0]);
+        exit(1);
+    }
+    interpreter::run(&args[1])?;
     Ok(())
 }

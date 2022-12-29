@@ -76,6 +76,7 @@ pub enum Builtin {
     IsFalsy,
     IsEq,
     Exit,
+    Require,
 }
 
 impl Debug for Builtin {
@@ -101,6 +102,7 @@ impl Debug for Builtin {
             Builtin::IsFalsy => f.write_str("false?"),
             Builtin::Exit => f.write_str("exit"),
             Builtin::IsEq => f.write_str("eq?"),
+            Builtin::Require => f.write_str("require"),
         }
     }
 }
@@ -168,6 +170,7 @@ impl ParseContext {
         builtins.insert("false?".to_owned(), Builtin::IsFalsy);
         builtins.insert("eq?".to_owned(), Builtin::IsEq);
         builtins.insert("exit".to_owned(), Builtin::Exit);
+        builtins.insert("require".to_owned(), Builtin::Require);
         ParseContext {
             content: content.chars().collect::<Vec<_>>(),
             pos: 0,
