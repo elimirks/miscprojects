@@ -3,7 +3,7 @@ use std::{fmt::Debug, rc::Rc, collections::HashMap};
 type ParseResult<T> = Result<T, String>;
 
 /// FYI: a string is just a list of chars
-#[derive(PartialEq, Clone)]
+#[derive(Clone)]
 pub enum Value {
     Symbol(String),
     Builtin(Builtin),
@@ -12,6 +12,30 @@ pub enum Value {
     Char(char),
     Quote(Rc<SExpr>),
     Function(Vec<String>, Vec<Rc<SExpr>>),
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Symbol(lhs), Value::Symbol(rhs)) => lhs == rhs,
+            (Value::Builtin(lhs), Value::Builtin(rhs)) => lhs == rhs,
+            (Value::Int(lhs), Value::Int(rhs)) => lhs == rhs,
+            (Value::Float(lhs), Value::Float(rhs)) => lhs == rhs,
+            (Value::Char(lhs), Value::Char(rhs)) => lhs == rhs,
+            (Value::Quote(lhs), Value::Quote(rhs)) => *lhs == *rhs,
+            (Value::Function(lhs_params, lhs_body), Value::Function(rhs_params, rhs_body)) => {
+                if lhs_params.len() != rhs_params.len() || lhs_body.len() != rhs_body.len() {
+                    false
+                } else {
+                    lhs_params.iter().zip(rhs_params).all(|(l, r)| l == r)
+                }
+            },
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Value {
 }
 
 impl Value {
@@ -107,7 +131,7 @@ impl Debug for Builtin {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(Eq, Clone)]
 pub enum SExpr {
     Atom(usize, Value),
     S(usize, Rc<SExpr>, Rc<SExpr>),
@@ -126,6 +150,18 @@ impl SExpr {
         match self {
             SExpr::Atom(_, value) => value.is_nil(),
             SExpr::S(_, _, _) => false,
+        }
+    }
+}
+
+impl PartialEq for SExpr {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (SExpr::Atom(_, lhs), SExpr::Atom(_, rhs)) => lhs == rhs,
+            (SExpr::S(_, lhs_car, lhs_cdr), SExpr::S(_, rhs_car, rhs_cdr)) => {
+                lhs_car == rhs_car && lhs_cdr == rhs_cdr
+            },
+            _ => false,
         }
     }
 }
@@ -350,11 +386,6 @@ fn parse_sexpr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     let initial_pos = ctx.pos;
     let lhs = parse_expr(ctx)?;
     parse_ws(ctx);
-    // Just something nested inside parens, not an actual SExpr
-    if ctx.peek() == Some(')') {
-        ctx.pos += 1;
-        return Ok(lhs);
-    }
     if ctx.peek() == Some('.') {
         ctx.pos += 1;
         parse_ws(ctx);
@@ -414,10 +445,11 @@ mod tests {
         assert_eq!("'(a . b)", format!("{:?}", parse_expr_str("'(a. b)")));
         assert_eq!("'(a . b)", format!("{:?}", parse_expr_str("'(a   .   b)")));
         assert_eq!("'?a", format!("{:?}", parse_expr_str("'?a")));
+        assert_eq!("'(1 . nil)", format!("{:?}", parse_expr_str("'(1)")));
     }
 
     #[test]
     fn test_parse_string() {
-        assert_eq!("(?a . (?b . (?c . nil)))", format!("{:?}", parse_expr_str("\"abc\"")));
+        assert_eq!("'(?a . (?b . (?c . nil)))", format!("{:?}", parse_expr_str("\"abc\"")));
     }
 }

@@ -22,18 +22,19 @@
 
 (defun append (list elem) 
   (if (false? list)
-    '(elem)
-    (cons (car list) (append (cdr list) elem))))
+    (cons elem nil)
+    (cons (car list)
+          (append (cdr list) elem))))
 
 (defun fold (f acc list)
   (if (false? list)
     acc
     (fold f (f acc (car list)) (cdr list))))
 (defun sum (list)
-  (fold 0 add list))
+  (fold + 0 list))
 
 (defun concat (l1 l2)
-  (fold append l2 l1))
+  (fold append l1 l2))
 
 (defun print (s) (map putc s))
 (defun println (s)

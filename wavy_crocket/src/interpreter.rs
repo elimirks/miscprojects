@@ -250,13 +250,9 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
             if params.len() != 2 {
                 Err(format!("{func:?} accepts exactly 2 argument"))
             } else {
-                let head = eval(ctx, params[0].clone())?;
-                let tail_expr = eval(ctx, params[1].clone())?;
-                if let Some(tail) = try_unquote(tail_expr) {
-                    Ok(Rc::new(SExpr::Atom(0, Value::Quote(Rc::new(SExpr::S(0, head, tail))))))
-                } else {
-                    Err(format!("The second arg of {func:?} must be a quoted list"))
-                }
+                let head = try_unquote(eval(ctx, params[0].clone())?);
+                let tail = try_unquote(eval(ctx, params[1].clone())?);
+                Ok(Rc::new(SExpr::Atom(0, Value::Quote(Rc::new(SExpr::S(0, head, tail))))))
             }
         },
         Builtin::IsFalsy => {
@@ -276,7 +272,7 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
                 Err(format!("{func:?} accepts exactly 2 arguments"))
             } else {
                 let lhs = eval(ctx, params[0].clone())?;
-                let rhs = eval(ctx, params[0].clone())?;
+                let rhs = eval(ctx, params[1].clone())?;
                 if lhs == rhs {
                     Ok(Rc::new(SExpr::truthy()))
                 } else {
@@ -308,9 +304,11 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
                 return Err(format!("Call to {func:?} must have two params"));
             }
             let lhs = eval(ctx, params[0].clone())?;
-            let lhsp = try_unquote(lhs).unwrap();
             let rhs = eval(ctx, params[1].clone())?;
-            let rhsp = try_unquote(rhs).unwrap();
+            //let lhsp = dequote(ctx, lhs)?;
+            //let rhsp = dequote(ctx, rhs)?;
+            let lhsp = try_unquote(lhs);
+            let rhsp = try_unquote(rhs);
             match (&*lhsp, &*rhsp) {
                 (SExpr::Atom(_, lhs), SExpr::Atom(_, rhs)) =>
                     Ok(Rc::new(SExpr::Atom(0, eval_arithmetic(func, lhs.clone(), rhs.clone())?))),
@@ -321,11 +319,7 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, folded_params: Rc<SExpr>) -
 }
 
 fn try_get_string(expr: Rc<SExpr>) -> RunResult<String> {
-    let chars = if let Some(unquoted) = try_unquote(expr) {
-        unfold(unquoted)
-    } else {
-        return Err("Expected a string here!".to_owned());
-    };
+    let chars = unfold(try_unquote(expr));
     let mut s = String::new();
     for c_expr in chars.iter() {
         if let Some(c) = get_expr_char(c_expr) {
@@ -337,10 +331,10 @@ fn try_get_string(expr: Rc<SExpr>) -> RunResult<String> {
     Ok(s)
 }
 
-fn try_unquote(expr: Rc<SExpr>) -> Option<Rc<SExpr>> {
+fn try_unquote(expr: Rc<SExpr>) -> Rc<SExpr> {
     match &*expr {
-        SExpr::Atom(_, Value::Quote(inner)) => Some(inner.clone()),
-        _ => None,
+        SExpr::Atom(_, Value::Quote(inner)) => inner.clone(),
+        _ => expr,
     }
 }
 
@@ -526,5 +520,26 @@ mod tests {
     fn test_eval_if() {
         assert_eq!("?f", format!("{:?}", eval_str("(if nil ?t ?f)")));
         assert_eq!("?t", format!("{:?}", eval_str("(if ?t ?t ?f)")));
+    }
+
+    #[test]
+    fn test_eval_false() {
+        assert_eq!("?t", format!("{:?}", eval_str("(false? nil)")));
+        assert_eq!("?t", format!("{:?}", eval_str("(false? 'nil)")));
+        assert_eq!("?t", format!("{:?}", eval_str("(false? '())")));
+        assert_eq!("nil", format!("{:?}", eval_str("(false? 42)")));
+        assert_eq!("nil", format!("{:?}", eval_str("(false? '(4))")));
+    }
+
+    #[test]
+    fn test_eval_eq() {
+        assert_eq!("?t", format!("{:?}", eval_str("(eq? '(2 3 4) '(2 3 4))")));
+        assert_eq!("nil", format!("{:?}", eval_str("(eq? '(2 3 4) '(2 3 5))")));
+        assert_eq!("nil", format!("{:?}", eval_str("(eq? '(2 3 4) 4)")));
+    }
+
+    #[test]
+    fn test_eval_cons() {
+        assert_eq!("'(1 . (2 . nil))", format!("{:?}", eval_str("(cons 1 '(2))")));
     }
 }
