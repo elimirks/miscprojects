@@ -1,12 +1,8 @@
 (defun assert (v)
   (if v nil
     (do
-      (putc ?a)
-      (putc ?s)
-      (putc ?s)
-      (putc ?e)
-      (putc ?r)
-      (putc ?t)
+      ;; The println call will noop if it isn't define yet
+      (println "Assertion failure")
       (exit 1))))
 
 ;; Some intrinsic tests
@@ -37,5 +33,30 @@
     '()
     (cons (f (car list)) (map f (cdr list)))))
 (assert (eq? '(2 3 4) (map inc '(1 2 3))))
+(assert (eq? '(nil nil nil) (map nil '(1 2 3))))
 
-(map putc "hello!")
+(defun append (list elem) 
+  (if (false? list)
+    '(elem)
+    (cons (car list) (append (cdr list) elem))))
+(assert (eq? '(1 2 3) (append '(1 2) 3)))
+
+(defun fold (f acc list)
+  (if (false? list)
+    acc
+    (fold f (f acc (car list)) (cdr list))))
+(defun sum (list)
+  (fold 0 add list))
+(assert (eq? 6 (sum '(1 2 3))))
+
+(defun concat (l1 l2)
+  (fold append l2 l1))
+(assert (eq? '(1 2 3 4) (concat '(1 2) '(3 4))))
+(assert (eq? "foobar" (concat "foo" "bar")))
+
+(defun print (s) (map putc s))
+(defun println (s)
+  (print s)
+  (putc ?#n))
+
+(println "Hello, world!")

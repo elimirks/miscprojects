@@ -280,11 +280,23 @@ fn parse_num(ctx: &mut ParseContext) -> ParseResult<Value> {
 /// Expects the leading ? to have been parsed
 fn parse_char(ctx: &mut ParseContext) -> ParseResult<Value> {
     ctx.pos += 1;
-    if let Some(c) = ctx.peek() {
-        ctx.pos += 1;
-        Ok(Value::Char(c))
-    } else {
-        Err("Expected character, found EOF".to_owned())
+    match ctx.peek() {
+        Some('#') => {
+            ctx.pos += 1;
+            let res = match ctx.peek() {
+                Some('n') => '\n',
+                Some('t') => '\t',
+                Some('s') => ' ',
+                _ => return Err("Invalid escape character".to_owned()),
+            };
+            ctx.pos += 1;
+            Ok(Value::Char(res))
+        },
+        Some(c) => {
+            ctx.pos += 1;
+            Ok(Value::Char(c))
+        },
+        None => Err("Expected character, found EOF".to_owned()),
     }
 }
 
