@@ -5,7 +5,10 @@
 (assert (false? nil))
 (assert (false? 'nil))
 (assert (not (eq? 3 4)))
-(assert (eq? 4 (inc 3)))
+(assert (eq? '4 (car '(4 . 3))))
+(assert (eq? '3 (cdr '(4 . 3))))
+(assert (eq? nil (car nil)))
+(assert (eq? nil (cdr nil)))
 
 (println "Running `not` tests")
 (assert (not nil))
@@ -23,16 +26,27 @@
 
 (println "Running `map` tests")
 (assert (eq? '(2 3 4) (map inc '(1 2 3))))
+(assert (eq? '(-1 1 399) (map dec '(0 2 400))))
 (assert (eq? '(nil nil nil) (map nil '(1 2 3))))
 
 (println "Running `append` tests")
 (assert (eq? '(1 2 3) (append '(1 2) 3)))
 
-(println "Running `sum` and `fold` tests")
+(println "Running `fold` tests")
 (assert (eq? 6 (sum '(1 2 3))))
+(assert (eq? 30 (product '(5 2 3))))
+(assert (eq? nil (sum nil)))
+(assert (eq? nil (product nil)))
 
 (println "Running `concat` tests")
 (assert (eq? '(1 2 3 4) (concat '(1 2) '(3 4))))
 (assert (eq? "foobar" (concat "foo" "bar")))
+
+(println "Running `car` & `cdr` variantt tests")
+(set tree '((1 . 2) . (3 . 4)))
+(assert (eq? '1 (caar tree)))
+(assert (eq? '3 (cadr tree)))
+(assert (eq? '2 (cdar tree)))
+(assert (eq? '4 (cddr tree)))
 
 (println "All tests passed successfully!")

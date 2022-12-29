@@ -1,4 +1,4 @@
-use std::{fmt::Debug, rc::Rc, collections::HashMap};
+use std::{fmt::Debug, rc::Rc};
 
 type ParseResult<T> = Result<T, String>;
 
@@ -54,7 +54,7 @@ impl Debug for Value {
             Value::Symbol(value)  => f.write_str(value),
             Value::Int(value)     => f.write_str(&value.to_string()),
             Value::Float(value)   => {
-                if value % 1.0 == 0.0 {
+                if (value % 1.0).abs() == 0.0 {
                     f.write_str(&format!("{}.0", value.floor()))
                 } else {
                     f.write_str(&value.to_string())
@@ -74,6 +74,43 @@ impl Debug for Value {
             Value::Builtin(value) => value.fmt(f),
         }
     }
+}
+
+static BUILTIN_NAMES: &[(&str, Builtin)] = &[
+    ("nil", Builtin::Nil),
+    ("+", Builtin::Add),
+    ("-", Builtin::Sub),
+    ("*", Builtin::Mul),
+    ("/", Builtin::Div),
+    ("%", Builtin::Mod),
+    ("set", Builtin::Set),
+    ("setg", Builtin::Setg),
+    ("lambda", Builtin::Lambda),
+    ("do", Builtin::Do),
+    ("defun", Builtin::Defun),
+    ("putc", Builtin::Putc),
+    ("if", Builtin::If),
+    ("car", Builtin::Car),
+    ("cdr", Builtin::Cdr),
+    ("cons", Builtin::Cons),
+    ("debug", Builtin::Debug),
+    ("false?", Builtin::IsFalsy),
+    ("eq?", Builtin::IsEq),
+    ("exit", Builtin::Exit),
+    ("require", Builtin::Require),
+];
+
+fn builtin_for_name(name: &str) -> Option<Builtin> {
+    BUILTIN_NAMES.iter()
+        .find(|(n, _)| *n == name)
+        .map(|(_, builtin)| *builtin)
+}
+
+fn name_for_builtin(builtin: Builtin) -> String {
+    BUILTIN_NAMES.iter()
+        .find(|(_, b)| *b == builtin)
+        .map(|(n, _)| n.to_string())
+        .unwrap()
 }
 
 #[derive(Eq, PartialEq, Clone, Copy)]
@@ -105,29 +142,7 @@ pub enum Builtin {
 
 impl Debug for Builtin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Builtin::Nil => f.write_str("nil"),
-            Builtin::Add => f.write_str("+"),
-            Builtin::Sub => f.write_str("-"),
-            Builtin::Mul => f.write_str("*"),
-            Builtin::Div => f.write_str("/"),
-            Builtin::Mod => f.write_str("%"),
-            Builtin::Set => f.write_str("set"),
-            Builtin::Setg => f.write_str("setg"),
-            Builtin::Do => f.write_str("do"),
-            Builtin::Lambda => f.write_str("lambda"),
-            Builtin::Defun => f.write_str("defun"),
-            Builtin::Putc => f.write_str("putc"),
-            Builtin::If => f.write_str("if"),
-            Builtin::Car => f.write_str("car"),
-            Builtin::Cdr => f.write_str("cdr"),
-            Builtin::Cons => f.write_str("cons"),
-            Builtin::Debug => f.write_str("debug"),
-            Builtin::IsFalsy => f.write_str("false?"),
-            Builtin::Exit => f.write_str("exit"),
-            Builtin::IsEq => f.write_str("eq?"),
-            Builtin::Require => f.write_str("require"),
-        }
+        f.write_str(&name_for_builtin(*self))
     }
 }
 
@@ -180,37 +195,13 @@ impl Debug for SExpr {
 pub struct ParseContext {
     content: Vec<char>,
     pos: usize,
-    builtins: HashMap<String, Builtin>,
 }
 
 impl ParseContext {
     fn new(content: &str) -> ParseContext {
-        let mut builtins = HashMap::new();
-        builtins.insert("nil".to_owned(), Builtin::Nil);
-        builtins.insert("+".to_owned(), Builtin::Add);
-        builtins.insert("-".to_owned(), Builtin::Sub);
-        builtins.insert("*".to_owned(), Builtin::Mul);
-        builtins.insert("/".to_owned(), Builtin::Div);
-        builtins.insert("%".to_owned(), Builtin::Mod);
-        builtins.insert("set".to_owned(), Builtin::Set);
-        builtins.insert("setg".to_owned(), Builtin::Setg);
-        builtins.insert("lambda".to_owned(), Builtin::Lambda);
-        builtins.insert("do".to_owned(), Builtin::Do);
-        builtins.insert("defun".to_owned(), Builtin::Defun);
-        builtins.insert("putc".to_owned(), Builtin::Putc);
-        builtins.insert("if".to_owned(), Builtin::If);
-        builtins.insert("car".to_owned(), Builtin::Car);
-        builtins.insert("cdr".to_owned(), Builtin::Cdr);
-        builtins.insert("cons".to_owned(), Builtin::Cons);
-        builtins.insert("debug".to_owned(), Builtin::Debug);
-        builtins.insert("false?".to_owned(), Builtin::IsFalsy);
-        builtins.insert("eq?".to_owned(), Builtin::IsEq);
-        builtins.insert("exit".to_owned(), Builtin::Exit);
-        builtins.insert("require".to_owned(), Builtin::Require);
         ParseContext {
             content: content.chars().collect::<Vec<_>>(),
             pos: 0,
-            builtins,
         }
     }
 
@@ -295,25 +286,35 @@ fn parse_expr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
         '\"' => parse_string(ctx),
         '?' => Ok(SExpr::Atom(pos, parse_char(ctx)?)),
         '(' => parse_sexpr(ctx),
-        c if c.is_ascii_digit() || c == '.' => Ok(SExpr::Atom(pos, parse_num(ctx)?)),
+        c if c.is_ascii_digit() || c == '-' => Ok(SExpr::Atom(pos, parse_num(ctx)?)),
         c if is_symbol_char(c) => Ok(SExpr::Atom(pos, parse_symbol(ctx)?)),
         c => Err(format!("Unexpected character: {c}")),
     }
 }
 
 fn parse_num(ctx: &mut ParseContext) -> ParseResult<Value> {
+    let is_neg = if ctx.peek() == Some('-') {
+        ctx.pos += 1;
+        true
+    } else {
+        false
+    };
     let mut s = String::new();
     while let Some(c) = ctx.peek().filter(|&c| is_digit_char(c)) {
         s.push(c);
         ctx.pos += 1;
     }
-    if let Ok(value) = s.parse::<i64>() {
-        return Ok(Value::Int(value));
+    // Must have been a lone minus symbol - try parsing as a symbol instead
+    if s.is_empty() {
+        ctx.pos -= 1;
+        parse_symbol(ctx)
+    } else if let Ok(value) = s.parse::<i64>() {
+        Ok(Value::Int(if is_neg { -value } else { value }))
+    } else if let Ok(value) = s.parse::<f64>() {
+        Ok(Value::Float(if is_neg { -value } else { value }))
+    } else {
+        Err("Invalid integer".to_owned())
     }
-    if let Ok(value) = s.parse::<f64>() {
-        return Ok(Value::Float(value));
-    }
-    Err("Invalid integer".to_owned())
 }
 
 /// Expects the leading ? to have been parsed
@@ -367,8 +368,8 @@ fn parse_symbol(ctx: &mut ParseContext) -> ParseResult<Value> {
         ctx.pos += 1;
     }
 
-    if let Some(builtin) = ctx.builtins.get(&s) {
-        Ok(Value::Builtin(*builtin))
+    if let Some(builtin) = builtin_for_name(&s) {
+        Ok(Value::Builtin(builtin))
     } else {
         Ok(Value::Symbol(s))
     }
@@ -419,9 +420,10 @@ mod tests {
 
     #[test]
     fn test_parse_num() {
-        assert_eq!("1234", format!("{:?}", parse_expr_str("1234")));
-        assert_eq!("3.14", format!("{:?}", parse_expr_str("3.14")));
-        assert_eq!("3.0", format!("{:?}", parse_expr_str("3.000")));
+        assert_eq!(SExpr::Atom(0, Value::Int(1234)), parse_expr_str("1234"));
+        assert_eq!(SExpr::Atom(0, Value::Float(3.14)), parse_expr_str("3.14"));
+        assert_eq!(SExpr::Atom(0, Value::Float(3.0)), parse_expr_str("3.0"));
+        assert_eq!(SExpr::Atom(0, Value::Int(-1234)), parse_expr_str("-1234"));
     }
 
     #[test]

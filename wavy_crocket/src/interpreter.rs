@@ -118,7 +118,7 @@ fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
 
 // The result is the last evaluated expr
 fn eval_do(ctx: &mut RunContext, exprs: &Vec<Rc<SExpr>>) -> RunResult<Rc<SExpr>> {
-    if exprs.len() == 0 {
+    if exprs.is_empty() {
         return Ok(Rc::new(SExpr::nil()));
     }
     for expr in exprs.iter().take(exprs.len() - 1) {
@@ -367,6 +367,9 @@ fn get_car(expr: &SExpr) -> Option<Rc<SExpr>> {
                 _ => None,
             }
         },
+        SExpr::Atom(_, Value::Builtin(Builtin::Nil)) => {
+            Some(Rc::new(SExpr::nil()))
+        },
         _ => None,
     }
 }
@@ -378,6 +381,9 @@ fn get_cdr(expr: &SExpr) -> Option<Rc<SExpr>> {
                 SExpr::S(_, _, rhs) => Some(Rc::new(SExpr::Atom(*pos, Value::Quote(rhs.clone())))),
                 _ => None,
             }
+        },
+        SExpr::Atom(_, Value::Builtin(Builtin::Nil)) => {
+            Some(Rc::new(SExpr::nil()))
         },
         _ => None,
     }
