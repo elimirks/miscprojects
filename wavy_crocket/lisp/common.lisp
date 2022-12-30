@@ -13,52 +13,55 @@
 
 (defun true? (v) (not (false? v)))
 
-(defun len (list) 
-  (if (false? list) 0 (inc (len (cdr list)))))
+(defun len (l) 
+  (if (false? l) 0 (inc (len (cdr l)))))
 
-(defun map (f list)
-  (if (false? list) '()
-    (cons (f (car list)) (map f (cdr list)))))
+(defun map (f l)
+  (if (false? l) '()
+    (cons (f (car l)) (map f (cdr l)))))
 
-(defun foreach (f list)
-  (if (false? list) nil
+(defun foreach (f l)
+  (if (false? l) nil
     (progn
-      (f (car list))
-      (foreach f (cdr list)))))
+      (f (car l))
+      (foreach f (cdr l)))))
 
-(defun push (elem list) 
-  (if (false? list)
+(defun push (elem l) 
+  (if (false? l)
     (cons elem nil)
-    (cons (car list)
-          (push elem (cdr list)))))
+    (cons (car l)
+          (push elem (cdr l)))))
 
-(defun fold (f acc list)
-  (if (false? list)
+(defun fold (f acc l)
+  (if (false? l)
     acc
-    (fold f (f acc (car list)) (cdr list))))
+    (fold f (f acc (car l)) (cdr l))))
 
-(defun sum (list)
-  (fold + (car list) (cdr list)))
-(defun product (list)
-  (fold * (car list) (cdr list)))
+(defun reduce (f l)
+  (fold f (car l) (cdr l)))
+
+(defun sum (l)
+  (fold + (car l) (cdr l)))
+(defun product (l)
+  (fold * (car l) (cdr l)))
 
 (defun append (l1 l2)
   (fold (lambda (a b) (push b a)) l1 l2))
 
-(defun rev (list) 
-  (fold (lambda (acc it) (cons it acc)) nil list))
+(defun rev (l) 
+  (fold (lambda (acc it) (cons it acc)) nil l))
 
-(defun last (list)
-  (if (false? list) nil
+(defun last (l)
+  (if (false? l) nil
     (progn
-      (set 'next (last (cdr list)))
-      (if (false? next) (car list) next))))
+      (set 'next (last (cdr l)))
+      (if (false? next) (car l) next))))
 
-(defun delimit (sep list) 
+(defun delimit (sep l) 
   (fold (lambda (acc it)
           (if (false? acc) it 
             (append acc (append sep it)))
-          ) nil list))
+          ) nil l))
 
 (defun caar (x) (car (car x)))
 (defun cadr (x) (car (cdr x)))

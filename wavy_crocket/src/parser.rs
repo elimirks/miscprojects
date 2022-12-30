@@ -80,6 +80,7 @@ impl Debug for Value {
 static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("nil", Builtin::Nil),
     ("quote", Builtin::Quote),
+    ("list", Builtin::List),
     ("+", Builtin::Add),
     ("-", Builtin::Sub),
     ("*", Builtin::Mul),
@@ -101,10 +102,15 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("exit", Builtin::Exit),
     ("require", Builtin::Require),
     ("to-string", Builtin::ToString),
-    ("wd-pure-tone", Builtin::WdPureTone),
-    ("wd-save", Builtin::WdSave),
     ("str-as-list", Builtin::StrAsList),
     ("list-as-str", Builtin::ListAsStr),
+    ("wd-pure-tone", Builtin::WdPureTone),
+    ("wd-save", Builtin::WdSave),
+    ("wd-flat-amplitude", Builtin::WdFlatAmplitude),
+    ("wd-multiply", Builtin::WdMultiply),
+    ("wd-superimpose", Builtin::WdSuperimpose),
+    ("wd-len", Builtin::WdLen),
+    ("wd-concat", Builtin::WdConcat),
 ];
 
 fn builtin_for_name(name: &str) -> Option<Builtin> {
@@ -123,6 +129,7 @@ fn name_for_builtin(builtin: Builtin) -> String {
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub enum Builtin {
     Quote,
+    List,
     Nil,
     Add,
     Sub,
@@ -151,6 +158,11 @@ pub enum Builtin {
     ListAsStr,
     WdPureTone,
     WdSave,
+    WdFlatAmplitude,
+    WdMultiply,
+    WdSuperimpose,
+    WdLen,
+    WdConcat,
 }
 
 impl Debug for Builtin {

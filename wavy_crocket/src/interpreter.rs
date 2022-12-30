@@ -320,6 +320,26 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             param_count_eq(func, params, 2)?;
             wd_save(ctx, params)
         },
+        Builtin::WdFlatAmplitude => {
+            param_count_eq(func, params, 2)?;
+            wd_flat_amplitude(params)
+        },
+        Builtin::WdMultiply => {
+            param_count_eq(func, params, 2)?;
+            wd_multiply(params)
+        },
+        Builtin::WdSuperimpose => {
+            param_count_eq(func, params, 2)?;
+            wd_superimpose(params)
+        },
+        Builtin::WdLen => {
+            param_count_eq(func, params, 1)?;
+            wd_len(params)
+        },
+        Builtin::WdConcat => {
+            param_count_eq(func, params, 2)?;
+            wd_concat(params)
+        },
         Builtin::ToString => {
             param_count_eq(func, params, 1)?;
             Ok(Rc::new(sexpr_as_string(&params[0])))
@@ -334,6 +354,11 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             param_count_eq(func, params, 1)?;
             char_list_as_string(params[0].clone())
         },
+        Builtin::List => {
+            Ok(Rc::new(params.iter().rev().fold(Rc::new(SExpr::nil()), |acc, it| {
+                Rc::new(SExpr::S(it.clone(), acc))
+            }).quote()))
+        },
     }
 }
 
@@ -343,17 +368,25 @@ fn wd_pure_tone(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> 
         .ok_or("wd-sample-rate must be globally set as an int")?;
     let frequency = try_get_float(&params[0])
         .ok_or("frequency parameter be a float")?;
-    let duration = try_get_float(&params[1])
-        .ok_or("duration parameter be a float")?;
-
-    let sample_count = duration * (sample_rate as f64);
-    let wave_count = sample_count / frequency;
+    let sample_count = try_get_int(&params[1])
+        .ok_or("sample-count parameter be an int")?;
 
     let mut data = vec![];
     for t in 0..sample_count as usize {
-        let x = wave_count * 2.0 * PI * t as f64 / sample_count;
+        let sample_time = (t as f64) / (sample_rate as f64);
+        let x = 2.0 * PI * sample_time * frequency;
         data.push(x.sin());
     }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_flat_amplitude(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let amplitude = try_get_float(&params[0])
+        .ok_or("amplitude parameter be an int")?;
+    let sample_count = try_get_int(&params[1])
+        .ok_or("sample-count parameter be an int")?;
+
+    let data = vec![amplitude; sample_count as usize];
     Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
 }
 
@@ -371,6 +404,53 @@ fn wd_save(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     } else {
         Err(format!("Failed saving wave file to {file_path}"))
     }
+}
+
+fn wd_multiply(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let lhs = try_get_wavedata(&params[0])
+        .ok_or("lhs parameter be a wavedata object")?;
+    let rhs = try_get_wavedata(&params[1])
+        .ok_or("rhs parameter be a wavedata object")?;
+    if lhs.len() != rhs.len() {
+        return Err("wd-multiply must be called on two equally sized wavedata objects".to_owned());
+    }
+    let mut data = lhs.clone();
+    for i in 0..data.len() {
+        data[i] *= rhs[i];
+    }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_superimpose(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let lhs = try_get_wavedata(&params[0])
+        .ok_or("lhs parameter be a wavedata object")?;
+    let rhs = try_get_wavedata(&params[1])
+        .ok_or("rhs parameter be a wavedata object")?;
+    if lhs.len() != rhs.len() {
+        return Err("wd-multiply must be called on two equally sized wavedata objects".to_owned());
+    }
+    let mut data = lhs.clone();
+    for i in 0..data.len() {
+        data[i] += rhs[i];
+    }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_len(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let param = try_get_wavedata(&params[0])
+        .ok_or("wd-len must be called on a single wavedata object")?;
+    Ok(Rc::new(SExpr::Atom(Value::Int(param.len() as i64))))
+}
+
+fn wd_concat(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let lhs = try_get_wavedata(&params[0])
+        .ok_or("lhs parameter be a wavedata object")?;
+    let rhs = try_get_wavedata(&params[1])
+        .ok_or("rhs parameter be a wavedata object")?;
+
+    let mut data = lhs.clone();
+    data.extend_from_slice(&rhs);
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
 }
 
 fn char_list_as_string(expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
