@@ -10,6 +10,37 @@
 (defun wd-amplify (amplitude data)
   (wd-multiply data (wd-flat-amplitude amplitude (wd-len data))))
 
+;; Inverts the amplitude of the given data
+(defun wd-invert (data)
+  (wd-amplify -1.0 data))
+
+(defun wd-slope-down (duration) 
+  (wd-reverse (wd-slope-up duration)))
+
+;; Shifts the given data by some amount
+(defun wd-shift (amount data)
+  (wd-superimpose (wd-flat-amplitude amount (wd-len data)) data))
+
+;; Envelopes wavedata using ADSR
+;; attack:  Sample count of the attack slope
+;; decay:   Sample count of the decay slope
+;; sustain: Sustain amplitude (as a percentage)
+;; release: Sample count of release slope
+;; See https://support.apple.com/en-ca/guide/logicpro/lgsife419620/mac
+(defun wd-adsr (attack decay sustain release data)
+  (set 'hold-time (- (wd-len data) (+ attack (+ decay release))))
+  (if (ge? hold-time 0) nil
+    (progn
+      (println "wd-asdr hold time must positive")
+      (exit 1)))
+  (set 'attack-slope (wd-slope-up attack))
+  (set 'decay-drop (- 1.0 sustain))
+  (set 'decay-slope (wd-shift sustain (wd-amplify decay-drop (wd-slope-down decay))))
+  (set 'hold-plateau (wd-flat-amplitude sustain hold-time))
+  (set 'release-slope (wd-amplify sustain (wd-slope-down release)))
+  (set 'envelope (reduce wd-concat (list attack-slope decay-slope hold-plateau release-slope)))
+  (wd-multiply envelope data))
+
 (setg 'c4-freq 261.63)
 (setg 'cs4-freq 277.18)
 (setg 'd4-freq 293.66)

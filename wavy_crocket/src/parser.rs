@@ -99,6 +99,7 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("debug", Builtin::Debug),
     ("false?", Builtin::IsFalsy),
     ("eq?", Builtin::IsEq),
+    ("cmp", Builtin::Cmp),
     ("exit", Builtin::Exit),
     ("require", Builtin::Require),
     ("to-string", Builtin::ToString),
@@ -111,6 +112,10 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("wd-superimpose", Builtin::WdSuperimpose),
     ("wd-len", Builtin::WdLen),
     ("wd-concat", Builtin::WdConcat),
+    ("wd-noise", Builtin::WdNoise),
+    ("wd-subsample", Builtin::WdSubSample),
+    ("wd-slope-up", Builtin::WdSlopeUp),
+    ("wd-reverse", Builtin::WdReverse),
 ];
 
 fn builtin_for_name(name: &str) -> Option<Builtin> {
@@ -151,6 +156,7 @@ pub enum Builtin {
     Debug,
     IsFalsy,
     IsEq,
+    Cmp,
     Exit,
     Require,
     ToString,
@@ -163,6 +169,10 @@ pub enum Builtin {
     WdSuperimpose,
     WdLen,
     WdConcat,
+    WdNoise,
+    WdSubSample,
+    WdSlopeUp,
+    WdReverse,
 }
 
 impl Debug for Builtin {

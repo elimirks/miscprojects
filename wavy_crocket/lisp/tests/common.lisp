@@ -18,6 +18,13 @@
 (assert (not (true? nil)))
 (assert (true? 2))
 
+(println "Running comparison tests")
+(assert (lt? 3 5))
+(assert (not (lt? 6 5)))
+(assert (le? 5 5))
+(assert (ge? 5 5))
+(assert (gt? 6 5))
+
 (println "Running `len` tests")
 (assert (eq? 3 (len '(1 2 3))))
 (assert (eq? 0 (len nil)))
