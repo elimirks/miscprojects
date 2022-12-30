@@ -2,7 +2,7 @@ use std::{fmt::Debug, cell::RefCell, rc::Rc, collections::{HashMap, HashSet}, pr
 use rand::{thread_rng, Rng};
 
 use crate::parser::*;
-use crate::wave_file_handler::save_wave;
+use crate::sound_handler::*;
 
 type RunResult<T> = Result<T, String>;
 
@@ -321,6 +321,10 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             param_count_eq(func, params, 2)?;
             wd_save(ctx, params)
         },
+        Builtin::WdPlay => {
+            param_count_eq(func, params, 1)?;
+            wd_play(ctx, params)
+        },
         Builtin::WdFlatAmplitude => {
             param_count_eq(func, params, 2)?;
             wd_flat_amplitude(params)
@@ -451,6 +455,20 @@ fn wd_save(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
         Ok(Rc::new(SExpr::nil()))
     } else {
         Err(format!("Failed saving wave file to {file_path}"))
+    }
+}
+
+fn wd_play(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let sr = ctx.scope.borrow().lookup(&"wd-sample-rate");
+    let sample_rate = try_get_int(&sr)
+        .ok_or("wd-sample-rate must be globally set as an int")?;
+    let wavedata = try_get_wavedata(&params[0])
+        .ok_or("wavedata parameter must be a wavedata object")?;
+
+    if play_wave(sample_rate as u32, &wavedata).is_ok() {
+        Ok(Rc::new(SExpr::nil()))
+    } else {
+        Err(format!("Failed playing wavedata"))
     }
 }
 

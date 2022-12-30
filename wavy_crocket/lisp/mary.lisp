@@ -34,4 +34,5 @@
                d4-freq
                c4-freq))))
 
-(wd-save (wd-amplify 0.5 result) "out.wav")
+(wd-play (wd-amplify 0.5 result))
+;(wd-save (wd-amplify 0.5 result) "out.wav")
