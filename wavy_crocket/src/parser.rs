@@ -2,13 +2,13 @@ use std::{fmt::Debug, rc::Rc};
 
 type ParseResult<T> = Result<T, String>;
 
+// TODO: No more chars! The should be regular ints
 #[derive(Clone)]
 pub enum Value {
     Symbol(String),
     Builtin(Builtin),
     Int(i64),
     Float(f64),
-    Char(char),
     String(String),
     // Special data type for storing wave data
     // More efficient operations can be done on wavedata, so that we won't be
@@ -24,7 +24,6 @@ impl PartialEq for Value {
             (Value::Builtin(lhs), Value::Builtin(rhs)) => lhs == rhs,
             (Value::Int(lhs), Value::Int(rhs)) => lhs == rhs,
             (Value::Float(lhs), Value::Float(rhs)) => lhs == rhs,
-            (Value::Char(lhs), Value::Char(rhs)) => lhs == rhs,
             (Value::Function(lhs_params, lhs_body), Value::Function(rhs_params, rhs_body)) => {
                 if lhs_params.len() != rhs_params.len() || lhs_body.len() != rhs_body.len() {
                     false
@@ -54,7 +53,6 @@ impl Debug for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Symbol(value) => f.write_str(value),
-            Value::Char(value)   => f.write_str(&format!("?{value}")),
             Value::String(value) => f.write_str(&format!("\"{value}\"")),
             Value::Int(value)    => f.write_str(&value.to_string()),
             Value::Float(value)  => {
@@ -103,8 +101,9 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("exit", Builtin::Exit),
     ("require", Builtin::Require),
     ("to-string", Builtin::ToString),
-    ("wavedata", Builtin::WaveData),
+    ("wd-pure-tone", Builtin::WdPureTone),
     ("str-as-list", Builtin::StrAsList),
+    ("list-as-str", Builtin::ListAsStr),
 ];
 
 fn builtin_for_name(name: &str) -> Option<Builtin> {
@@ -147,8 +146,9 @@ pub enum Builtin {
     Exit,
     Require,
     ToString,
-    WaveData,
     StrAsList,
+    ListAsStr,
+    WdPureTone,
 }
 
 impl Debug for Builtin {
@@ -169,7 +169,7 @@ impl SExpr {
     }
 
     pub fn truthy() -> SExpr {
-        SExpr::Atom(Value::Char('t'))
+        SExpr::Atom(Value::Int(1))
     }
 
     pub fn is_nil(&self) -> bool {
@@ -370,11 +370,11 @@ fn parse_char(ctx: &mut ParseContext) -> ParseResult<Value> {
                 _ => return Err("Invalid escape character".to_owned()),
             };
             ctx.pos += 1;
-            Ok(Value::Char(res))
+            Ok(Value::Int(res as i64))
         },
         Some(c) => {
             ctx.pos += 1;
-            Ok(Value::Char(c))
+            Ok(Value::Int(c as i64))
         },
         None => Err("Expected character, found EOF".to_owned()),
     }
@@ -472,7 +472,7 @@ mod tests {
 
     #[test]
     fn test_parse_char() {
-        assert_eq!("?x", format!("{:?}", parse_expr_str("?x")));
+        assert_eq!("120", format!("{:?}", parse_expr_str("?x")));
     }
 
     #[test]
@@ -480,7 +480,7 @@ mod tests {
         assert_eq!("(quote . (a . b))", format!("{:?}", parse_expr_str("'(a.b)")));
         assert_eq!("(quote . (a . b))", format!("{:?}", parse_expr_str("'(a. b)")));
         assert_eq!("(quote . (a . b))", format!("{:?}", parse_expr_str("'(a   .   b)")));
-        assert_eq!("(quote . ?a)", format!("{:?}", parse_expr_str("'?a")));
+        assert_eq!("(quote . 97)", format!("{:?}", parse_expr_str("'?a")));
         assert_eq!("(quote . (1 . nil))", format!("{:?}", parse_expr_str("'(1)")));
         assert_eq!("(quote . (quote . (1 . nil)))", format!("{:?}", parse_expr_str("''(1)")));
         assert_eq!("(quote . (quote . 1))", format!("{:?}", parse_expr_str("''1")));

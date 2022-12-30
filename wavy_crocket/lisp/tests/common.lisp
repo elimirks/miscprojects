@@ -53,7 +53,7 @@
 (println "Running `append` tests")
 (assert (eq? '(1 2 3 4) (append '(1 2) '(3 4))))
 
-(println "Running `car` & `cdr` variantt tests")
+(println "Running `car` & `cdr` variant tests")
 (set 'tree '((1 . 2) . (3 . 4)))
 (assert (eq? 1 (caar tree)))
 (assert (eq? 3 (cadr tree)))

@@ -188,13 +188,27 @@ fn unfold(sexpr: Rc<SExpr>) -> Vec<Rc<SExpr>> {
     values
 }
 
+fn param_count_eq(func: Builtin, params: &[Rc<SExpr>], n: usize) -> RunResult<()> {
+    if params.len() != n {
+        Err(format!("{func:?} must have exactly {n} params"))
+    } else {
+        Ok(())
+    }
+}
+
+fn param_count_ge(func: Builtin, params: &[Rc<SExpr>], n: usize) -> RunResult<()> {
+    if params.len() < n {
+        Err(format!("{func:?} must have at least {n} params"))
+    } else {
+        Ok(())
+    }
+}
+
 fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     match func {
         Builtin::Lambda => eval_lambda(params),
         Builtin::Defun => {
-            if params.len() < 3 {
-                return Err("defun must have at least three params".to_owned());
-            }
+            param_count_ge(func, params, 3)?;
             if is_symbol(&params[0]) {
                 let fun_sym = params[0].clone();
                 let new = params[1..].to_vec();
@@ -209,11 +223,9 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
         Builtin::Setg => eval_set(ctx.root_scope(), params),
         Builtin::Progn => eval_progn(ctx, params),
         Builtin::Putc => {
-            if params.len() != 1 {
-                return Err("putc must accept exactly 1 char argument".to_owned());
-            }
+            param_count_eq(func, params, 1)?;
             let param = params[0].clone(); 
-            if let Some(c) = get_expr_char(&param) {
+            if let Some(c) = try_get_char(&param) {
                 print!("{c}");
                 Ok(Rc::new(SExpr::nil()))
             } else {
@@ -222,17 +234,13 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             }
         },
         Builtin::Debug => {
-            if params.len() != 1 {
-                return Err("debug must accept exactly 1 char argument".to_owned());
-            }
+            param_count_eq(func, params, 1)?;
             let param = params[0].clone(); 
             eprintln!("DEBUG: {param:?}");
             Ok(Rc::new(SExpr::nil()))
         },
         Builtin::If => {
-            if params.len() != 3 {
-                return Err("if takes exactly 3 parameters".to_owned());
-            }
+            param_count_eq(func, params, 3)?;
             let cond = eval(ctx, params[0].clone())?;
             if is_truthy(cond) {
                 eval(ctx, params[1].clone())
@@ -241,54 +249,45 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             }
         },
         Builtin::Car => {
-            if params.len() != 1 {
-                Err(format!("{func:?} accepts exactly 1 argument"))
-            } else if let Some(car) = get_car(&params[0]) {
+            param_count_eq(func, params, 1)?;
+            if let Some(car) = get_car(&params[0]) {
                 Ok(car)
             } else {
                 Err("The argument to car must be a list".to_owned())
             }
         },
         Builtin::Cdr => {
-            if params.len() != 1 {
-                Err(format!("{func:?} accepts exactly 1 argument"))
-            } else if let Some(car) = get_cdr(&params[0]) {
+            param_count_eq(func, params, 1)?;
+            if let Some(car) = get_cdr(&params[0]) {
                 Ok(car)
             } else {
                 Err("The argument to cdr must be a list".to_owned())
             }
         },
         Builtin::Cons => {
-            if params.len() != 2 {
-                Err(format!("{func:?} accepts exactly 2 argument"))
-            } else {
-                let head = params[0].clone();
-                let tail = params[1].clone();
-                Ok(Rc::new(SExpr::S(head, unquote(tail)).quote()))
-            }
+            param_count_eq(func, params, 2)?;
+            let head = params[0].clone();
+            let tail = params[1].clone();
+            Ok(Rc::new(SExpr::S(head, unquote(tail)).quote()))
         },
         Builtin::IsFalsy => {
-            if params.len() != 1 {
-                Err(format!("{func:?} accepts exactly 1 argument"))
-            } else if is_truthy(params[0].clone()) {
+            param_count_eq(func, params, 1)?;
+            if is_truthy(params[0].clone()) {
                 Ok(Rc::new(SExpr::nil()))
             } else {
-                Ok(Rc::new(SExpr::Atom(Value::Char('t'))))
+                Ok(Rc::new(SExpr::truthy()))
             }
         },
         Builtin::IsEq => {
-            if params.len() != 2 {
-                Err(format!("{func:?} accepts exactly 2 arguments"))
-            } else if params[0] == params[1] {
+            param_count_eq(func, params, 2)?;
+            if params[0] == params[1] {
                 Ok(Rc::new(SExpr::truthy()))
             } else {
                 Ok(Rc::new(SExpr::nil()))
             }
         },
         Builtin::Exit => {
-            if params.len() != 1 {
-                return Err(format!("{func:?} accepts exactly 1 argument"));
-            }
+            param_count_eq(func, params, 1)?;
             if let Some(status) = get_int(&params[0]).filter(|v| *v >= 0 && *v <= 255) {
                 exit(status as i32);
             } else {
@@ -296,9 +295,7 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             }
         },
         Builtin::Require => {
-            if params.len() != 1 {
-                return Err(format!("{func:?} accepts exactly 1 argument"));
-            }
+            param_count_eq(func, params, 1)?;
             if let Some(file_path) = try_get_string(params[0].clone()) {
                 run_with_context(ctx, &file_path)?;
                 Ok(Rc::new(SExpr::nil()))
@@ -307,9 +304,7 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             }
         },
         Builtin::Add | Builtin::Sub | Builtin::Mul | Builtin::Div | Builtin::Mod => {
-            if params.len() != 2 {
-                return Err(format!("Call to {func:?} must have two params"));
-            }
+            param_count_eq(func, params, 2)?;
             let lhs = params[0].clone();
             let rhs = params[1].clone();
             match (&*lhs, &*rhs) {
@@ -318,33 +313,43 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
                 _ => Err(format!("{func:?} must be called on two values of the same type")),
             }
         },
-        Builtin::WaveData => {
-            if !params.is_empty() {
-                return Err(format!("Call to {func:?} must have no params"));
-            }
-            Ok(Rc::new(SExpr::Atom(Value::WaveData(vec![]))))
+        Builtin::WdPureTone => {
+            param_count_eq(func, params, 2)?;
+            todo!()
         },
         Builtin::ToString => {
-            if params.len() != 1 {
-                return Err(format!("Call to {func:?} must have 1 param"));
-            }
+            param_count_eq(func, params, 1)?;
             Ok(Rc::new(sexpr_as_string(&params[0])))
         },
         // By definition, `quote` should never be evaluated!
         Builtin::Quote => unreachable!(),
         Builtin::StrAsList => {
-            if params.len() != 1 {
-                return Err(format!("Call to {func:?} must have 1 param"));
-            }
+            param_count_eq(func, params, 1)?;
             string_as_char_list(&params[0])
         },
+        Builtin::ListAsStr => {
+            param_count_eq(func, params, 1)?;
+            char_list_as_string(params[0].clone())
+        },
     }
+}
+
+fn char_list_as_string(expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
+    let mut s = String::new();
+    for c_expr in unfold(unquote(expr)).iter() {
+        if let Some(c) = try_get_char(c_expr) {
+            s.push(c);
+        } else {
+            return Err("Invalid character list".to_owned());
+        }
+    }
+    Ok(Rc::new(SExpr::Atom(Value::String(s))))
 }
 
 fn string_as_char_list(expr: &SExpr) -> RunResult<Rc<SExpr>> {
     if let Some(s) = try_get_string_value(expr) {
         Ok(Rc::new(s.chars().rev().fold(Rc::new(SExpr::nil()), |acc, it| {
-            Rc::new(SExpr::S(Rc::new(SExpr::Atom(Value::Char(it))), acc))
+            Rc::new(SExpr::S(Rc::new(SExpr::Atom(Value::Int(it as i64))), acc))
         }).quote()))
     } else {
         Err(format!("Value is not a string: {expr:?}"))
@@ -382,7 +387,6 @@ fn is_truthy(sexpr: Rc<SExpr>) -> bool {
         SExpr::Atom(value) => match value {
             Value::Int(value)   => *value != 0,
             Value::Float(value) => *value != 0.0,
-            Value::Char(value)  => *value != '\0',
             Value::Builtin(Builtin::Nil) => false,
             _                   => true,
         },
@@ -433,17 +437,15 @@ fn get_cdr(expr: &SExpr) -> Option<Rc<SExpr>> {
     }
 }
 
-fn get_expr_char(expr: &SExpr) -> Option<char> {
+fn try_get_char(expr: &SExpr) -> Option<char> {
     match expr {
-        SExpr::Atom(Value::Char(c)) => Some(*c),
+        SExpr::Atom(Value::Int(value)) => char::from_u32(*value as u32),
         _ => None,
     }
 }
 
 fn eval_lambda(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
-    if params.len() < 2 {
-        return Err("function definitions must have at least two params".to_owned());
-    }
+    param_count_ge(Builtin::Lambda, params, 2)?;
     let mut arg_names = vec![];
     for arg in unfold(params[0].clone()).iter() {
         if let Some(name) = get_symbol_name(arg) {
@@ -457,9 +459,7 @@ fn eval_lambda(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
 }
 
 fn eval_set(scope: Rc<RefCell<Scope>>, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
-    if params.len() != 2 {
-        return Err("set must be called on exactly two parameters".to_owned());
-    }
+    param_count_eq(Builtin::Set, params, 2)?;
     if let Some(name) = get_symbol_name(&unquote(params[0].clone())) {
         let set_value = params[1].clone();
         scope.borrow_mut().insert(name, set_value.clone());
@@ -566,22 +566,21 @@ mod tests {
 
     #[test]
     fn test_eval_if() {
-        assert_eq!("?f", format!("{:?}", eval_str("(if nil ?t ?f)")));
-        assert_eq!("?t", format!("{:?}", eval_str("(if ?t ?t ?f)")));
+        assert_eq!("2", format!("{:?}", eval_str("(if nil 1 2)")));
     }
 
     #[test]
     fn test_eval_false() {
-        assert_eq!("?t", format!("{:?}", eval_str("(false? nil)")));
-        assert_eq!("?t", format!("{:?}", eval_str("(false? 'nil)")));
-        assert_eq!("?t", format!("{:?}", eval_str("(false? '())")));
+        assert_eq!("1", format!("{:?}", eval_str("(false? nil)")));
+        assert_eq!("1", format!("{:?}", eval_str("(false? 'nil)")));
+        assert_eq!("1", format!("{:?}", eval_str("(false? '())")));
         assert_eq!("nil", format!("{:?}", eval_str("(false? 42)")));
         assert_eq!("nil", format!("{:?}", eval_str("(false? '(4))")));
     }
 
     #[test]
     fn test_eval_eq() {
-        assert_eq!("?t", format!("{:?}", eval_str("(eq? '(2 3 4) '(2 3 4))")));
+        assert_eq!("1", format!("{:?}", eval_str("(eq? '(2 3 4) '(2 3 4))")));
         assert_eq!("nil", format!("{:?}", eval_str("(eq? '(2 3 4) '(2 3 5))")));
         assert_eq!("nil", format!("{:?}", eval_str("(eq? '(2 3 4) 4)")));
     }
