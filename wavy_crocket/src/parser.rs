@@ -71,7 +71,7 @@ impl Debug for Value {
                 f.write_str(")")?;
                 Ok(())
             },
-            Value::WaveData(_) => f.write_str("WaveData(...)"),
+            Value::WaveData(data) => f.write_str(&format!("WaveData([...; {}])", data.len())),
             Value::Builtin(value) => value.fmt(f),
         }
     }
@@ -102,6 +102,7 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("require", Builtin::Require),
     ("to-string", Builtin::ToString),
     ("wd-pure-tone", Builtin::WdPureTone),
+    ("wd-save", Builtin::WdSave),
     ("str-as-list", Builtin::StrAsList),
     ("list-as-str", Builtin::ListAsStr),
 ];
@@ -149,6 +150,7 @@ pub enum Builtin {
     StrAsList,
     ListAsStr,
     WdPureTone,
+    WdSave,
 }
 
 impl Debug for Builtin {

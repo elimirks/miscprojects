@@ -1,6 +1,7 @@
 #![feature(box_patterns)]
 mod parser;
 mod interpreter;
+mod wave_file_handler;
 
 use std::{error::Error, process::exit};
 

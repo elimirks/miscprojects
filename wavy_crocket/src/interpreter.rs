@@ -1,6 +1,7 @@
-use std::{fmt::Debug, cell::RefCell, rc::Rc, collections::{HashMap, HashSet}, process::exit};
+use std::{fmt::Debug, cell::RefCell, rc::Rc, collections::{HashMap, HashSet}, process::exit, f64::consts::PI};
 
 use crate::parser::*;
+use crate::wave_file_handler::save_wave;
 
 type RunResult<T> = Result<T, String>;
 
@@ -18,7 +19,7 @@ impl Scope {
         }
     }
 
-    fn lookup(&self, name: &String) -> Rc<SExpr> {
+    fn lookup(&self, name: &str) -> Rc<SExpr> {
         if let Some(value) = self.values.get(name) {
             value.clone()
         } else if let Some(parent) = &self.parent {
@@ -224,12 +225,10 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
         Builtin::Progn => eval_progn(ctx, params),
         Builtin::Putc => {
             param_count_eq(func, params, 1)?;
-            let param = params[0].clone(); 
-            if let Some(c) = try_get_char(&param) {
+            if let Some(c) = try_get_char(&params[0]) {
                 print!("{c}");
                 Ok(Rc::new(SExpr::nil()))
             } else {
-                println!("Found: {param:?}");
                 Err("putc must accept exactly 1 char argument".to_owned())
             }
         },
@@ -296,7 +295,7 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
         },
         Builtin::Require => {
             param_count_eq(func, params, 1)?;
-            if let Some(file_path) = try_get_string(params[0].clone()) {
+            if let Some(file_path) = try_get_string(&params[0]) {
                 run_with_context(ctx, &file_path)?;
                 Ok(Rc::new(SExpr::nil()))
             } else {
@@ -315,7 +314,11 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
         },
         Builtin::WdPureTone => {
             param_count_eq(func, params, 2)?;
-            todo!()
+            wd_pure_tone(ctx, params)
+        },
+        Builtin::WdSave => {
+            param_count_eq(func, params, 2)?;
+            wd_save(ctx, params)
         },
         Builtin::ToString => {
             param_count_eq(func, params, 1)?;
@@ -334,6 +337,42 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
     }
 }
 
+fn wd_pure_tone(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let sr = ctx.scope.borrow().lookup(&"wd-sample-rate");
+    let sample_rate = try_get_int(&sr)
+        .ok_or("wd-sample-rate must be globally set as an int")?;
+    let frequency = try_get_float(&params[0])
+        .ok_or("frequency parameter be a float")?;
+    let duration = try_get_float(&params[1])
+        .ok_or("duration parameter be a float")?;
+
+    let sample_count = duration * (sample_rate as f64);
+    let wave_count = sample_count / frequency;
+
+    let mut data = vec![];
+    for t in 0..sample_count as usize {
+        let x = wave_count * 2.0 * PI * t as f64 / sample_count;
+        data.push(x.sin());
+    }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_save(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let sr = ctx.scope.borrow().lookup(&"wd-sample-rate");
+    let sample_rate = try_get_int(&sr)
+        .ok_or("wd-sample-rate must be globally set as an int")?;
+    let wavedata = try_get_wavedata(&params[0])
+        .ok_or("wavadata parameter be a wavedata object")?;
+    let file_path = try_get_string(&params[1])
+        .ok_or("file-path parameter must be a String")?;
+
+    if save_wave(sample_rate as u32, &wavedata, &file_path).is_ok() {
+        Ok(Rc::new(SExpr::nil()))
+    } else {
+        Err(format!("Failed saving wave file to {file_path}"))
+    }
+}
+
 fn char_list_as_string(expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
     let mut s = String::new();
     for c_expr in unfold(unquote(expr)).iter() {
@@ -347,20 +386,13 @@ fn char_list_as_string(expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
 }
 
 fn string_as_char_list(expr: &SExpr) -> RunResult<Rc<SExpr>> {
-    if let Some(s) = try_get_string_value(expr) {
+    if let Some(s) = try_get_string(expr) {
         Ok(Rc::new(s.chars().rev().fold(Rc::new(SExpr::nil()), |acc, it| {
             Rc::new(SExpr::S(Rc::new(SExpr::Atom(Value::Int(it as i64))), acc))
         }).quote()))
     } else {
         Err(format!("Value is not a string: {expr:?}"))
     }
-}
-
-fn try_get_string_value(expr: &SExpr) -> Option<String> {
-    expr.atom_value().and_then(|value| match value {
-        Value::String(s) => Some(s),
-        _ => None,
-    })
 }
 
 fn sexpr_as_string(expr: &SExpr) -> SExpr {
@@ -373,13 +405,6 @@ fn unquote(expr: Rc<SExpr>) -> Rc<SExpr> {
         result = result.rhs().expect("How can this be quoted without an RHS?!");
     }
     result
-}
-
-fn try_get_string(expr: Rc<SExpr>) -> Option<String> {
-    match expr.atom_value() {
-        Some(Value::String(value)) => Some(value),
-        _ => None,
-    }
 }
 
 fn is_truthy(sexpr: Rc<SExpr>) -> bool {
@@ -438,8 +463,33 @@ fn get_cdr(expr: &SExpr) -> Option<Rc<SExpr>> {
 }
 
 fn try_get_char(expr: &SExpr) -> Option<char> {
+    try_get_int(expr).and_then(|value| char::from_u32(value as u32))
+}
+
+fn try_get_int(expr: &SExpr) -> Option<i64> {
     match expr {
-        SExpr::Atom(Value::Int(value)) => char::from_u32(*value as u32),
+        SExpr::Atom(Value::Int(value)) => Some(*value),
+        _ => None,
+    }
+}
+
+fn try_get_float(expr: &SExpr) -> Option<f64> {
+    match expr {
+        SExpr::Atom(Value::Float(value)) => Some(*value),
+        _ => None,
+    }
+}
+
+fn try_get_string(expr: &SExpr) -> Option<String> {
+    match expr {
+        SExpr::Atom(Value::String(value)) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn try_get_wavedata(expr: &SExpr) -> Option<Vec<f64>> {
+    match expr {
+        SExpr::Atom(Value::WaveData(value)) => Some(value.clone()),
         _ => None,
     }
 }
