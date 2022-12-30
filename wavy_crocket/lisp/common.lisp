@@ -13,6 +13,15 @@
 
 (defun true? (v) (not (false? v)))
 
+(defun lt? (lhs rhs)
+  (eq? -1 (cmp lhs rhs)))
+(defun le? (lhs rhs)
+  (not (gt? lhs rhs)))
+(defun gt? (lhs rhs)
+  (eq? 1 (cmp lhs rhs)))
+(defun ge? (lhs rhs)
+  (not (lt? lhs rhs)))
+
 (defun len (l) 
   (if (false? l) 0 (inc (len (cdr l)))))
 

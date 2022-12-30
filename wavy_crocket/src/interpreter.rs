@@ -1,4 +1,5 @@
 use std::{fmt::Debug, cell::RefCell, rc::Rc, collections::{HashMap, HashSet}, process::exit, f64::consts::PI};
+use rand::{thread_rng, Rng};
 
 use crate::parser::*;
 use crate::wave_file_handler::save_wave;
@@ -340,6 +341,22 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             param_count_eq(func, params, 2)?;
             wd_concat(params)
         },
+        Builtin::WdNoise => {
+            param_count_eq(func, params, 1)?;
+            wd_noise(params)
+        },
+        Builtin::WdSlopeUp => {
+            param_count_eq(func, params, 1)?;
+            wd_slope_up(params)
+        },
+        Builtin::WdSubSample => {
+            param_count_eq(func, params, 3)?;
+            wd_subsample(params)
+        },
+        Builtin::WdReverse => {
+            param_count_eq(func, params, 1)?;
+            wd_reverse(params)
+        },
         Builtin::ToString => {
             param_count_eq(func, params, 1)?;
             Ok(Rc::new(sexpr_as_string(&params[0])))
@@ -359,6 +376,37 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
                 Rc::new(SExpr::S(it.clone(), acc))
             }).quote()))
         },
+        Builtin::Cmp => {
+            param_count_eq(func, params, 2)?;
+            let lhs = params[0].atom_value();
+            let rhs = params[1].atom_value();
+            let res = match (lhs, rhs) {
+                (Some(Value::Int(lhs)), Some(Value::Int(rhs))) => {
+                    match lhs.cmp(&rhs) {
+                        std::cmp::Ordering::Less => -1,
+                        std::cmp::Ordering::Equal => 0,
+                        std::cmp::Ordering::Greater => 1,
+                    }
+                },
+                (Some(Value::String(lhs)), Some(Value::String(rhs))) => {
+                    match lhs.cmp(&rhs) {
+                        std::cmp::Ordering::Less => -1,
+                        std::cmp::Ordering::Equal => 0,
+                        std::cmp::Ordering::Greater => 1,
+                    }
+                },
+                (Some(Value::Float(lhs)), Some(Value::Float(rhs))) => {
+                    match lhs.partial_cmp(&rhs) {
+                        Some(std::cmp::Ordering::Less) => -1,
+                        Some(std::cmp::Ordering::Equal) => 0,
+                        Some(std::cmp::Ordering::Greater) => 1,
+                        None => return Err(format!("Cannot compare {lhs:?} with {rhs:?}")),
+                    }
+                },
+                _ => return Err(format!("Cannot compare {:?} with {:?}", params[0], params[1])),
+            };
+            Ok(Rc::new(SExpr::Atom(Value::Int(res))))
+        },
     }
 }
 
@@ -367,9 +415,9 @@ fn wd_pure_tone(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> 
     let sample_rate = try_get_int(&sr)
         .ok_or("wd-sample-rate must be globally set as an int")?;
     let frequency = try_get_float(&params[0])
-        .ok_or("frequency parameter be a float")?;
+        .ok_or("frequency parameter must be a float")?;
     let sample_count = try_get_int(&params[1])
-        .ok_or("sample-count parameter be an int")?;
+        .ok_or("sample-count parameter must be an int")?;
 
     let mut data = vec![];
     for t in 0..sample_count as usize {
@@ -382,9 +430,9 @@ fn wd_pure_tone(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> 
 
 fn wd_flat_amplitude(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     let amplitude = try_get_float(&params[0])
-        .ok_or("amplitude parameter be an int")?;
+        .ok_or("amplitude parameter must be an int")?;
     let sample_count = try_get_int(&params[1])
-        .ok_or("sample-count parameter be an int")?;
+        .ok_or("sample-count parameter must be an int")?;
 
     let data = vec![amplitude; sample_count as usize];
     Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
@@ -395,7 +443,7 @@ fn wd_save(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     let sample_rate = try_get_int(&sr)
         .ok_or("wd-sample-rate must be globally set as an int")?;
     let wavedata = try_get_wavedata(&params[0])
-        .ok_or("wavadata parameter be a wavedata object")?;
+        .ok_or("wavedata parameter must be a wavedata object")?;
     let file_path = try_get_string(&params[1])
         .ok_or("file-path parameter must be a String")?;
 
@@ -408,9 +456,9 @@ fn wd_save(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
 
 fn wd_multiply(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     let lhs = try_get_wavedata(&params[0])
-        .ok_or("lhs parameter be a wavedata object")?;
+        .ok_or("lhs parameter must be a wavedata object")?;
     let rhs = try_get_wavedata(&params[1])
-        .ok_or("rhs parameter be a wavedata object")?;
+        .ok_or("rhs parameter must be a wavedata object")?;
     if lhs.len() != rhs.len() {
         return Err("wd-multiply must be called on two equally sized wavedata objects".to_owned());
     }
@@ -423,9 +471,9 @@ fn wd_multiply(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
 
 fn wd_superimpose(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     let lhs = try_get_wavedata(&params[0])
-        .ok_or("lhs parameter be a wavedata object")?;
+        .ok_or("lhs parameter must be a wavedata object")?;
     let rhs = try_get_wavedata(&params[1])
-        .ok_or("rhs parameter be a wavedata object")?;
+        .ok_or("rhs parameter must be a wavedata object")?;
     if lhs.len() != rhs.len() {
         return Err("wd-multiply must be called on two equally sized wavedata objects".to_owned());
     }
@@ -444,12 +492,62 @@ fn wd_len(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
 
 fn wd_concat(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     let lhs = try_get_wavedata(&params[0])
-        .ok_or("lhs parameter be a wavedata object")?;
+        .ok_or("lhs parameter must be a wavedata object")?;
     let rhs = try_get_wavedata(&params[1])
-        .ok_or("rhs parameter be a wavedata object")?;
+        .ok_or("rhs parameter must be a wavedata object")?;
 
     let mut data = lhs.clone();
     data.extend_from_slice(&rhs);
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_noise(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let mut rng = thread_rng();
+    let sample_count = try_get_int(&params[0])
+        .ok_or("sample-count parameter must be an int")?;
+    let mut data = vec![];
+    for _ in 0..sample_count {
+        data.push(rng.gen_range(-1.0..1.0));
+    }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_slope_up(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let sample_count = try_get_int(&params[0])
+        .ok_or("sample-count parameter must be an int")?;
+    let mut data = vec![];
+    for i in 0..sample_count {
+        data.push(i as f64 / sample_count as f64);
+    }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_subsample(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let wavedata = try_get_wavedata(&params[0])
+        .ok_or("data parameter must be a wavedata object")?;
+    let start = try_get_int(&params[1])
+        .ok_or("start parameter must be an int")?;
+    let end = try_get_int(&params[2])
+        .ok_or("start parameter must be an int")?;
+
+    if start < 0 || start as usize > wavedata.len() {
+        return Err("start parameter is out of bounds".to_owned());
+    }
+    if end < 0 || end as usize > wavedata.len() {
+        return Err("end parameter is out of bounds".to_owned());
+    }
+    if start > end {
+        return Err("start must be greater than end".to_owned());
+    }
+
+    let data = wavedata[start as usize..end as usize].to_vec();
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_reverse(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let mut data = try_get_wavedata(&params[0])
+        .ok_or("data parameter must be a wavedata object")?;
+    data.reverse();
     Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
 }
 
