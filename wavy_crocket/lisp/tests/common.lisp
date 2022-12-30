@@ -29,8 +29,8 @@
 (assert (eq? '(-1 1 399) (map dec '(0 2 400))))
 (assert (eq? '(nil nil nil) (map nil '(1 2 3))))
 
-(println "Running `append` tests")
-(assert (eq? '(1 2 3) (append '(1 2) 3)))
+(println "Running `push` tests")
+(assert (eq? '(1 2 3) (push 3 '(1 2))))
 
 (println "Running `fold` tests")
 (assert (eq? 6 (sum '(1 2 3))))
@@ -46,16 +46,12 @@
 (assert (eq? 3 (last '(1 2 3))))
 (assert (eq? nil (last nil)))
 
-(println "Running `join` tests")
-(println "FIXME: Join ain't workin")
-;(debug (join '(0) '(1 2 3)))
-;; (debug '("hello" "world"))
-;; (debug (car '("hello" "world")))
-; (debug (join " " '("hello" "world")))
+(println "Running `delimit` tests")
+(assert (eq? '(1 2 0 3 0 4) (delimit '(0) '((1 2) (3) (4)))))
+(assert (eq? '(1 2 0 3 0 4 5) (delimit '(0) '((1 2) (3) (4 5)))))
 
-(println "Running `concat` tests")
-(assert (eq? '(1 2 3 4) (concat '(1 2) '(3 4))))
-(assert (eq? "foobar" (concat "foo" "bar")))
+(println "Running `append` tests")
+(assert (eq? '(1 2 3 4) (append '(1 2) '(3 4))))
 
 (println "Running `car` & `cdr` variantt tests")
 (set 'tree '((1 . 2) . (3 . 4)))

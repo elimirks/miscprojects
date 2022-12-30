@@ -2,7 +2,6 @@ use std::{fmt::Debug, rc::Rc};
 
 type ParseResult<T> = Result<T, String>;
 
-/// FYI: a string is just a list of chars
 #[derive(Clone)]
 pub enum Value {
     Symbol(String),
@@ -10,6 +9,7 @@ pub enum Value {
     Int(i64),
     Float(f64),
     Char(char),
+    String(String),
     // Special data type for storing wave data
     // More efficient operations can be done on wavedata, so that we won't be
     // crippled by the poor performance of my Lisp implementation.
@@ -53,16 +53,17 @@ impl Value {
 impl Debug for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Symbol(value)  => f.write_str(value),
-            Value::Int(value)     => f.write_str(&value.to_string()),
-            Value::Float(value)   => {
+            Value::Symbol(value) => f.write_str(value),
+            Value::Char(value)   => f.write_str(&format!("?{value}")),
+            Value::String(value) => f.write_str(&format!("\"{value}\"")),
+            Value::Int(value)    => f.write_str(&value.to_string()),
+            Value::Float(value)  => {
                 if (value % 1.0).abs() == 0.0 {
                     f.write_str(&format!("{}.0", value.floor()))
                 } else {
                     f.write_str(&value.to_string())
                 }
             },
-            Value::Char(value)    => f.write_str(&format!("?{value}")),
             Value::Function(args, body) => {
                 f.write_str("(lambda (")?;
                 f.write_str(&args.join(" "))?;
@@ -89,7 +90,7 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("set", Builtin::Set),
     ("setg", Builtin::Setg),
     ("lambda", Builtin::Lambda),
-    ("do", Builtin::Do),
+    ("progn", Builtin::Progn),
     ("defun", Builtin::Defun),
     ("putc", Builtin::Putc),
     ("if", Builtin::If),
@@ -103,6 +104,7 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("require", Builtin::Require),
     ("to-string", Builtin::ToString),
     ("wavedata", Builtin::WaveData),
+    ("str-as-list", Builtin::StrAsList),
 ];
 
 fn builtin_for_name(name: &str) -> Option<Builtin> {
@@ -131,7 +133,7 @@ pub enum Builtin {
     Set,
     /// Sets a value in the global scope
     Setg,
-    Do,
+    Progn,
     Lambda,
     Defun,
     Putc,
@@ -146,6 +148,7 @@ pub enum Builtin {
     Require,
     ToString,
     WaveData,
+    StrAsList,
 }
 
 impl Debug for Builtin {
@@ -156,82 +159,63 @@ impl Debug for Builtin {
 
 #[derive(Eq, Clone)]
 pub enum SExpr {
-    Atom(usize, Value),
-    S(usize, Rc<SExpr>, Rc<SExpr>),
+    Atom(Value),
+    S(Rc<SExpr>, Rc<SExpr>),
 }
 
 impl SExpr {
     pub fn nil() -> SExpr {
-        SExpr::Atom(0, Value::nil())
+        SExpr::Atom(Value::nil())
     }
 
     pub fn truthy() -> SExpr {
-        SExpr::Atom(0, Value::Char('t'))
+        SExpr::Atom(Value::Char('t'))
     }
 
     pub fn is_nil(&self) -> bool {
         match self {
-            SExpr::Atom(_, value) => value.is_nil(),
-            SExpr::S(_, _, _) => false,
-        }
-    }
-
-    pub fn pos(&self) -> usize {
-        match self {
-            SExpr::Atom(pos, _) => *pos,
-            SExpr::S(pos, _, _) => *pos,
+            SExpr::Atom(value) => value.is_nil(),
+            SExpr::S(_, _) => false,
         }
     }
 
     pub fn quote(&self) -> Self {
-        let quote_expr = Rc::new(SExpr::Atom(
-                self.pos(), Value::Builtin(Builtin::Quote)));
-        SExpr::S(self.pos(), quote_expr, Rc::new(self.clone()))
+        let quote_expr = Rc::new(SExpr::Atom(Value::Builtin(Builtin::Quote)));
+        SExpr::S(quote_expr, Rc::new(self.clone()))
     }
 
     pub fn is_quoted(&self) -> bool {
         match self {
-            SExpr::S(_, car, _) => {
-                match car.atom_value() {
-                    Some(Value::Builtin(Builtin::Quote)) => true,
-                    _ => false,
-                }
-            },
-            SExpr::Atom(_, _) => false,
-        }
-    }
-
-    pub fn lhs(&self) -> Option<Rc<SExpr>> {
-        match self {
-            SExpr::Atom(_, _) => None,
-            SExpr::S(_, lhs, _) => Some(lhs.clone()),
+            SExpr::S(car, _) =>
+                matches!(car.atom_value(), Some(Value::Builtin(Builtin::Quote))),
+            SExpr::Atom(_) => false,
         }
     }
 
     pub fn rhs(&self) -> Option<Rc<SExpr>> {
         match self {
-            SExpr::Atom(_, _) => None,
-            SExpr::S(_, _, rhs) => Some(rhs.clone()),
+            SExpr::Atom(_) => None,
+            SExpr::S(_, rhs) => Some(rhs.clone()),
         }
     }
 
     pub fn atom_value(&self) -> Option<Value> {
         match self {
-            SExpr::Atom(_, value) => Some(value.clone()),
-            SExpr::S(_, _, _) => None,
+            SExpr::Atom(value) => Some(value.clone()),
+            SExpr::S(_, _) => None,
         }
     }
 
     pub fn is_atom(&self) -> bool {
-        matches!(self, SExpr::Atom(_, _))
+        matches!(self, SExpr::Atom(_))
     }
 }
 
 impl PartialEq for SExpr {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (SExpr::Atom(_, lhs), SExpr::Atom(_, rhs)) => lhs == rhs,
-            (SExpr::S(_, lhs_car, lhs_cdr), SExpr::S(_, rhs_car, rhs_cdr)) => {
+            (SExpr::Atom(lhs), SExpr::Atom(rhs)) => lhs == rhs,
+            (SExpr::S(lhs_car, lhs_cdr), SExpr::S(rhs_car, rhs_cdr)) => {
                 lhs_car == rhs_car && lhs_cdr == rhs_cdr
             },
             _ => false,
@@ -242,8 +226,8 @@ impl PartialEq for SExpr {
 impl Debug for SExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SExpr::Atom(_, value) => value.fmt(f),
-            SExpr::S(_, lhs, rhs) => {
+            SExpr::Atom(value) => value.fmt(f),
+            SExpr::S(lhs, rhs) => {
                 f.write_str(&format!("({:?} . {:?})", lhs, rhs))
             },
         }
@@ -334,17 +318,16 @@ fn parse_expr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     if ctx.at_end() {
         return Err("Hit EOF while parsing expr".to_owned());
     }
-    let pos = ctx.pos;
     match ctx.content[ctx.pos] {
         '\'' => {
             ctx.pos += 1;
             Ok(parse_expr(ctx)?.quote())
         },
         '\"' => parse_string(ctx),
-        '?' => Ok(SExpr::Atom(pos, parse_char(ctx)?)),
+        '?' => Ok(SExpr::Atom(parse_char(ctx)?)),
         '(' => parse_sexpr(ctx),
-        c if c.is_ascii_digit() || c == '-' => Ok(SExpr::Atom(pos, parse_num(ctx)?)),
-        c if is_symbol_char(c) => Ok(SExpr::Atom(pos, parse_symbol(ctx)?)),
+        c if c.is_ascii_digit() || c == '-' => Ok(SExpr::Atom(parse_num(ctx)?)),
+        c if is_symbol_char(c) => Ok(SExpr::Atom(parse_symbol(ctx)?)),
         c => Err(format!("Unexpected character: {c}")),
     }
 }
@@ -397,22 +380,14 @@ fn parse_char(ctx: &mut ParseContext) -> ParseResult<Value> {
     }
 }
 
-pub fn string_to_sexpr(s: &str, pos: usize) -> SExpr {
-    s.chars().into_iter().rev().fold(SExpr::nil(), |acc, it| {
-        let value = SExpr::Atom(pos, Value::Char(it));
-        SExpr::S(pos, Rc::new(value), Rc::new(acc))
-    }).quote()
-}
-
 /// Expects the first char to already be a double quote
 fn parse_string(ctx: &mut ParseContext) -> ParseResult<SExpr> {
-    let pos = ctx.pos;
     ctx.pos += 1;
     let mut s = String::new();
     while let Some(c) = ctx.peek() {
         if c == '"' {
             ctx.pos += 1;
-            return Ok(string_to_sexpr(&s, pos));
+            return Ok(SExpr::Atom(Value::String(s)));
         }
         s.push(c);
         ctx.pos += 1;
@@ -442,9 +417,8 @@ fn parse_sexpr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     // To allow the empty list
     if ctx.peek() == Some(')') {
         ctx.pos += 1;
-        return Ok(SExpr::Atom(ctx.pos - 2, Value::Builtin(Builtin::Nil)));
+        return Ok(SExpr::Atom(Value::Builtin(Builtin::Nil)));
     }
-    let initial_pos = ctx.pos;
     let lhs = parse_expr(ctx)?;
     parse_ws(ctx);
     if ctx.peek() == Some('.') {
@@ -456,17 +430,17 @@ fn parse_sexpr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
             return Err("Expected )".to_owned());
         }
         ctx.pos += 1;
-        return Ok(SExpr::S(initial_pos, Rc::new(lhs), Rc::new(rhs)));
+        return Ok(SExpr::S(Rc::new(lhs), Rc::new(rhs)));
     }
     // Otherwise, assume we're using the list style SExpr syntax
-    let mut exprs = vec![(initial_pos, lhs)];
+    let mut exprs = vec![lhs];
     while ctx.peek() != Some(')') {
-        exprs.push((ctx.pos, parse_expr(ctx)?));
+        exprs.push(parse_expr(ctx)?);
         parse_ws(ctx);
     }
     ctx.pos += 1;
     Ok(exprs.into_iter().rev().fold(SExpr::nil(), |acc, it| {
-        SExpr::S(it.0, Rc::new(it.1), Rc::new(acc))
+        SExpr::S(Rc::new(it), Rc::new(acc))
     }))
 }
 
@@ -480,10 +454,10 @@ mod tests {
 
     #[test]
     fn test_parse_num() {
-        assert_eq!(SExpr::Atom(0, Value::Int(1234)), parse_expr_str("1234"));
-        assert_eq!(SExpr::Atom(0, Value::Float(3.14)), parse_expr_str("3.14"));
-        assert_eq!(SExpr::Atom(0, Value::Float(3.0)), parse_expr_str("3.0"));
-        assert_eq!(SExpr::Atom(0, Value::Int(-1234)), parse_expr_str("-1234"));
+        assert_eq!(SExpr::Atom(Value::Int(1234)), parse_expr_str("1234"));
+        assert_eq!(SExpr::Atom(Value::Float(3.14)), parse_expr_str("3.14"));
+        assert_eq!(SExpr::Atom(Value::Float(3.0)), parse_expr_str("3.0"));
+        assert_eq!(SExpr::Atom(Value::Int(-1234)), parse_expr_str("-1234"));
     }
 
     #[test]
@@ -515,6 +489,6 @@ mod tests {
 
     #[test]
     fn test_parse_string() {
-        assert_eq!("(quote . (?a . (?b . (?c . nil))))", format!("{:?}", parse_expr_str("\"abc\"")));
+        assert_eq!("\"abc\"", format!("{:?}", parse_expr_str("\"abc\"")));
     }
 }

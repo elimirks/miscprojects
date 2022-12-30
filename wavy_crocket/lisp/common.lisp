@@ -1,6 +1,6 @@
 (defun assert (v)
   (if v nil
-    (do
+    (progn
       ;; The println call will noop if it isn't define yet
       ;; ... but that's ok. If it fails before then, something terrible happened
       (println "Assertion failure")
@@ -22,15 +22,15 @@
 
 (defun foreach (f list)
   (if (false? list) nil
-    (do
+    (progn
       (f (car list))
       (foreach f (cdr list)))))
 
-(defun append (list elem) 
+(defun push (elem list) 
   (if (false? list)
     (cons elem nil)
     (cons (car list)
-          (append (cdr list) elem))))
+          (push elem (cdr list)))))
 
 (defun fold (f acc list)
   (if (false? list)
@@ -42,23 +42,22 @@
 (defun product (list)
   (fold * (car list) (cdr list)))
 
-(defun concat (l1 l2)
-  (fold append l1 l2))
+(defun append (l1 l2)
+  (fold (lambda (a b) (push b a)) l1 l2))
 
 (defun rev (list) 
   (fold (lambda (acc it) (cons it acc)) nil list))
 
 (defun last (list)
   (if (false? list) nil
-    (do
+    (progn
       (set 'next (last (cdr list)))
       (if (false? next) (car list) next))))
 
-(defun join (sep list) 
+(defun delimit (sep list) 
   (fold (lambda (acc it)
-          (debug acc)
           (if (false? acc) it 
-            (concat acc (concat sep it)))
+            (append acc (append sep it)))
           ) nil list))
 
 (defun caar (x) (car (car x)))
@@ -66,7 +65,7 @@
 (defun cdar (x) (cdr (car x)))
 (defun cddr (x) (cdr (cdr x)))
 
-(defun print (s) (foreach putc s))
+(defun print (s) (foreach putc (str-as-list s)))
 (defun println (s)
   (print s)
   (putc ?#n))
