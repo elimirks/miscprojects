@@ -36,6 +36,7 @@
   (if (false? list)
     acc
     (fold f (f acc (car list)) (cdr list))))
+
 (defun sum (list)
   (fold + (car list) (cdr list)))
 (defun product (list)
@@ -43,6 +44,22 @@
 
 (defun concat (l1 l2)
   (fold append l1 l2))
+
+(defun rev (list) 
+  (fold (lambda (acc it) (cons it acc)) nil list))
+
+(defun last (list)
+  (if (false? list) nil
+    (do
+      (set 'next (last (cdr list)))
+      (if (false? next) (car list) next))))
+
+(defun join (sep list) 
+  (fold (lambda (acc it)
+          (debug acc)
+          (if (false? acc) it 
+            (concat acc (concat sep it)))
+          ) nil list))
 
 (defun caar (x) (car (car x)))
 (defun cadr (x) (car (cdr x)))

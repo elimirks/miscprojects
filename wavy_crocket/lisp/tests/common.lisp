@@ -5,8 +5,8 @@
 (assert (false? nil))
 (assert (false? 'nil))
 (assert (not (eq? 3 4)))
-(assert (eq? '4 (car '(4 . 3))))
-(assert (eq? '3 (cdr '(4 . 3))))
+(assert (eq? 4 (car '(4 . 3))))
+(assert (eq? 3 (cdr '(4 . 3))))
 (assert (eq? nil (car nil)))
 (assert (eq? nil (cdr nil)))
 
@@ -38,15 +38,30 @@
 (assert (eq? nil (sum nil)))
 (assert (eq? nil (product nil)))
 
+(println "Running `rev` tests")
+(assert (eq? '(3 2 1) (rev '(1 2 3))))
+(assert (eq? nil (rev nil)))
+
+(println "Running `last` tests")
+(assert (eq? 3 (last '(1 2 3))))
+(assert (eq? nil (last nil)))
+
+(println "Running `join` tests")
+(println "FIXME: Join ain't workin")
+;(debug (join '(0) '(1 2 3)))
+;; (debug '("hello" "world"))
+;; (debug (car '("hello" "world")))
+; (debug (join " " '("hello" "world")))
+
 (println "Running `concat` tests")
 (assert (eq? '(1 2 3 4) (concat '(1 2) '(3 4))))
 (assert (eq? "foobar" (concat "foo" "bar")))
 
 (println "Running `car` & `cdr` variantt tests")
-(set tree '((1 . 2) . (3 . 4)))
-(assert (eq? '1 (caar tree)))
-(assert (eq? '3 (cadr tree)))
-(assert (eq? '2 (cdar tree)))
-(assert (eq? '4 (cddr tree)))
+(set 'tree '((1 . 2) . (3 . 4)))
+(assert (eq? 1 (caar tree)))
+(assert (eq? 3 (cadr tree)))
+(assert (eq? 2 (cdar tree)))
+(assert (eq? 4 (cddr tree)))
 
 (println "All tests passed successfully!")

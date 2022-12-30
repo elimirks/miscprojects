@@ -10,7 +10,10 @@ pub enum Value {
     Int(i64),
     Float(f64),
     Char(char),
-    Quote(Rc<SExpr>),
+    // Special data type for storing wave data
+    // More efficient operations can be done on wavedata, so that we won't be
+    // crippled by the poor performance of my Lisp implementation.
+    WaveData(Vec<f64>),
     Function(Vec<String>, Vec<Rc<SExpr>>),
 }
 
@@ -22,7 +25,6 @@ impl PartialEq for Value {
             (Value::Int(lhs), Value::Int(rhs)) => lhs == rhs,
             (Value::Float(lhs), Value::Float(rhs)) => lhs == rhs,
             (Value::Char(lhs), Value::Char(rhs)) => lhs == rhs,
-            (Value::Quote(lhs), Value::Quote(rhs)) => *lhs == *rhs,
             (Value::Function(lhs_params, lhs_body), Value::Function(rhs_params, rhs_body)) => {
                 if lhs_params.len() != rhs_params.len() || lhs_body.len() != rhs_body.len() {
                     false
@@ -61,7 +63,6 @@ impl Debug for Value {
                 }
             },
             Value::Char(value)    => f.write_str(&format!("?{value}")),
-            Value::Quote(sexpr)   => f.write_str(&format!("'{sexpr:?}")),
             Value::Function(args, body) => {
                 f.write_str("(lambda (")?;
                 f.write_str(&args.join(" "))?;
@@ -71,6 +72,7 @@ impl Debug for Value {
                 f.write_str(")")?;
                 Ok(())
             },
+            Value::WaveData(_) => f.write_str("WaveData(...)"),
             Value::Builtin(value) => value.fmt(f),
         }
     }
@@ -78,6 +80,7 @@ impl Debug for Value {
 
 static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("nil", Builtin::Nil),
+    ("quote", Builtin::Quote),
     ("+", Builtin::Add),
     ("-", Builtin::Sub),
     ("*", Builtin::Mul),
@@ -98,6 +101,8 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("eq?", Builtin::IsEq),
     ("exit", Builtin::Exit),
     ("require", Builtin::Require),
+    ("to-string", Builtin::ToString),
+    ("wavedata", Builtin::WaveData),
 ];
 
 fn builtin_for_name(name: &str) -> Option<Builtin> {
@@ -115,6 +120,7 @@ fn name_for_builtin(builtin: Builtin) -> String {
 
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub enum Builtin {
+    Quote,
     Nil,
     Add,
     Sub,
@@ -138,6 +144,8 @@ pub enum Builtin {
     IsEq,
     Exit,
     Require,
+    ToString,
+    WaveData,
 }
 
 impl Debug for Builtin {
@@ -166,6 +174,56 @@ impl SExpr {
             SExpr::Atom(_, value) => value.is_nil(),
             SExpr::S(_, _, _) => false,
         }
+    }
+
+    pub fn pos(&self) -> usize {
+        match self {
+            SExpr::Atom(pos, _) => *pos,
+            SExpr::S(pos, _, _) => *pos,
+        }
+    }
+
+    pub fn quote(&self) -> Self {
+        let quote_expr = Rc::new(SExpr::Atom(
+                self.pos(), Value::Builtin(Builtin::Quote)));
+        SExpr::S(self.pos(), quote_expr, Rc::new(self.clone()))
+    }
+
+    pub fn is_quoted(&self) -> bool {
+        match self {
+            SExpr::S(_, car, _) => {
+                match car.atom_value() {
+                    Some(Value::Builtin(Builtin::Quote)) => true,
+                    _ => false,
+                }
+            },
+            SExpr::Atom(_, _) => false,
+        }
+    }
+
+    pub fn lhs(&self) -> Option<Rc<SExpr>> {
+        match self {
+            SExpr::Atom(_, _) => None,
+            SExpr::S(_, lhs, _) => Some(lhs.clone()),
+        }
+    }
+
+    pub fn rhs(&self) -> Option<Rc<SExpr>> {
+        match self {
+            SExpr::Atom(_, _) => None,
+            SExpr::S(_, _, rhs) => Some(rhs.clone()),
+        }
+    }
+
+    pub fn atom_value(&self) -> Option<Value> {
+        match self {
+            SExpr::Atom(_, value) => Some(value.clone()),
+            SExpr::S(_, _, _) => None,
+        }
+    }
+
+    pub fn is_atom(&self) -> bool {
+        matches!(self, SExpr::Atom(_, _))
     }
 }
 
@@ -280,8 +338,7 @@ fn parse_expr(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     match ctx.content[ctx.pos] {
         '\'' => {
             ctx.pos += 1;
-            let ex = parse_expr(ctx)?;
-            Ok(SExpr::Atom(pos, Value::Quote(Rc::new(ex))))
+            Ok(parse_expr(ctx)?.quote())
         },
         '\"' => parse_string(ctx),
         '?' => Ok(SExpr::Atom(pos, parse_char(ctx)?)),
@@ -340,21 +397,24 @@ fn parse_char(ctx: &mut ParseContext) -> ParseResult<Value> {
     }
 }
 
+pub fn string_to_sexpr(s: &str, pos: usize) -> SExpr {
+    s.chars().into_iter().rev().fold(SExpr::nil(), |acc, it| {
+        let value = SExpr::Atom(pos, Value::Char(it));
+        SExpr::S(pos, Rc::new(value), Rc::new(acc))
+    }).quote()
+}
+
 /// Expects the first char to already be a double quote
 fn parse_string(ctx: &mut ParseContext) -> ParseResult<SExpr> {
     let pos = ctx.pos;
     ctx.pos += 1;
-    let mut chars = vec![];
+    let mut s = String::new();
     while let Some(c) = ctx.peek() {
         if c == '"' {
             ctx.pos += 1;
-            let sexpr = chars.into_iter().rev().fold(SExpr::nil(), |acc, it| {
-                let value = SExpr::Atom(pos, Value::Char(it));
-                SExpr::S(pos, Rc::new(value), Rc::new(acc))
-            });
-            return Ok(SExpr::Atom(pos, Value::Quote(Rc::new(sexpr))));
+            return Ok(string_to_sexpr(&s, pos));
         }
-        chars.push(c);
+        s.push(c);
         ctx.pos += 1;
     }
     Err("Hit EOF while parsing string".to_owned())
@@ -443,15 +503,18 @@ mod tests {
 
     #[test]
     fn test_parse_quote() {
-        assert_eq!("'(a . b)", format!("{:?}", parse_expr_str("'(a.b)")));
-        assert_eq!("'(a . b)", format!("{:?}", parse_expr_str("'(a. b)")));
-        assert_eq!("'(a . b)", format!("{:?}", parse_expr_str("'(a   .   b)")));
-        assert_eq!("'?a", format!("{:?}", parse_expr_str("'?a")));
-        assert_eq!("'(1 . nil)", format!("{:?}", parse_expr_str("'(1)")));
+        assert_eq!("(quote . (a . b))", format!("{:?}", parse_expr_str("'(a.b)")));
+        assert_eq!("(quote . (a . b))", format!("{:?}", parse_expr_str("'(a. b)")));
+        assert_eq!("(quote . (a . b))", format!("{:?}", parse_expr_str("'(a   .   b)")));
+        assert_eq!("(quote . ?a)", format!("{:?}", parse_expr_str("'?a")));
+        assert_eq!("(quote . (1 . nil))", format!("{:?}", parse_expr_str("'(1)")));
+        assert_eq!("(quote . (quote . (1 . nil)))", format!("{:?}", parse_expr_str("''(1)")));
+        assert_eq!("(quote . (quote . 1))", format!("{:?}", parse_expr_str("''1")));
+        assert_eq!("(quote . foo)", format!("{:?}", parse_expr_str("'foo")));
     }
 
     #[test]
     fn test_parse_string() {
-        assert_eq!("'(?a . (?b . (?c . nil)))", format!("{:?}", parse_expr_str("\"abc\"")));
+        assert_eq!("(quote . (?a . (?b . (?c . nil))))", format!("{:?}", parse_expr_str("\"abc\"")));
     }
 }
