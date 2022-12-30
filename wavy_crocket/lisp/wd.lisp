@@ -41,6 +41,16 @@
   (set 'envelope (reduce wd-concat (list attack-slope decay-slope hold-plateau release-slope)))
   (wd-multiply envelope data))
 
+;; A simple pure tone synth
+(defun synth-round (frequency)
+  ;; 1 quarter second length
+  (set 'duration (/ wd-sample-rate 4))
+  (set 'attack (/ duration 16))
+  (set 'decay (/ duration 4))
+  (set 'sustain 0.5)
+  (set 'release (/ duration 16))
+  (wd-adsr attack decay sustain release (wd-pure-tone frequency duration)))
+
 (setg 'c4-freq 261.63)
 (setg 'cs4-freq 277.18)
 (setg 'd4-freq 293.66)

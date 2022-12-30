@@ -1,12 +1,37 @@
 (require "lisp/common")
 (require "lisp/wd")
 
-(set 'duration (* wd-sample-rate 1))
-(set 'segments
-     (map
-       (lambda (frequency) (wd-amplify 0.3 (wd-pure-tone frequency duration)))
-       c4-major))
+(set 'result (reduce wd-concat
+        (map synth-round
+             (list
+               e4-freq
+               d4-freq
+               c4-freq
+               d4-freq
+               e4-freq
+               e4-freq
+               e4-freq
 
-(set 'result (reduce wd-superimpose segments))
+               d4-freq
+               d4-freq
+               d4-freq
+               e4-freq
+               e4-freq
+               e4-freq
 
-(wd-save (wd-adsr 1000 5000 0.3 3000 result) "out.wav")
+               e4-freq
+               d4-freq
+               c4-freq
+               d4-freq
+               e4-freq
+               e4-freq
+               e4-freq
+
+               e4-freq
+               d4-freq
+               d4-freq
+               e4-freq
+               d4-freq
+               c4-freq))))
+
+(wd-save (wd-amplify 0.5 result) "out.wav")
