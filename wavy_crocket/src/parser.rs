@@ -2,7 +2,6 @@ use std::{fmt::Debug, rc::Rc};
 
 type ParseResult<T> = Result<T, String>;
 
-// TODO: No more chars! The should be regular ints
 #[derive(Clone)]
 pub enum Value {
     Symbol(String),
@@ -105,6 +104,8 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("to-string", Builtin::ToString),
     ("str-as-list", Builtin::StrAsList),
     ("list-as-str", Builtin::ListAsStr),
+    ("to-int", Builtin::ToInt),
+    ("pow", Builtin::Pow),
     ("wd-pure-tone", Builtin::WdPureTone),
     ("wd-save", Builtin::WdSave),
     ("wd-play", Builtin::WdPlay),
@@ -175,6 +176,8 @@ pub enum Builtin {
     WdSubSample,
     WdSlopeUp,
     WdReverse,
+    ToInt,
+    Pow,
 }
 
 impl Debug for Builtin {
@@ -186,7 +189,9 @@ impl Debug for Builtin {
 #[derive(Eq, Clone)]
 pub enum SExpr {
     Atom(Value),
+    // An S-expr is evaluated, cons ain't
     S(Rc<SExpr>, Rc<SExpr>),
+    Cons(Rc<SExpr>, Rc<SExpr>),
 }
 
 impl SExpr {
@@ -201,7 +206,7 @@ impl SExpr {
     pub fn is_nil(&self) -> bool {
         match self {
             SExpr::Atom(value) => value.is_nil(),
-            SExpr::S(_, _) => false,
+            _ => false,
         }
     }
 
@@ -214,7 +219,7 @@ impl SExpr {
         match self {
             SExpr::S(car, _) =>
                 matches!(car.atom_value(), Some(Value::Builtin(Builtin::Quote))),
-            SExpr::Atom(_) => false,
+            _ => false,
         }
     }
 
@@ -222,13 +227,14 @@ impl SExpr {
         match self {
             SExpr::Atom(_) => None,
             SExpr::S(_, rhs) => Some(rhs.clone()),
+            SExpr::Cons(_, rhs) => Some(rhs.clone()),
         }
     }
 
     pub fn atom_value(&self) -> Option<Value> {
         match self {
             SExpr::Atom(value) => Some(value.clone()),
-            SExpr::S(_, _) => None,
+            _ => None,
         }
     }
 
@@ -244,6 +250,9 @@ impl PartialEq for SExpr {
             (SExpr::S(lhs_car, lhs_cdr), SExpr::S(rhs_car, rhs_cdr)) => {
                 lhs_car == rhs_car && lhs_cdr == rhs_cdr
             },
+            (SExpr::Cons(lhs_car, lhs_cdr), SExpr::Cons(rhs_car, rhs_cdr)) => {
+                lhs_car == rhs_car && lhs_cdr == rhs_cdr
+            },
             _ => false,
         }
     }
@@ -254,6 +263,9 @@ impl Debug for SExpr {
         match self {
             SExpr::Atom(value) => value.fmt(f),
             SExpr::S(lhs, rhs) => {
+                f.write_str(&format!("({:?} . {:?})", lhs, rhs))
+            },
+            SExpr::Cons(lhs, rhs) => {
                 f.write_str(&format!("({:?} . {:?})", lhs, rhs))
             },
         }

@@ -113,10 +113,11 @@ fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
         },
         SExpr::S(car, cdr) => {
             let callee = eval(ctx, car.clone())?;
-            if callee.atom_value() == Some(Value::Builtin(Builtin::Quote)) {
-                return Ok(expr);
-            }
             let should_eval_elems = match callee.atom_value() {
+                // Special case
+                Some(Value::Builtin(Builtin::Quote)) => {
+                    return Ok(call_quote(cdr.clone()));
+                },
                 // These take care of their own evaluation
                 Some(Value::Builtin(builtin)) => {
                     !matches!(builtin, Builtin::Defun | Builtin::Lambda | Builtin::If)
@@ -134,6 +135,29 @@ fn eval(ctx: &mut RunContext, expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
             };
             call(ctx, callee, &params)
         },
+        // The only way to get a cons object is via the `cons` or `list` calls
+        // So we know everything must already be evaluated
+        SExpr::Cons(_, _) => Ok(expr),
+    }
+}
+
+fn call_quote(arg: Rc<SExpr>) -> Rc<SExpr> {
+    match &*arg {
+        SExpr::Atom(value) => {
+            match value {
+                Value::Symbol(_) => Rc::new(arg.quote()),
+                Value::Function(_, _) => Rc::new(arg.quote()),
+                // No need to quote primitives
+                _ => arg,
+            }
+        },
+        SExpr::S(car, cdr) => {
+            Rc::new(SExpr::Cons(
+                call_quote(car.clone()),
+                call_quote(cdr.clone())
+            ))
+        },
+        SExpr::Cons(_, _) => arg,
     }
 }
 
@@ -170,7 +194,7 @@ fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: &[Rc<SExpr>]) -> RunResul
                 _ => Err(format!("{value:?} is not callable")),
             }
         },
-        SExpr::S(_, _) => unreachable!(),
+        _ => unreachable!(),
     }
 }
 
@@ -266,9 +290,9 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
         },
         Builtin::Cons => {
             param_count_eq(func, params, 2)?;
-            let head = params[0].clone();
-            let tail = params[1].clone();
-            Ok(Rc::new(SExpr::S(head, unquote(tail)).quote()))
+            let car = params[0].clone();
+            let cdr = params[1].clone();
+            Ok(Rc::new(SExpr::Cons(car, cdr)))
         },
         Builtin::IsFalsy => {
             param_count_eq(func, params, 1)?;
@@ -303,7 +327,7 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
                 Err(format!("{func:?} accepts exactly 1 string argument"))
             }
         },
-        Builtin::Add | Builtin::Sub | Builtin::Mul | Builtin::Div | Builtin::Mod => {
+        Builtin::Add | Builtin::Sub | Builtin::Mul | Builtin::Div | Builtin::Mod | Builtin::Pow => {
             param_count_eq(func, params, 2)?;
             let lhs = params[0].clone();
             let rhs = params[1].clone();
@@ -365,7 +389,7 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             param_count_eq(func, params, 1)?;
             Ok(Rc::new(sexpr_as_string(&params[0])))
         },
-        // By definition, `quote` should never be evaluated!
+        // Special case, handled elsewhere
         Builtin::Quote => unreachable!(),
         Builtin::StrAsList => {
             param_count_eq(func, params, 1)?;
@@ -376,9 +400,9 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             char_list_as_string(params[0].clone())
         },
         Builtin::List => {
-            Ok(Rc::new(params.iter().rev().fold(Rc::new(SExpr::nil()), |acc, it| {
-                Rc::new(SExpr::S(it.clone(), acc))
-            }).quote()))
+            Ok(params.iter().rev().fold(Rc::new(SExpr::nil()), |acc, it| {
+                Rc::new(SExpr::Cons(it.clone(), acc))
+            }))
         },
         Builtin::Cmp => {
             param_count_eq(func, params, 2)?;
@@ -410,6 +434,15 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
                 _ => return Err(format!("Cannot compare {:?} with {:?}", params[0], params[1])),
             };
             Ok(Rc::new(SExpr::Atom(Value::Int(res))))
+        },
+        Builtin::ToInt => {
+            param_count_eq(func, params, 1)?;
+            let int_value = match params[0].atom_value() {
+                Some(Value::Int(value)) => value,
+                Some(Value::Float(value)) => value as i64,
+                _ => return Err("to-int only works on floats (and ints)".to_owned()),
+            };
+            Ok(Rc::new(SExpr::Atom(Value::Int(int_value))))
         },
     }
 }
@@ -495,9 +528,13 @@ fn wd_superimpose(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     if lhs.len() != rhs.len() {
         return Err("wd-multiply must be called on two equally sized wavedata objects".to_owned());
     }
-    let mut data = lhs.clone();
-    for i in 0..data.len() {
-        data[i] += rhs[i];
+    let (mut data, to_add) = if lhs.len() > rhs.len() {
+        (lhs.clone(), rhs)
+    } else {
+        (rhs.clone(), lhs)
+    };
+    for i in 0..to_add.len() {
+        data[i] += to_add[i];
     }
     Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
 }
@@ -604,14 +641,14 @@ fn unquote(expr: Rc<SExpr>) -> Rc<SExpr> {
 }
 
 fn is_truthy(sexpr: Rc<SExpr>) -> bool {
-    match &*unquote(sexpr) {
+    match &*sexpr {
         SExpr::Atom(value) => match value {
             Value::Int(value)   => *value != 0,
             Value::Float(value) => *value != 0.0,
             Value::Builtin(Builtin::Nil) => false,
             _                   => true,
         },
-        SExpr::S(_, _) => true,
+        _ => true,
     }
 }
 
@@ -625,16 +662,7 @@ fn get_int(sexpr: &SExpr) -> Option<i64> {
 fn get_car(expr: &SExpr) -> Option<Rc<SExpr>> {
     match expr {
         SExpr::Atom(Value::Builtin(Builtin::Nil)) => Some(Rc::new(SExpr::nil())),
-        expr @ SExpr::S(_, _) if expr.is_quoted() => {
-            match &*expr.rhs().unwrap() {
-                SExpr::Atom(Value::Builtin(Builtin::Nil)) => Some(Rc::new(SExpr::nil())),
-                SExpr::Atom(_) => None,
-                SExpr::S(car, _) if car.is_atom() => Some(car.clone()),
-                SExpr::S(car, _) => {
-                    Some(Rc::new(car.quote()))
-                },
-            }
-        },
+        SExpr::Cons(car, _) => Some(car.clone()),
         SExpr::S(car, _) => Some(car.clone()),
         _ => None,
     }
@@ -643,16 +671,7 @@ fn get_car(expr: &SExpr) -> Option<Rc<SExpr>> {
 fn get_cdr(expr: &SExpr) -> Option<Rc<SExpr>> {
     match expr {
         SExpr::Atom(Value::Builtin(Builtin::Nil)) => Some(Rc::new(SExpr::nil())),
-        expr @ SExpr::S(_, _) if expr.is_quoted() => {
-            match &*expr.rhs().unwrap() {
-                SExpr::Atom(Value::Builtin(Builtin::Nil)) => Some(Rc::new(SExpr::nil())),
-                SExpr::Atom(_) => None,
-                SExpr::S(_, cdr) if cdr.is_atom() => Some(cdr.clone()),
-                SExpr::S(_, cdr) => {
-                    Some(Rc::new(cdr.quote()))
-                },
-            }
-        },
+        SExpr::Cons(_, cdr) => Some(cdr.clone()),
         SExpr::S(car, _) => Some(car.clone()),
         _ => None,
     }
@@ -721,7 +740,7 @@ fn get_symbol_name(sexpr: &SExpr) -> Option<&String> {
             Value::Symbol(name) => Some(name),
             _ => None,
         },
-        SExpr::S(_, _) => None,
+        _ => None,
     }
 }
 
@@ -750,6 +769,7 @@ fn eval_arithmetic_int(builtin: Builtin, lhs: i64, rhs: i64) -> Value {
         Builtin::Mul => lhs * rhs,
         Builtin::Div => lhs / rhs,
         Builtin::Mod => lhs % rhs,
+        Builtin::Pow => lhs.pow(rhs as u32),
         _ => unreachable!()
     })
 }
@@ -761,6 +781,7 @@ fn eval_arithmetic_float(builtin: Builtin, lhs: f64, rhs: f64) -> Value {
         Builtin::Mul => lhs * rhs,
         Builtin::Div => lhs / rhs,
         Builtin::Mod => lhs % rhs,
+        Builtin::Pow => lhs.powf(rhs),
         _ => unreachable!()
     })
 }
@@ -832,9 +853,16 @@ mod tests {
     }
 
     #[test]
+    fn test_eval_quote() {
+        assert_eq!("2", format!("{:?}", eval_str("'2")));
+        assert_eq!("(quote . a)", format!("{:?}", eval_str("'a")));
+        assert_eq!("(2 . nil)", format!("{:?}", eval_str("'(2)")));
+    }
+
+    #[test]
     fn test_eval_cons() {
-        assert_eq!("(quote . (1 . (2 . nil)))", format!("{:?}", eval_str("(cons 1 '(2))")));
-        assert_eq!("(quote . (1 . nil))", format!("{:?}", eval_str("(cons 1 '())")));
-        assert_eq!("(quote . (1 . nil))", format!("{:?}", eval_str("(cons 1 nil)")));
+        assert_eq!("(1 . (2 . nil))", format!("{:?}", eval_str("(cons 1 '(2))")));
+        assert_eq!("(1 . nil)", format!("{:?}", eval_str("(cons 1 (list))")));
+        assert_eq!("(1 . nil)", format!("{:?}", eval_str("(cons 1 nil)")));
     }
 }
