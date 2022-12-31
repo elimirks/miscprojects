@@ -80,11 +80,11 @@
 
 (defun synth-organ (frequency)
   (set 'overtones
-       '((0.25 . 2.0)
-         (0.20 . 4.0)
+       '((0.50 . 2.0)
+         (0.50 . 4.0)
          (0.10 . 8.0)
-         (0.01 . 16.0)))
-  (wd-amplify 0.7 (synth-harmonic-overtones frequency synth-long-pure overtones)))
+         (0.05 . 16.0)))
+  (wd-amplify 0.5 (synth-harmonic-overtones frequency synth-long-pure overtones)))
 
 (setg 'c4-freq 261.63)
 (setg 'cs4-freq 277.18)
