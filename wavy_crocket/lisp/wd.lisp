@@ -42,7 +42,7 @@
   (wd-multiply envelope data))
 
 ;; A simple pure tone synth
-(defun synth-round (frequency)
+(defun synth-short-pure (frequency)
   ;; 1 quarter second length
   (set 'duration (/ wd-sample-rate 4))
   (set 'attack (/ duration 16))
@@ -50,6 +50,41 @@
   (set 'sustain 0.5)
   (set 'release (/ duration 16))
   (wd-adsr attack decay sustain release (wd-pure-tone frequency duration)))
+
+(defun synth-long-pure (frequency)
+  (set 'duration (/ wd-sample-rate 2))
+  (set 'attack (/ duration 32))
+  (set 'decay (/ duration 4))
+  (set 'sustain 0.75)
+  (set 'release (/ duration 16))
+  (wd-adsr attack decay sustain release (wd-pure-tone frequency duration)))
+
+;; Idk why this sound reminds me of a frog
+;; The basic idea is to envelope a pure tone with some harmonic frequencies
+(defun synth-frog (frequency)
+  (set 'base (synth-short-pure frequency))
+  (set 'duration (wd-len base))
+  (set 'frog1 (wd-shift 0.5 (wd-amplify 0.5 (wd-pure-tone (/ frequency 2.0) duration))))
+  (set 'frog2 (wd-shift 0.5 (wd-amplify 0.5 (wd-pure-tone (/ frequency 4.0) duration))))
+  (set 'frog (wd-multiply frog1 frog2))
+  (wd-multiply frog base))
+
+
+(defun synth-harmonic-overtones (frequency base-synth overtone-pairs)
+  (set 'base (base-synth frequency))
+  (set 'overtones (map
+                    (lambda (pair)
+                      (wd-amplify (car pair) (base-synth (* frequency (cdr pair)))))
+                    overtone-pairs))
+  (reduce wd-superimpose (cons base overtones)))
+
+(defun synth-organ (frequency)
+  (set 'overtones
+       '((0.25 . 2.0)
+         (0.20 . 4.0)
+         (0.10 . 8.0)
+         (0.01 . 16.0)))
+  (wd-amplify 0.7 (synth-harmonic-overtones frequency synth-long-pure overtones)))
 
 (setg 'c4-freq 261.63)
 (setg 'cs4-freq 277.18)

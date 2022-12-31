@@ -2,7 +2,7 @@
 (require "lisp/wd")
 
 (set 'result (reduce wd-concat
-        (map synth-round
+        (map synth-organ
              (list
                e4-freq
                d4-freq
