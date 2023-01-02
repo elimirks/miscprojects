@@ -1,11 +1,20 @@
+(require "lisp/wd-note-frequencies")
 ;; File required to generate music / wavedata
 
 ;; Default sample rate is CD quality
 ;; NOTE: It _must_ be set before you start manipulating any wave data!
 ;; Otherwise.. strange things will happen
 (setg 'wd-sample-rate 44100)
-;; BPM can be dynamic, though. Visions of "In the Hall of the Mountain King"
-(setg 'wd-bpm 80.0)
+
+(defun wd-set-bpm (bpm)
+  (set 'full-samples (* (/ 60.0 bpm) wd-sample-rate))
+  (setg 'wd-full-note-duration (to-int full-samples))
+  (setg 'wd-half-note-duration (to-int (/ full-samples 2.0)))
+  (setg 'wd-quarter-note-duration (to-int (/ full-samples 4.0)))
+  (setg 'wd-eighth-note-duration (to-int (/ full-samples 8.0)))
+  (setg 'wd-sixteenth-note-duration (to-int (/ full-samples 16.0))))
+;; BPM can be dynamic. Visions of "In the Hall of the Mountain King"
+(wd-set-bpm 180.0)
 
 (defun wd-amplify (amplitude data)
   (wd-multiply data (wd-flat-amplitude amplitude (wd-len data))))
@@ -41,34 +50,89 @@
   (set 'envelope (reduce wd-concat (list attack-slope decay-slope hold-plateau release-slope)))
   (wd-multiply envelope data))
 
-;; A simple pure tone synth
-(defun synth-short-pure (frequency)
-  ;; 1 quarter second length
-  (set 'duration (/ wd-sample-rate 4))
+(defun wd-pad-to-full-note (data)
+  (set 'padding-len (% (wd-len data) wd-full-note-duration))
+  (wd-concat data (wd-flat-amplitude 0.0 padding-len)))
+
+;; Superimposes every wavedata in the given list
+(defun wd-superimpose-all (l)
+  (reduce wd-superimpose l))
+
+(defun wd-delay (data delay-duration)
+  (wd-concat (wd-flat-amplitude 0.0 delay-duration) data))
+
+;; Accepts a list of lists
+;; Each element in the list is a list of values to superimpose
+;; The index of the sub-list indicates what note index to play at (indexed on quarter notes)
+(defun wd-build-track (track)
+  (set 'subtracks-with-offsets
+       (filter (lambda (elem) (true? (cdr elem)))
+               (map (lambda (subtrack)
+                      (cons (* (car subtrack) wd-quarter-note-duration) (cdr subtrack)))
+                    (enumerate (map wd-superimpose-all track)))))
+  (fold (lambda (acc it)
+          (wd-superimpose-insert (cdr it) (car it) acc))
+        (cdr (car subtracks-with-offsets))
+        (cdr subtracks-with-offsets)))
+
+(defun wd-zero (duration)
+  (wd-flat-amplitude 0.0 duration))
+
+(defun envelope-soft-full (data)
+  (set 'duration wd-full-note-duration)
   (set 'attack (/ duration 16))
   (set 'decay (/ duration 4))
   (set 'sustain 0.5)
   (set 'release (/ duration 16))
-  (wd-adsr attack decay sustain release (wd-pure-tone frequency duration)))
+  (wd-pad-to-full-note (wd-adsr attack decay sustain release data)))
 
-(defun synth-long-pure (frequency)
-  (set 'duration (/ wd-sample-rate 2))
-  (set 'attack (/ duration 32))
+(defun envelope-soft-half (data)
+  (set 'duration wd-half-note-duration)
+  (set 'attack (/ duration 16))
   (set 'decay (/ duration 4))
-  (set 'sustain 0.75)
+  (set 'sustain 0.5)
   (set 'release (/ duration 16))
-  (wd-adsr attack decay sustain release (wd-pure-tone frequency duration)))
+  (wd-pad-to-full-note (wd-adsr attack decay sustain release data)))
+
+(defun envelope-soft-quarter (data)
+  (set 'duration wd-quarter-note-duration)
+  (set 'data (wd-subsample 0 duration data))
+  (set 'attack (/ duration 16))
+  (set 'decay (/ duration 4))
+  (set 'sustain 0.5)
+  (set 'release (/ duration 16))
+  (wd-adsr attack decay sustain release data))
+
+(defun envelope-soft-eighth (data)
+  (set 'duration wd-eighth-note-duration)
+  (set 'data (wd-subsample 0 duration data))
+  (set 'attack (/ duration 16))
+  (set 'decay (/ duration 4))
+  (set 'sustain 0.5)
+  (set 'release (/ duration 16))
+  (wd-adsr attack decay sustain release data))
+
+(defun envelope-soft-sixteenth (data)
+  (set 'duration wd-sixteenth-note-duration)
+  (set 'data (wd-subsample 0 duration data))
+  (set 'attack (/ duration 16))
+  (set 'decay (/ duration 4))
+  (set 'sustain 0.5)
+  (set 'release (/ duration 16))
+  (wd-adsr attack decay sustain release data))
+
+;; A simple pure tone synth
+(defun synth-pure (frequency)
+  (wd-pure-tone frequency wd-full-note-duration))
 
 ;; Idk why this sound reminds me of a frog
 ;; The basic idea is to envelope a pure tone with some harmonic frequencies
 (defun synth-frog (frequency)
-  (set 'base (synth-short-pure frequency))
-  (set 'duration (wd-len base))
-  (set 'frog1 (wd-shift 0.5 (wd-amplify 0.5 (wd-pure-tone (/ frequency 2.0) duration))))
-  (set 'frog2 (wd-shift 0.5 (wd-amplify 0.5 (wd-pure-tone (/ frequency 4.0) duration))))
+  (set 'base (synth-pure frequency))
+  (set 'frog1 (wd-shift 0.5 (wd-amplify 0.5 (synth-pure (/ frequency 2.0)))))
+  (set 'frog2 (wd-shift 0.5 (wd-amplify 0.5 (synth-pure (/ frequency 4.0)))))
   (set 'frog (wd-multiply frog1 frog2))
   (wd-multiply frog base))
-
 
 (defun synth-harmonic-overtones (frequency base-synth overtone-pairs)
   (set 'base (base-synth frequency))
@@ -84,16 +148,23 @@
          (0.50 . 4.0)
          (0.10 . 8.0)
          (0.05 . 16.0)))
-  (wd-amplify 0.5 (synth-harmonic-overtones frequency synth-long-pure overtones)))
+  (wd-amplify 0.5 (synth-harmonic-overtones frequency synth-pure-full overtones)))
 
-(setg 'c4-freq 261.63)
-(setg 'cs4-freq 277.18)
-(setg 'd4-freq 293.66)
-(setg 'ds4-freq 311.13)
-(setg 'e4-freq 329.63)
-(setg 'f4-freq 329.63)
-(setg 'g4-freq 392.0)
-(setg 'a4-freq 440.0)
-(setg 'b4-freq 493.88)
+;; FIXME: Why do we need to pad these?
+(defun synth-noise-hat ()
+  (set 'duration wd-half-note-duration)
+  (set 'noise (wd-amplify 0.2 (wd-noise duration)))
+  (set 'attack 0)
+  (set 'decay (to-int (/ duration 2.0)))
+  (set 'sustain 0.2)
+  (set 'release (to-int (/ duration 2.0)))
+  (wd-pad-to-full-note (wd-adsr attack decay sustain release noise)))
 
-(setg 'c4-major (list c4-freq e4-freq g4-freq))
+(defun synth-noise-hat-muted ()
+  (set 'duration wd-half-note-duration)
+  (set 'noise (wd-amplify 0.2 (wd-noise duration)))
+  (set 'attack 0)
+  (set 'decay (to-int (/ duration 2.0)))
+  (set 'sustain 0.0)
+  (set 'release 0)
+  (wd-pad-to-full-note (wd-adsr attack decay sustain release noise)))

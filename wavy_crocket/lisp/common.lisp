@@ -9,6 +9,11 @@
 (defun inc (n) (+ n 1))
 (defun dec (n) (- n 1))
 
+(defun or (a b)
+  (if a 1 (if b 1 nil)))
+(defun and (a b)
+  (if a (if b 1 nil) nil))
+
 (defun not (v) (if (false? v) ?t nil))
 
 (defun true? (v) (not (false? v)))
@@ -26,8 +31,16 @@
   (if (false? l) 0 (inc (len (cdr l)))))
 
 (defun map (f l)
-  (if (false? l) '()
+  (if (false? l) nil
     (cons (f (car l)) (map f (cdr l)))))
+
+(defun filter (predicate l)
+  (if (false? l) nil
+    (progn
+      (set 'h (car l))
+      (if (predicate h)
+        (cons h (filter predicate (cdr l)))
+        (filter predicate (cdr l))))))
 
 (defun foreach (f l)
   (if (false? l) nil
@@ -66,11 +79,27 @@
       (set 'next (last (cdr l)))
       (if (false? next) (car l) next))))
 
+(defun nth (index l)
+  (if (false? l) nil
+    (if (eq? index 0) (car l)
+      (nth (- index 1) (cdr l)))))
+
 (defun delimit (sep l) 
   (fold (lambda (acc it)
           (if (false? acc) it 
             (append acc (append sep it)))
           ) nil l))
+
+(defun range (start end)
+  (if (eq? start end) nil
+    (cons start (range (+ 1 start) end))))
+;; Terminates when either list is empty
+(defun zip (l1 l2)
+  (if (or (false? l1) (false? l2)) nil
+    (cons (cons (car l1) (car l2)) (zip (cdr l1) (cdr l2)))))
+
+(defun enumerate (l)
+  (zip (range 0 (len l)) l))
 
 (defun caar (x) (car (car x)))
 (defun cadr (x) (car (cdr x)))

@@ -2,6 +2,10 @@ use std::{fmt::Debug, rc::Rc};
 
 type ParseResult<T> = Result<T, String>;
 
+// FIXME: Cons should be a value type, not an expr type
+// Then, we know that all exprs must be evaluated, and all values are
+// done being evalutaed.
+// Quoting things will be more accurate that way.
 #[derive(Clone)]
 pub enum Value {
     Symbol(String),
@@ -112,6 +116,7 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("wd-flat-amplitude", Builtin::WdFlatAmplitude),
     ("wd-multiply", Builtin::WdMultiply),
     ("wd-superimpose", Builtin::WdSuperimpose),
+    ("wd-superimpose-insert", Builtin::WdSuperimposeInsert),
     ("wd-len", Builtin::WdLen),
     ("wd-concat", Builtin::WdConcat),
     ("wd-noise", Builtin::WdNoise),
@@ -170,6 +175,7 @@ pub enum Builtin {
     WdFlatAmplitude,
     WdMultiply,
     WdSuperimpose,
+    WdSuperimposeInsert,
     WdLen,
     WdConcat,
     WdNoise,

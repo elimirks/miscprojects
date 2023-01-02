@@ -10,9 +10,15 @@
 (assert (eq? nil (car nil)))
 (assert (eq? nil (cdr nil)))
 
-(println "Running `not` tests")
+(println "Running logic tests")
 (assert (not nil))
 (assert (not (false? 42)))
+(assert (or 1 nil))
+(assert (or nil 1))
+(assert (not (or nil nil)))
+(assert (and 1 1))
+(assert (not (and nil 1)))
+(assert (not (and 1 nil)))
 
 (println "Running `true?` tests")
 (assert (not (true? nil)))
@@ -59,6 +65,16 @@
 
 (println "Running `append` tests")
 (assert (eq? '(1 2 3 4) (append '(1 2) '(3 4))))
+
+(println "Running `range` tests")
+(assert (eq? '(1 2 3 4) (range 1 5)))
+(assert (eq? '(-2 -1 0 1 2 3 4) (range -2 5)))
+
+(println "Running `zip` tests")
+(assert (eq? '((0 . 7) (1 . 9)) (zip (range 0 2) '(7 9))))
+
+(println "Running `enumerate` tests")
+(assert (eq? '((0 . 7) (1 . 9)) (enumerate '(7 9))))
 
 (println "Running `car` & `cdr` variant tests")
 (set 'tree '((1 . 2) . (3 . 4)))

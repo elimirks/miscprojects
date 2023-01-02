@@ -194,7 +194,7 @@ fn call(ctx: &mut RunContext, func: Rc<SExpr>, params: &[Rc<SExpr>]) -> RunResul
                 _ => Err(format!("{value:?} is not callable")),
             }
         },
-        _ => unreachable!(),
+        other => panic!("{other:?}"),
     }
 }
 
@@ -361,6 +361,10 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             param_count_eq(func, params, 2)?;
             wd_superimpose(params)
         },
+        Builtin::WdSuperimposeInsert => {
+            param_count_eq(func, params, 3)?;
+            wd_superimpose_insert(params)
+        },
         Builtin::WdLen => {
             param_count_eq(func, params, 1)?;
             wd_len(params)
@@ -525,9 +529,6 @@ fn wd_superimpose(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
         .ok_or("lhs parameter must be a wavedata object")?;
     let rhs = try_get_wavedata(&params[1])
         .ok_or("rhs parameter must be a wavedata object")?;
-    if lhs.len() != rhs.len() {
-        return Err("wd-multiply must be called on two equally sized wavedata objects".to_owned());
-    }
     let (mut data, to_add) = if lhs.len() > rhs.len() {
         (lhs.clone(), rhs)
     } else {
@@ -535,6 +536,29 @@ fn wd_superimpose(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     };
     for i in 0..to_add.len() {
         data[i] += to_add[i];
+    }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_superimpose_insert(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let from_data = try_get_wavedata(&params[0])
+        .ok_or("`from` parameter must be a wavedata object")?;
+    let index = try_get_int(&params[1])
+        .ok_or("`index` parameter must be an int")?;
+    let mut data = try_get_wavedata(&params[2])
+        .ok_or("`to` parameter must be a wavedata object")?;
+
+    let padding_amount = (index - data.len() as i64).max(0);
+    for _ in 0..padding_amount {
+        data.push(0.0);
+    }
+    for (i, n) in from_data.iter().enumerate() {
+        let offset = i + index as usize;
+        if offset >= data.len() {
+            data.push(*n);
+        } else {
+            data[offset] += n;
+        }
     }
     Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
 }
@@ -578,12 +602,12 @@ fn wd_slope_up(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
 }
 
 fn wd_subsample(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
-    let wavedata = try_get_wavedata(&params[0])
+    let start = try_get_int(&params[0])
+        .ok_or("start parameter must be an int")?;
+    let end = try_get_int(&params[1])
+        .ok_or("end parameter must be an int")?;
+    let wavedata = try_get_wavedata(&params[2])
         .ok_or("data parameter must be a wavedata object")?;
-    let start = try_get_int(&params[1])
-        .ok_or("start parameter must be an int")?;
-    let end = try_get_int(&params[2])
-        .ok_or("start parameter must be an int")?;
 
     if start < 0 || start as usize > wavedata.len() {
         return Err("start parameter is out of bounds".to_owned());
@@ -605,6 +629,8 @@ fn wd_reverse(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
     data.reverse();
     Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
 }
+
+// FIXME: Rework these to use cons cells instead
 
 fn char_list_as_string(expr: Rc<SExpr>) -> RunResult<Rc<SExpr>> {
     let mut s = String::new();
