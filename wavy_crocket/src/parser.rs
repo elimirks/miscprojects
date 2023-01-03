@@ -125,6 +125,7 @@ static BUILTIN_NAMES: &[(&str, Builtin)] = &[
     ("wd-reverse", Builtin::WdReverse),
     ("wd-plot", Builtin::WdPlot),
     ("wd-shifting-pure-tone", Builtin::WdShiftingPureTone),
+    ("wd-spline", Builtin::WdSpline),
 ];
 
 fn builtin_for_name(name: &str) -> Option<Builtin> {
@@ -186,6 +187,7 @@ pub enum Builtin {
     WdReverse,
     WdPlot,
     WdShiftingPureTone,
+    WdSpline,
     ToInt,
     Pow,
 }

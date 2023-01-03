@@ -2,6 +2,7 @@
 mod parser;
 mod interpreter;
 mod sound_handler;
+mod math;
 
 use std::{error::Error, process::exit};
 

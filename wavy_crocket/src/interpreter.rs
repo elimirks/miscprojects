@@ -3,6 +3,7 @@ use rand::{thread_rng, Rng};
 
 use crate::parser::*;
 use crate::sound_handler::*;
+use crate::math::spline_coefficients;
 
 type RunResult<T> = Result<T, String>;
 
@@ -397,6 +398,10 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             param_count_eq(func, params, 3)?;
             wd_shifting_pure_tone(ctx, params)
         },
+        Builtin::WdSpline => {
+            param_count_eq(func, params, 2)?;
+            wd_spline(ctx, params)
+        },
         Builtin::ToString => {
             param_count_eq(func, params, 1)?;
             Ok(Rc::new(sexpr_as_string(&params[0])))
@@ -502,6 +507,40 @@ fn wd_shifting_pure_tone(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc
         let x = 2.0 * PI * t * (f0 + t * (f1 - f0));
         data.push(x.sin());
     }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_from_frequency_series(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let sr = ctx.scope.borrow().lookup(&"wd-sample-rate");
+    let sample_rate = try_get_int(&sr)
+        .ok_or("wd-sample-rate must be globally set as an int")?;
+    let frequency_series = try_get_wavedata(&params[0])
+        .ok_or("frequency-series parameter must be a wavedata object")?;
+    let sample_count = try_get_int(&params[2])
+        .ok_or("sample-count parameter must be an int")?;
+
+    let mut data = vec![];
+    for index in 0..sample_count as usize {
+        // t in [0.0,1.0]
+        let t = (index as f64) / (sample_rate as f64);
+        let x = 2.0 * PI * t * frequency_series[index];
+        data.push(x.sin());
+    }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_spline(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let sr = ctx.scope.borrow().lookup(&"wd-sample-rate");
+    let sample_rate = try_get_int(&sr)
+        .ok_or("wd-sample-rate must be globally set as an int")?;
+    let points = try_get_point_list(&params[0])
+        .ok_or("sample-count parameter must be list of float atoms (of the form `(a . b)`)")?;
+    let sample_count = try_get_int(&params[1])
+        .ok_or("sample-count parameter must be an int")?;
+
+    println!("{:?}", spline_coefficients(&points));
+    todo!();
+    let mut data = vec![];
     Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
 }
 
@@ -767,6 +806,39 @@ fn try_get_string(expr: &SExpr) -> Option<String> {
 fn try_get_wavedata(expr: &SExpr) -> Option<Vec<f64>> {
     match expr {
         SExpr::Atom(Value::WaveData(value)) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn try_get_list(root: &SExpr) -> Option<Vec<Rc<SExpr>>> {
+    let mut elems = vec![];
+    let mut expr = root;
+    while let SExpr::Cons(car, cdr) = expr {
+        elems.push(car.clone());
+        expr = cdr;
+    }
+    if elems.is_empty() && !root.is_nil() {
+        None
+    } else {
+        Some(elems)
+    }
+}
+
+fn try_get_point_list(root: &SExpr) -> Option<Vec<(f64, f64)>> {
+    let values = try_get_list(root)?;
+    let mut points = vec![];
+    for value in values.iter() {
+        let (x_expr, y_expr) = try_get_cons_pair(value)?;
+        let x = try_get_float(&x_expr)?;
+        let y = try_get_float(&y_expr)?;
+        points.push((x, y));
+    }
+    Some(points)
+}
+
+fn try_get_cons_pair(pair: &SExpr) -> Option<(Rc<SExpr>, Rc<SExpr>)> {
+    match pair {
+        SExpr::Cons(car, cdr) => Some((car.clone(), cdr.clone())),
         _ => None,
     }
 }
