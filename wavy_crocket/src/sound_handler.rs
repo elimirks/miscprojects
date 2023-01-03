@@ -1,7 +1,15 @@
 use std::mem::size_of;
 use std::io::prelude::*;
+use std::rc::Rc;
 use std::{error::Error, fs::File};
 use soloud::*;
+
+use gtk::prelude::*;
+use gtk::DrawingArea;
+
+use cairo::Context;
+use plotters::prelude::*;
+use plotters_cairo::CairoBackend;
 
 const HEADER_SIZE: u32 = 44;
 // Sample size
@@ -80,4 +88,69 @@ fn gen_wave_file(
         raw.extend_from_slice(&sample.to_le_bytes());
     }
     raw
+}
+
+pub fn plot_wavedata(data: Vec<f64>) {
+    let application = gtk::Application::new(
+        Some("com.mirecki.elijah.wavy_crocket"),
+        Default::default(),
+    );
+    let points = Rc::new(data.clone());
+    application.connect_activate(move |app| {
+        build_ui(app, points.clone());
+    });
+    application.run_with_args(&[""]);
+}
+
+fn build_ui(app: &gtk::Application, data: Rc<Vec<f64>>) {
+    let width = 2048;
+    let height = 1024;
+    drawable(app, width, height, move |_, cr| {
+        let points = data.iter().map(|x| *x).enumerate()
+            .collect::<Vec<_>>();
+
+        let root = CairoBackend::new(cr, (width as u32, height as u32)).unwrap().into_drawing_area();
+
+        root.fill(&WHITE).unwrap();
+        let root = root.margin(25, 25, 25, 25);
+
+        let mut chart = ChartBuilder::on(&root)
+            // Set the caption of the chart
+            .caption("Wavy Crocket", ("sans-serif", 40).into_font())
+            // Set the size of the label region
+            .x_label_area_size(20)
+            .y_label_area_size(40)
+            // Finally attach a coordinate on the drawing area and make a chart context
+            .build_cartesian_2d(0..points.len(), -1f64..1f64)
+            .unwrap();
+
+        // Then we can draw a mesh
+        chart
+            .configure_mesh()
+            // We can customize the maximum number of labels allowed for each axis
+            .x_labels(5)
+            .y_labels(5)
+            // We can also change the format of the label text
+            .y_label_formatter(&|x| format!("{:.3}", x))
+            .draw().unwrap();
+
+        chart.draw_series(LineSeries::new(points, &RED)).unwrap();
+
+        Inhibit(false)
+    })
+}
+
+fn drawable<F>(application: &gtk::Application, width: i32, height: i32, draw_fn: F)
+    where
+    F: Fn(&DrawingArea, &Context) -> Inhibit + 'static,
+{
+    let window = gtk::ApplicationWindow::new(application);
+    let drawing_area = Box::new(DrawingArea::new)();
+
+    drawing_area.connect_draw(draw_fn);
+
+    window.set_default_size(width, height);
+
+    window.add(&drawing_area);
+    window.show_all();
 }

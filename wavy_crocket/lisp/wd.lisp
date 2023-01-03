@@ -168,3 +168,13 @@
   (set 'sustain 0.0)
   (set 'release 0)
   (wd-pad-to-full-note (wd-adsr attack decay sustain release noise)))
+
+;; https://output.com/blog/get-perfect-kick-drum
+(defun synth-kick ()
+  (set 'duration wd-full-note-duration)
+  (set 'base (wd-shifting-pure-tone d2 0.0 duration))
+  (set 'attack 0)
+  (set 'decay duration)
+  (set 'sustain 0.0)
+  (set 'release 0)
+  (wd-adsr attack decay sustain release base))

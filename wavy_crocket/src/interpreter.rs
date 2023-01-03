@@ -389,6 +389,14 @@ fn call_builtin(ctx: &mut RunContext, func: Builtin, params: &[Rc<SExpr>]) -> Ru
             param_count_eq(func, params, 1)?;
             wd_reverse(params)
         },
+        Builtin::WdPlot => {
+            param_count_eq(func, params, 1)?;
+            wd_plot(params)
+        },
+        Builtin::WdShiftingPureTone => {
+            param_count_eq(func, params, 3)?;
+            wd_shifting_pure_tone(ctx, params)
+        },
         Builtin::ToString => {
             param_count_eq(func, params, 1)?;
             Ok(Rc::new(sexpr_as_string(&params[0])))
@@ -464,6 +472,34 @@ fn wd_pure_tone(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> 
     for t in 0..sample_count as usize {
         let sample_time = (t as f64) / (sample_rate as f64);
         let x = 2.0 * PI * sample_time * frequency;
+        data.push(x.sin());
+    }
+    Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))
+}
+
+fn wd_plot(params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let wavedata = try_get_wavedata(&params[0])
+        .ok_or("wavedata parameter must be a wavedata object")?;
+    plot_wavedata(wavedata);
+    Ok(params[0].clone())
+}
+
+fn wd_shifting_pure_tone(ctx: &RunContext, params: &[Rc<SExpr>]) -> RunResult<Rc<SExpr>> {
+    let sr = ctx.scope.borrow().lookup(&"wd-sample-rate");
+    let sample_rate = try_get_int(&sr)
+        .ok_or("wd-sample-rate must be globally set as an int")?;
+    let f0 = try_get_float(&params[0])
+        .ok_or("start-frequency parameter must be a float")?;
+    let f1 = try_get_float(&params[1])
+        .ok_or("end-frequency parameter must be a float")?;
+    let sample_count = try_get_int(&params[2])
+        .ok_or("sample-count parameter must be an int")?;
+
+    let mut data = vec![];
+    for index in 0..sample_count as usize {
+        // t in [0.0,1.0]
+        let t = (index as f64) / (sample_rate as f64);
+        let x = 2.0 * PI * t * (f0 + t * (f1 - f0));
         data.push(x.sin());
     }
     Ok(Rc::new(SExpr::Atom(Value::WaveData(data))))

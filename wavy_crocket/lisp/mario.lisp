@@ -296,13 +296,12 @@
          (list (envelope-soft-half (mario-melody gs3)))
          nil
          nil
-         (list (envelope-soft-half (mario-melody g3)))
+         (list (envelope-soft-half (wd-shifting-pure-tone g3 fs3 wd-full-note-duration)))
          nil
          nil
-         (list (envelope-soft-half (mario-melody fs3)))
+         (list (envelope-soft-half (wd-shifting-pure-tone fs3 g3 wd-full-note-duration)))
          nil
          nil
-         (list (envelope-soft-full (mario-melody g3)))
          (list (wd-zero (* 1 wd-full-note-duration))))))
 
 
@@ -327,3 +326,4 @@
                            mario-outro)))
 
 (wd-play (wd-amplify 0.5 result))
+;(wd-save (wd-amplify 0.5 result) "mario.wav")
