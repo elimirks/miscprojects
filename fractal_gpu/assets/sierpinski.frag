@@ -1,4 +1,5 @@
 #version 460 core
+#define IN_SET_SPLIT_COUNT 1000
 
 layout(pixel_center_integer) in vec4 gl_FragCoord;
 out vec3 colorOut;
@@ -10,61 +11,93 @@ uniform float pan_x = 0.0;
 uniform float pan_y = 0.0;
 uniform float zoom = 100.0;
 
-// Use vec2 to represent complex, like a savage
-
-vec2 product(vec2 a, vec2 b) {
-    return vec2(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x);
+// orig refers to the top of the triangle
+bool in_triangle(float x, float y, float orig_x, float orig_y, float height) {
+    if (y > orig_y + height || y < orig_y) {
+        return false;
+    }
+    if (x > orig_x + (y - orig_y) * tan(radians(30))) {
+        return false;
+    }
+    if (x < orig_x - (y - orig_y) * tan(radians(30))) {
+        return false;
+    }
+    return true;
 }
 
-vec2 conjugate(vec2 a) {
-    return vec2(a.x, -a.y);
-}
+struct SierpRec {
+    float orig_x;
+    float orig_y;
+    float height;
+    int splits;
+};
 
-vec2 divide(vec2 a, vec2 b) {
-    return vec2(
-        ((a.x*b.x+a.y*b.y)/(b.x*b.x+b.y*b.y)),
-        ((a.y*b.x-a.x*b.y)/(b.x*b.x+b.y*b.y))
-    );
-}
+int sierpienski_split_count(float x, float y, float orig_x, float orig_y, float height, int splits) {
+    int min_splits = 1000000;
+    // Because GLSL doesn't support recusnion :(
+    SierpRec stack[1024];
+    int len = 1;
+    stack[0].orig_x = orig_x;
+    stack[0].orig_y = orig_y;
+    stack[0].height = height;
+    stack[0].splits = splits;
+    while (len > 0) {
+        SierpRec it = stack[len - 1];
+        len--;
+        if (!in_triangle(x, y, it.orig_x, it.orig_y, it.height)) {
+            continue;
+        } else if (it.splits == 0) {
+            // If it's in the triangle and we're at the base case
+            return IN_SET_SPLIT_COUNT;
+        }
+        min_splits = min(min_splits, it.splits);
 
-float magnitude(vec2 a) {
-    return sqrt(a.x * a.x + a.y * a.y);
+        float new_height = it.height / 2.0;
+        // Upper triangle
+        stack[len].orig_x = it.orig_x;
+        stack[len].orig_y = it.orig_y;
+        stack[len].height = new_height;
+        stack[len].splits = it.splits - 1;
+        len++;
+        // Bottom left triangle
+        stack[len].orig_x = it.orig_x - new_height * tan(radians(30));
+        stack[len].orig_y = it.orig_y + new_height;
+        stack[len].height = it.height / 2;
+        stack[len].splits = it.splits - 1;
+        len++;
+        // Bottom right triangle
+        stack[len].orig_x = it.orig_x + new_height * tan(radians(30));
+        stack[len].orig_y = it.orig_y + new_height;
+        stack[len].height = it.height / 2;
+        stack[len].splits = it.splits - 1;
+        len++;
+    }
+    return min_splits;
 }
 
 vec3 palette[4] = {
     vec3(0.0, 0.0, 0.0),
-    vec3(1.0, 0.0, 0.0),
-    vec3(0.0, 1.0, 0.0),
-    vec3(0.0, 0.0, 1.0)
+    vec3(0.0, 0.0, 1.0),
+    vec3(1.0, 0.0, 1.0),
+    vec3(1.0, 1.0, 0.0),
 };
 int palette_size = 3;
 
-vec3 mandel_color(float x, float y) {
-    int max_iterations = 5000;
-    //int max_iterations = 50;
+// Bounds: x from 0 to 1, y from 0 to 1
+// At what points should we colour in the triangle?
+vec3 fract_color(float x, float y) {
+    int splits = sierpienski_split_count(x, y, 0.0, 0.0, 0.7, 12);
+    if (splits == IN_SET_SPLIT_COUNT) {
+        return vec3(1.0, 1.0, 1.0);
+    } else {
+        float v = pow(1.0 - (float(splits) / 10.0), 1.0);
+        float pal_coord = v * palette_size;
 
-    vec2 c = vec2(x, y);
-    vec2 z = vec2(0.0, 0.0);
-
-    for (int i = 0; i < max_iterations; i++) {
-        if (isinf(magnitude(z))) {
-            float vo = float(i) / float(max_iterations);
-            // Palette decay so the color distribution isn't so close to the edge
-            float v = pow(1.0 - vo, 30.0);
-
-            float pal_coord = v * palette_size;
-
-            vec3 floor_col = palette[int(pal_coord)];
-            vec3 ceil_col  = palette[int(pal_coord) + 1];
-            float dist = pal_coord - floor(pal_coord);
-            return mix(floor_col, ceil_col, dist);
-        }
-
-        z = product(z, z) + c;
+        vec3 floor_col = palette[int(pal_coord)];
+        vec3 ceil_col  = palette[int(pal_coord) + 1];
+        float dist = pal_coord - floor(pal_coord);
+        return mix(floor_col, ceil_col, dist);
     }
-
-    // In the set, paint it black
-    return vec3(0.0, 0.0, 0.0);
 }
 
 void main() {
@@ -80,5 +113,5 @@ void main() {
     float x = screen_x / w;
     float y = screen_y / h;
 
-    colorOut = mandel_color(zoom * x + real_pan_x, zoom * y + real_pan_y);
+    colorOut = fract_color(zoom * x + real_pan_x, zoom * y + real_pan_y);
 }

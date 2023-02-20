@@ -74,9 +74,14 @@ fn run(mut elc: EventLoopContext) {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-    let mut pan_x = -0.75;
-    let mut pan_y = -0.5;
-    let mut zoom = 3.0;
+    // Mandelbrot
+    // let mut pan_x = -0.75;
+    // let mut pan_y = -0.5;
+    // let mut zoom = 3.0;
+    // Sierpinski
+    let mut pan_x = -0.5;
+    let mut pan_y = -0.12;
+    let mut zoom = 1.0;
 
     let mut prev_mouse_x = 0;
     let mut prev_mouse_y = 0;

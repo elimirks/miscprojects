@@ -14,7 +14,7 @@ impl FpsCounter {
         FpsCounter {
             last_display_time: 0.0,
             last_tick_time: 0.0,
-            fps_history: [0.0; FPS_HISTORY_SIZE],
+            fps_history: [5.0; FPS_HISTORY_SIZE],
             fps_history_next: 0,
             display_text: String::new(),
         }
@@ -31,6 +31,10 @@ impl FpsCounter {
             self.last_display_time = t;
             let display_fps = average(&self.fps_history);
             self.display_text = format!("{:.0}", display_fps);
+
+            if display_fps < 1.0 {
+                panic!("FPS too low! Killing render...");
+            }
         }
 
         self.display_text.clone()
