@@ -75,28 +75,23 @@ int sierpienski_split_count(float x, float y, float orig_x, float orig_y, float 
     return min_splits;
 }
 
-vec3 palette[4] = {
-    vec3(0.0, 0.0, 0.0),
+vec3 palette[3] = {
     vec3(0.0, 0.0, 1.0),
     vec3(1.0, 0.0, 1.0),
-    vec3(1.0, 1.0, 0.0),
+    vec3(1.0, 0.5, 0.0),
 };
 int palette_size = 3;
 
 // Bounds: x from 0 to 1, y from 0 to 1
 // At what points should we colour in the triangle?
 vec3 fract_color(float x, float y) {
-    int splits = sierpienski_split_count(x, y, 0.0, 0.0, 0.7, 12);
+    int splits = sierpienski_split_count(x, y, 0.0, 0.0, 0.7, 7);
     if (splits == IN_SET_SPLIT_COUNT) {
         return vec3(1.0, 1.0, 1.0);
+    } else if (splits > 1000) {
+        return vec3(0.0, 0.0, 0.0);
     } else {
-        float v = pow(1.0 - (float(splits) / 10.0), 1.0);
-        float pal_coord = v * palette_size;
-
-        vec3 floor_col = palette[int(pal_coord)];
-        vec3 ceil_col  = palette[int(pal_coord) + 1];
-        float dist = pal_coord - floor(pal_coord);
-        return mix(floor_col, ceil_col, dist);
+        return palette[splits % palette_size];
     }
 }
 
