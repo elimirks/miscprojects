@@ -1,0 +1,43 @@
+@prefix : <http://elijah.mirecki.com/llm-foaf#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+:ElijahMirecki
+    a foaf:Person ;
+    foaf:name "Elijah Mirecki" ;
+    foaf:nick "Eli" ;
+    foaf:knows
+        :JoshuaWolfe ,
+        :BenjaminFranklin .
+
+:JoshuaWolfe
+    a foaf:Person ;
+    foaf:name "Joshua Wolfe" ;
+    foaf:nick "Wolniak" ;
+    foaf:knows
+        :ElijahMirecki .
+
+:BenjaminFranklin
+    a foaf:Person ;
+    foaf:name "Benjamin Franklin" ;
+    foaf:nick "Ben" ;
+    foaf:knows
+        :ElijahMirecki ,
+        :DeborahRead .
+
+:DeborahRead
+    a foaf:Person ;
+    foaf:name "Deborah Read" ;
+    foaf:knows
+        :BenjaminFranklin .
+
+:NikolaTesla
+    a foaf:Person ;
+    foaf:name "Nikola Tesla" ;
+    foaf:knows
+        :ThomasEdison .
+
+:ThomasEdison
+    a foaf:Person ;
+    foaf:name "Thomas Edison" ;
+    foaf:knows
+        :NikolaTesla .
