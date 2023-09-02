@@ -10,6 +10,7 @@ uniform int win_width = 1400;
 uniform float pan_x = 0.0;
 uniform float pan_y = 0.0;
 uniform float zoom = 100.0;
+uniform float curr_time = 0.0;
 
 // orig refers to the top of the triangle
 bool in_triangle(float x, float y, float orig_x, float orig_y, float height) {
@@ -86,12 +87,16 @@ int palette_size = 3;
 // At what points should we colour in the triangle?
 vec3 fract_color(float x, float y) {
     int splits = sierpienski_split_count(x, y, 0.0, 0.0, 0.7, 7);
+
     if (splits == IN_SET_SPLIT_COUNT) {
         return vec3(1.0, 1.0, 1.0);
     } else if (splits > 1000) {
         return vec3(0.0, 0.0, 0.0);
     } else {
-        return palette[splits % palette_size];
+        float speed = 2.381;
+        vec3 c = palette[splits % palette_size];
+        c.z = exp(- (curr_time * speed - floor(curr_time * speed)));
+        return c;
     }
 }
 

@@ -107,7 +107,7 @@ impl GlslRenderer {
         }
     }
 
-    pub fn render(&mut self, context: &RenderContext, pan_x: f32, pan_y: f32, zoom: f32) {
+    pub fn render(&mut self, context: &RenderContext, pan_x: f32, pan_y: f32, zoom: f32, curr_time: f32) {
         self.canvas.clear();
 
         self.set_uniform_i32("win_height", context.win_height as i32);
@@ -117,6 +117,7 @@ impl GlslRenderer {
         self.set_uniform_f32("pan_y", pan_y);
 
         self.set_uniform_f32("zoom", zoom);
+        self.set_uniform_f32("curr_time", curr_time);
 
         unsafe {
             gl::UseProgram(self.program_id);
