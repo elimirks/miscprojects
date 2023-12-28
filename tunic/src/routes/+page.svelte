@@ -1,58 +1,6 @@
 <script lang="ts">
     import Word from "./Word.svelte";
-
-    const flip: number = 0b0000000000000001;
-    const consonants: number[] = [
-        0b0000000000100100,
-        0b0100000000100100,
-        0b0101100100110100,
-        0b0000100100010000,
-        0b0001000100000100,
-        0b0100100100010000,
-
-        0b0001000100100100,
-        0b0001100100000100,
-        0b0000100100010100,
-        0b0001000100100000,
-        0b0100000100010000,
-        0b0000100100110000,
-
-        0b0101000100000100,
-        0b0101100100010000,
-        0b0001000100110100,
-        0b0001100100110000,
-        0b0101000100010100,
-        0b0100100100110100,
-
-        0b0101100100100100,
-        0b0001000100010100,
-        0b0001100100010000,
-        0b0101000100010000,
-        0b0100100000000000,
-        0b0001000100010000,
-    ];
-    const vowels: number[] = [
-        0b1010010000000000,
-        0b1010000000000000,
-        0b0000000001001000,
-        0b1000000011001000,
-        0b1000000011000000,
-        0b0010010000000000,
-
-        0b1010000011001000,
-        0b1010010011000000,
-        0b1000010011001000,
-        0b1010010010001000,
-        0b0010010001001000,
-        0b1010000010001000,
-
-        0b0010000000000000,
-        0b0000010000000000,
-        0b0000000001000000,
-        0b0000000000001000,
-        0b1010010011001000,
-        0b1000000010001000,
-    ];
+    import { vowels, consonants, flip } from "$lib";
 </script>
 <h1>Tunic Dictionary</h1>
 <p>About the script: The top is 8 stroks, and the bottom is 8 strokes. Each word seems to be connected with a single horizontal line (like mongolian script). Question: Are the top and bottom mirrored? Near the end of the manual, it hints that stroke groups could be combined in a single character. A set of outside and internal edges can be combined, as shown in page 54 (and elsewhere). I looked up a hint: They're consonant-vowel combinations, and a circle at the bottom means to flip the pronunciation of the vowel and consonants.</p>
