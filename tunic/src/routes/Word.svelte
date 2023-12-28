@@ -158,3 +158,8 @@
         {/if}
     {/each}
 </svg>
+<style>
+    svg {
+        display: block;
+    }
+</style>
