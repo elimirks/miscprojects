@@ -80,9 +80,15 @@
     }
 
     function charColor(c: number): string {
-        const con = consonantMapping.get(extractConsonant(c));
-        const vow = consonantMapping.get(extractConsonant(c));
-        if (con == undefined || vow == undefined) {
+        const con = extractConsonant(c);
+        const vow = extractVowel(c);
+        const conSound = consonantMapping.get(con);
+        const vowSound = vowelMapping.get(vow);
+
+        if (con != 0 && conSound == undefined) {
+            return "red";
+        }
+        if (vow != 0 && vowSound == undefined) {
             return "red";
         }
         return "black";
