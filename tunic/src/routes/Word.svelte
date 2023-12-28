@@ -3,7 +3,7 @@
 
     const textHeight = 20;
     const padding = 5.0;
-    const charWidth = 40.0;
+    const charWidth = 45.0;
     const charHeight = 80.0;
     // Bitmasks of 16 bits each
     export let chars: number[] = [];
@@ -26,10 +26,127 @@
         certainty: Certainty.Definite,
         text: "th",
     });
-    let vowelMapping: Map<number, Sound> = new Map();
-    vowelMapping.set(vowels[5], {
+    // Found in "shield". All other phonemes are known, so it must be "l"
+    consonantMapping.set(consonants[23], {
+        certainty: Certainty.Definite,
+        text: "l",
+    });
+    // Found in "shield", "cards"
+    consonantMapping.set(consonants[6], {
+        certainty: Certainty.Definite,
+        text: "d",
+    });
+    // Found in "shield", "shore"
+    consonantMapping.set(consonants[17], {
+        certainty: Certainty.Definite,
+        text: "sh",
+    });
+    // Found in "key" and "cards" (?)
+    consonantMapping.set(consonants[7], {
+        certainty: Certainty.Definite,
+        text: "k",
+    });
+    // Found in "cards" (?) and "wells" (?)
+    // Hard s or z
+    consonantMapping.set(consonants[16], {
+        certainty: Certainty.Suggested,
+        text: "z",
+    });
+    // Found in "west", "wells" (?), possible "when" on page 20, cyan peril ring
+    consonantMapping.set(consonants[22], {
+        certainty: Certainty.Suggested,
+        text: "w",
+    });
+    // Found in "east", "south"
+    // Soft s
+    consonantMapping.set(consonants[15], {
+        certainty: Certainty.Definite,
+        text: "s",
+    });
+    // Found in "north", "button" (?)
+    consonantMapping.set(consonants[1], {
+        certainty: Certainty.Definite,
+        text: "n",
+    });
+    // Found in "light", "lost"
+    consonantMapping.set(consonants[5], {
+        certainty: Certainty.Definite,
+        text: "t",
+    });
+    // Found in "controls"
+    consonantMapping.set(consonants[20], {
+        certainty: Certainty.Suggested,
+        text: "r",
+    });
+    // Found in "move", "item"
+    consonantMapping.set(consonants[0], {
+        certainty: Certainty.Definite,
+        text: "m",
+    });
+    // Found in "move" (?)
+    consonantMapping.set(consonants[12], {
+        certainty: Certainty.Suggested,
+        text: "v",
+    });
+    // Found in "potion"
+    consonantMapping.set(consonants[3], {
+        certainty: Certainty.Suggested,
+        text: "p",
+    });
+    // Found in "use", "you"
+    consonantMapping.set(consonants[21], {
+        certainty: Certainty.Suggested,
+        text: "y",
+    });
+    // Found in "focus", "far"
+    consonantMapping.set(consonants[11], {
         certainty: Certainty.Likely,
+        text: "f",
+    });
+    let vowelMapping: Map<number, Sound> = new Map();
+    // Found in "the" and "a", potion
+    vowelMapping.set(vowels[5], {
+        certainty: Certainty.Definite,
         text: "ə",
+    });
+    // Same sound in "key", "east", "shield". Pretty likely.
+    vowelMapping.set(vowels[6], {
+        certainty: Certainty.Definite,
+        text: "ee",
+    });
+    // Soft e, found in "west", "wells" (?), possibly "when" on page 20, cyan peril ring
+    vowelMapping.set(vowels[3], {
+        certainty: Certainty.Likely,
+        text: "e",
+    });
+    // As in "car", or "are"
+    vowelMapping.set(vowels[10], {
+        certainty: Certainty.Definite,
+        text: "ar",
+    });
+    // As in "shore" or "north"
+    vowelMapping.set(vowels[11], {
+        certainty: Certainty.Definite,
+        text: "or",
+    });
+    // As in "light", "eye"
+    vowelMapping.set(vowels[13], {
+        certainty: Certainty.Suggested,
+        text: "ai",
+    });
+    vowelMapping.set(vowels[1], {
+        certainty: Certainty.Suggested,
+        text: "aw",
+    });
+    // As in "contrOls", "awl"
+    vowelMapping.set(vowels[16], {
+        certainty: Certainty.Suggested,
+        text: "o",
+    });
+    // As in "to the far shore" (teleporter on page 11), "you", "move"
+    vowelMapping.set(vowels[7], {
+        certainty: Certainty.Definite,
+        text: "oo",
     });
 
     function extractVowel(c: number): number {
@@ -91,6 +208,13 @@
         if (vow != 0 && vowSound == undefined) {
             return "red";
         }
+        if (conSound != undefined && conSound.certainty != Certainty.Definite) {
+            return "orange";
+        }
+        if (vowSound != undefined && vowSound.certainty != Certainty.Definite) {
+            return "orange";
+        }
+
         return "black";
     }
 </script>
@@ -247,5 +371,3 @@
         <text fill={charColor(char)} font-family="Helvetica" stroke-width="0.3" x={padding + charWidth * i} y={charHeight + padding * 2 + 10}>{charText(char)}</text>
     {/each}
 </svg>
-<style>
-</style>

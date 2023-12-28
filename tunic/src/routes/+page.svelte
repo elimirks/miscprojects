@@ -31,7 +31,8 @@ Take a vowel sound, take a consonant sound, and glue 'em together. Add a circle 
 consonants[12] + vowels[2],
 consonants[8] + vowels[8],
 ]} />
-<p>"Cards" (maybe), page 51, page 20</p>
+<p><b>Cards</b></p>
+<p>Page 51, page 20. Similar first sound to "key", combined with "ar".</p>
 <Word chars={[
 consonants[7] + vowels[10],
 consonants[6],
@@ -68,7 +69,8 @@ consonants[14] + vowels[5],
 vowels[5]
 ]} />
 
-<p>I assumed this was "an" since it's similar to "a", but it occurs before "the" on page 21.</p>
+<p><b>are</b></p>
+<p>Occurs in "cards" as well as by itself. On page 21 it appears before "the", so "are" makes sens.</p>
 <Word chars={[
 vowels[10]
 ]} />
@@ -88,20 +90,168 @@ consonants[5] + vowels[2],
 consonants[1],
 ]} />
 
-<p>After "a" on pages 17 and 10, when talking about keys. Could be "door" or "key", should be a noun.</p>
+<p><b>Key</b></p>
+<p>After "a" on pages 17 and 10, when talking about keys. We know the "k" sound from "cards" and "ee" from East.</p>
 <Word chars={[
 consonants[7] + vowels[6],
 ]} />
 
-<p>On pages 17 and 10, when talking about keys. Could be "door" or "key". At the beginning of phrases, so could be something else too.</p>
+<p>On pages 17 and 10, when talking about keys. At the beginning of phrases.</p>
 <Word chars={[
 consonants[21] + vowels[7],
 ]} />
 
-<p><b>Shield</b></p>
+<p>Page 41 title, also used on page 42 for at alternate phrase for "ghost"</p>
+<p>Word 1:</p>
+<Word chars={[
+consonants[11] + vowels[10],
+]} />
+<p>Word 2:</p>
+<Word chars={[
+consonants[17] + vowels[11],
+]} />
+
+<p>On page 41 it's after "the":</p>
+
+The
+<Word chars={[
+consonants[11] + vowels[10],
+]} />
+<Word chars={[
+consonants[17] + vowels[11],
+]} />
+
+<p>On page 42 it's after something else. In total, it's another word for "ghost"</p>
+<Word chars={[
+consonants[1] + vowels[2] + flip,
+]} />
+<Word chars={[
+consonants[11] + vowels[10],
+]} />
+<Word chars={[
+consonants[17] + vowels[11],
+]} />
+
+<p>On page 10, beside the old house checkbox and key:</p>
+<p>Probably "you will need a key"</p>
+<Word chars={[
+consonants[21] + vowels[7],
+]} />
+<Word chars={[
+consonants[22] + vowels[2],
+consonants[23],
+]} />
+<Word chars={[
+consonants[1] + vowels[6],
+consonants[6],
+]} />
+<Word chars={[
+vowels[5],
+]} />
+<Word chars={[
+consonants[7] + vowels[6],
+]} />
+
+<p>On page 10, beside the dark tomb checkbox and lantern icon:</p>
+<Word chars={[
+consonants[6] + vowels[10],
+consonants[7],
+]} />
+!
+<Word chars={[
+consonants[1] + vowels[6],
+consonants[6],
+]} />
+<Word chars={[
+vowels[5],
+]} />
+<Word chars={[
+consonants[23] + vowels[13],
+consonants[5],
+]} />
+
+<p>On page 10, speech bubble referring to the overworld map page:</p>
+<Word chars={[
+consonants[23] + vowels[1],
+consonants[15],
+consonants[5],
+]} />
+?
+<Word chars={[
+consonants[15] + vowels[6],
+]} />
+p. 28
+<h3>Page 11</h3>
+<p>A phrase pointing to the yellow teleporter square:</p>
+
+<Word chars={[
+consonants[15],
+consonants[5],
+consonants[20] + vowels[12],
+consonants[1],
+consonants[9],
+]} />
+<Word chars={[
+consonants[8] + vowels[12],
+consonants[5],
+]} />
+<Word chars={[
+consonants[5] + vowels[7],
+]} />
+<Word chars={[
+consonants[14] + vowels[5],
+]} />
+<Word chars={[
+consonants[11] + vowels[10],
+]} />
+<Word chars={[
+consonants[17] + vowels[11],
+]} />
+<h3>Page 12</h3>
+<p>The controls page, the title is:</p>
+<Word chars={[
+consonants[7] + vowels[5],
+consonants[1],
+consonants[5],
+consonants[20] + vowels[16],
+consonants[23],
+consonants[16],
+]} />
+
 <p>On pages 14 and 29, when talking about blocking. Could be "block" or "shield". But it's after "a" on page 29, so "a shield" fits better than "a block". It's also the word beside the shield icon on page 12.</p>
 <Word chars={[
 consonants[17] + vowels[6],
 consonants[23],
 consonants[6],
+]} />
+
+<p>Pointing to the movement joystick:</p>
+<Word chars={[
+consonants[0] + vowels[7],
+consonants[12],
+]} />
+
+<p>Health potion icon:</p>
+<Word chars={[
+consonants[3] + vowels[16],
+consonants[17] + vowels[5],
+consonants[1],
+]} />
+
+<p>Sword / item slot icons:</p>
+<Word chars={[
+consonants[21] + vowels[7],
+consonants[16],
+]} />
+<Word chars={[
+consonants[5] + vowels[13] + flip,
+consonants[0] + vowels[3] + flip,
+]} />
+
+<p>Pointing to left trigger (lock button):</p>
+<p>On page 13, it talks about LT as the "focus" button</p>
+<Word chars={[
+consonants[11] + vowels[16],
+consonants[7] + vowels[5],
+consonants[15],
 ]} />
