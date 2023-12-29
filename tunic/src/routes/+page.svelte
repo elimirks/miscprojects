@@ -255,3 +255,142 @@ consonants[11] + vowels[16],
 consonants[7] + vowels[5],
 consonants[15],
 ]} />
+
+<h3>Page 54</h3>
+<p>"For additional support & secrets"</p>
+
+<p>1.</p>
+<Word chars={[
+consonants[11] + vowels[13],
+consonants[1],
+consonants[6],
+]} />
+<Word chars={[
+consonants[15] + vowels[5],
+consonants[0],
+]} />
+<Word chars={[
+consonants[20] + vowels[17],
+]} />
+<Word chars={[
+consonants[8] + vowels[16],
+consonants[23],
+consonants[6] + vowels[2],
+consonants[1],
+]} />
+<Word chars={[
+consonants[15],
+consonants[5] + vowels[1],
+consonants[10] + vowels[7],
+consonants[16],
+]} />
+<p>2.</p>
+<Word chars={[
+consonants[5],
+consonants[20] + vowels[5],
+consonants[12] + vowels[8],
+consonants[15],
+]} />
+<Word chars={[
+consonants[14] + vowels[5],
+]} />
+<Word chars={[
+consonants[8],
+consonants[23] + vowels[16],
+]} />
+<Word chars={[
+consonants[5] + vowels[7],
+]} />
+<Word chars={[
+consonants[12] + vowels[2],
+consonants[16] + vowels[2],
+consonants[5],
+]} />
+12
+<Word chars={[
+consonants[15],
+consonants[5],
+consonants[20] + vowels[12],
+consonants[1],
+consonants[9],
+]} />
+<Word chars={[
+consonants[4] + vowels[6],
+consonants[2] + vowels[2] + flip,
+consonants[16],
+]} />
+
+<p>3.</p>
+"
+<Word chars={[
+consonants[1] + vowels[5] + flip,
+]} />
+<Word chars={[
+consonants[15] + vowels[2],
+consonants[2],
+]} />
+"
+
+<Word chars={[
+consonants[5] + vowels[7],
+]} />
+<Word chars={[
+consonants[14] + vowels[3],
+consonants[0],
+]} />
+<Word chars={[
+consonants[14] + vowels[5],
+]} />
+<Word chars={[
+consonants[8],
+consonants[20] + vowels[12],
+consonants[5] + vowels[2],
+consonants[15],
+consonants[5],
+]} />
+<Word chars={[
+consonants[15] + vowels[1],
+consonants[2],
+]} />
+,
+<Word chars={[
+consonants[14] + vowels[5],
+]} />
+<Word chars={[
+consonants[15] + vowels[1],
+consonants[2],
+]} />
+<Word chars={[
+consonants[12] + vowels[5] + flip,
+]} />
+<Word chars={[
+consonants[14] + vowels[5],
+]} />
+<Word chars={[
+consonants[8] + vowels[16],
+consonants[23],
+consonants[6] + vowels[2],
+consonants[1],
+]} />
+<Word chars={[
+consonants[3] + vowels[0],
+consonants[13],
+]} />
+,
+<Word chars={[
+consonants[16] + vowels[0] + flip,
+]} />
+<Word chars={[
+consonants[15] + vowels[6],
+consonants[1],
+]} />
+<Word chars={[
+consonants[11],
+consonants[20] + vowels[5],
+consonants[0],
+]} />
+<Word chars={[
+consonants[22] + vowels[2],
+consonants[13] + vowels[2],
+consonants[1],
+]} />

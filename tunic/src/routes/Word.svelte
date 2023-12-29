@@ -24,7 +24,11 @@
     let consonantMapping: Map<number, Sound> = new Map();
     consonantMapping.set(consonants[14], {
         certainty: Certainty.Definite,
-        text: "th",
+        text: "ð",
+    });
+    consonantMapping.set(consonants[13], {
+        certainty: Certainty.Definite,
+        text: "θ",
     });
     // Found in "shield". All other phonemes are known, so it must be "l"
     consonantMapping.set(consonants[23], {
@@ -98,10 +102,30 @@
         certainty: Certainty.Suggested,
         text: "y",
     });
-    // Found in "focus", "far"
+    // Found in "focus", "far", "find"
     consonantMapping.set(consonants[11], {
-        certainty: Certainty.Likely,
+        certainty: Certainty.Definite,
         text: "f",
+    });
+    // Found in "button"
+    consonantMapping.set(consonants[4], {
+        certainty: Certainty.Suggested,
+        text: "b",
+    });
+    // Soft ng, Found in "beings" (?)
+    consonantMapping.set(consonants[2], {
+        certainty: Certainty.Suggested,
+        text: "ng",
+    });
+    // Found in "golden" (?) page 54
+    consonantMapping.set(consonants[8], {
+        certainty: Certainty.Suggested,
+        text: "g",
+    });
+    // Found in "strange" (?)
+    consonantMapping.set(consonants[9], {
+        certainty: Certainty.Suggested,
+        text: "j",
     });
     let vowelMapping: Map<number, Sound> = new Map();
     // Found in "the" and "a", potion
@@ -147,6 +171,26 @@
     vowelMapping.set(vowels[7], {
         certainty: Certainty.Definite,
         text: "oo",
+    });
+    // As in "visit", "button", "will"
+    vowelMapping.set(vowels[2], {
+        certainty: Certainty.Suggested,
+        text: "ih",
+    });
+    // As in "vigOR", "travERse"
+    vowelMapping.set(vowels[8], {
+        certainty: Certainty.Suggested,
+        text: "er",
+    });
+    // Found in "strange" (?), "gate", "greatest"
+    vowelMapping.set(vowels[12], {
+        certainty: Certainty.Suggested,
+        text: "ay",
+    });
+    // Found in "as", "path"
+    vowelMapping.set(vowels[0], {
+        certainty: Certainty.Suggested,
+        text: "ah",
     });
 
     function extractVowel(c: number): number {
