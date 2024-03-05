@@ -2,8 +2,8 @@
     import Word from "./Word.svelte";
     import { vowels, consonants, flip } from "$lib";
 </script>
-<h1>Tunic Dictionary</h1>
-<p>About the script: The top is 8 stroks, and the bottom is 8 strokes. Each word seems to be connected with a single horizontal line (like mongolian script). Question: Are the top and bottom mirrored? Near the end of the manual, it hints that stroke groups could be combined in a single character. A set of outside and internal edges can be combined, as shown in page 54 (and elsewhere). I looked up a hint: They're consonant-vowel combinations, and a circle at the bottom means to flip the pronunciation of the vowel and consonants.</p>
+<h1>Tunic Decoding</h1>
+<p>About the script: Each word is connected with a single horizontal line (like Bengali script). Near the end of the manual, it hints that stroke groups could be combined in a single character. A set of outside and internal edges can be combined, as shown in page 54 (and elsewhere). Each character is formed from a vowel and/or consonant pair, similar to Korean script, to form a phoneme.</p>
 
 <h1>Character Construction</h1>
 Take a vowel sound, take a consonant sound, and glue 'em together. Add a circle at the bottom to flip the sound of the consonant and vowel (otherwise consonant comes first).
