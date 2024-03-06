@@ -22,19 +22,63 @@ fn decode_vint(bytes: &[u8]) -> (usize, usize) {
     (octet_count, vint)
 }
 
+const UNKNOWN_VINT_LEN: usize = 0xffffffffffffff;
+
+// TODO: Custom parser to more cleanly deal with all this matroska stuff
+
 fn main() -> AnyRes<()> {
     let file = File::open("test.webm")?;
+    // Useful guide:
+    // https://darkcoding.net/software/reading-mediarecorders-webm-opus-output/
     let bytes = file.bytes()
         .collect::<Result<Vec<_>, _>>()?;
     // Check for webm magic number
     assert!(bytes[0..4] == [0x1a, 0x45, 0xdf, 0xa3]);
     let (embl_len_size, embl_len) = decode_vint(&bytes[4..]);
-    println!("EMBL len: {}", embl_len);
     let matroska_header_index = 4 + embl_len_size + embl_len;
+    // Skip past the EMBL header to go to the Matroska header
     let matroska_start = &bytes[matroska_header_index..];
-    println!("{:02X?}", &matroska_start[0..4]);
-    //println!("SimpleBlock len: {}", simpleblock_len(matroska_start));
-    println!("Hello, world!");
+    // Expect a Matroska segment ID
+    // https://www.ietf.org/archive/id/draft-lhomme-cellar-matroska-04.txt
+    assert!(matroska_start[0..4] == [0x18, 0x53, 0x80, 0x67]);
+    let (segment_len_size, segment_len) = decode_vint(&matroska_start[4..]);
+    assert!(segment_len == UNKNOWN_VINT_LEN);
+    let after_segment = &matroska_start[4 + segment_len_size..];
+    // Expect segment info header
+    assert!(after_segment[0..4] == [0x15, 0x49, 0xa9, 0x66]);
+    let (segment_info_len_size, segment_info_len) = decode_vint(&after_segment[4..]);
+    let after_segment_info = &after_segment[4 + segment_info_len_size + segment_info_len..];
+    // Tracks header
+    assert!(after_segment_info[0..4] == [0x16, 0x54, 0xae, 0x6b]);
+    let (tracks_len_size, tracks_len) = decode_vint(&after_segment_info[4..]);
+    let after_tracks = &after_segment_info[4 + tracks_len_size + tracks_len..];
+    // Cluster header
+    assert!(after_tracks[0..4] == [0x1f, 0x43, 0xb6, 0x75]);
+    let (cluster_len_size, cluster_len) = decode_vint(&after_tracks[4..]);
+    assert!(cluster_len == UNKNOWN_VINT_LEN);
+    let after_cluster = &after_tracks[4 + cluster_len_size..];
+    // Timecode header. Expect to be at value 0 since we're at the start of the stream
+    assert!(after_cluster[0..3] == [0xe7, 0x81, 0x0]);
+    let after_timecode = &after_cluster[3..];
+
+    let mut current_bytes = after_timecode;
+
+    // Parse SimpleBlock elements
+    while current_bytes.len() != 0 && current_bytes[0] == 0xa3 {
+        println!("SimpleBlock header bytes: {:x?}", &current_bytes[0..16]);
+        let (simpleblock_len_size, simpleblock_len) = decode_vint(&current_bytes[1..]);
+        println!("SimpleBlock length: {}", simpleblock_len);
+        let simpleblock_flags = current_bytes[1 + simpleblock_len_size];
+        println!("flags: {:x}", simpleblock_flags);
+        let simpleblock_timecode = &current_bytes[1 + simpleblock_len_size + 1..1 + simpleblock_len_size + 3];
+        println!("timecode: {:x?}", simpleblock_timecode);
+        // let after_simpleblock = &current_bytes[1 + simpleblock_len + simpleblock_len_size..];
+        // println!("Next header bytes: {:x?}", &after_simpleblock[0..16]);
+        current_bytes = &current_bytes[1 + simpleblock_len + simpleblock_len_size..];
+    }
+    // Not a terrible issue... maybe warn instead of die?
+    assert!(current_bytes.len() == 0);
+    println!("{:x?}", current_bytes);
     Ok(())
 }
 
