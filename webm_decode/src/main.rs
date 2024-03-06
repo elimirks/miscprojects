@@ -9,143 +9,7 @@ pub type AnyRes<T> = anyhow::Result<T>;
 const BITRATE: i32 = 48_000;
 const UNKNOWN_VINT_LEN: usize = 0xffffffffffffff;
 
-struct ByteStream {
-    inner: Arc<Mutex<ByteStreamInner>>,
-}
-
-struct ByteStreamInner {
-    bytes: VecDeque<u8>,
-    is_closed: bool,
-}
-
-impl ByteStream {
-    fn new() -> Self {
-        ByteStream {
-            inner: Arc::new(Mutex::new(ByteStreamInner {
-                bytes: VecDeque::new(),
-                is_closed: false,
-            })),
-        }
-    }
-
-    fn enqueue_chunk(&self, chunk: Vec<u8>) -> AnyRes<()> {
-        let mut inner =
-            self.inner.lock().expect("Failed locking byte stream");
-        if inner.is_closed {
-            bail!("Tried queuing to ForwardingStream while it was closed");
-        }
-        inner.bytes.extend(chunk.iter());
-        Ok(())
-    }
-
-    fn dequeue_byte(&self) -> Option<u8> {
-        let mut inner =
-            self.inner.lock().expect("Failed locking byte stream");
-        inner.bytes.pop_front()
-    }
-
-    fn close(&self) {
-        let mut inner =
-            self.inner.lock().expect("Failed locking byte stream");
-        inner.is_closed = true;
-    }
-
-    fn is_closed(&self) -> bool {
-        let inner =
-            self.inner.lock().expect("Failed locking forwarding stream");
-        inner.is_closed
-    }
-
-    fn poll_next_n<const N: usize>(
-        &self,
-        _cx: &mut std::task::Context<'_>,
-    ) -> Poll<Option<[u8; N]>> {
-        let mut inner =
-            self.inner.lock().expect("Failed locking byte stream");
-        if inner.bytes.len() < N {
-            if inner.is_closed {
-                Poll::Ready(None)
-            } else {
-                Poll::Pending
-            }
-        } else {
-            let mut res = [0; N];
-            let mut i = 0;
-            while i < res.len() {
-                res[i] = inner.bytes.pop_front().unwrap();
-                i += 1;
-            }
-            Poll::Ready(Some(res))
-        }
-    }
-
-    fn try_dequeue_vint(&self) -> Option<usize> {
-        let mut inner =
-            self.inner.lock().expect("Failed locking byte stream");
-        if inner.bytes.is_empty() {
-            None
-        } else {
-            let octet_count = 1 + inner.bytes[0].leading_zeros() as usize;
-            if inner.bytes.len() < octet_count {
-                None
-            } else {
-                let mut octets: Vec<u8> = Vec::with_capacity(octet_count);
-                for _ in 0..octet_count {
-                    octets.push(inner.bytes.pop_front().unwrap());
-                }
-                let marker_pos = 8 - octets[0].leading_zeros() as u8;
-                if marker_pos != 0 {
-                    let anti_marker_mask = !(1 << (marker_pos - 1)) as u8;
-                    octets[0] &= anti_marker_mask;
-                }
-                let mut vint = 0;
-                for (i, &octet) in octets.iter().enumerate() {
-                    vint |= (octet as usize) << (8 * (octets.len() - i - 1));
-                }
-                Some(vint)
-            }
-        }
-    }
-/*
-fn decode_vint(bytes: &[u8]) -> (usize, usize) {
-    assert!(bytes.len() >= 1);
-    let octet_count = 1 + bytes[0].leading_zeros() as usize;
-    let mut octets: Vec<u8> = bytes[0..octet_count].iter().copied().collect();
-    let marker_pos = 8 - bytes[0].leading_zeros() as u8;
-    if marker_pos != 0 {
-        let anti_marker_mask = !(1 << (marker_pos - 1)) as u8;
-        octets[0] &= anti_marker_mask;
-    }
-    let mut vint = 0;
-    for (i, &octet) in octets.iter().enumerate() {
-        vint |= (octet as usize) << (8 * (octets.len() - i - 1));
-    }
-    (octet_count, vint)
-}
-*/
-}
-
-impl Stream for ByteStream {
-    type Item = u8;
-
-    fn poll_next(
-        self: Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
-        let maybe_byte = self.dequeue_byte();
-        if let Some(byte) = maybe_byte {
-            Poll::Ready(Some(byte))
-        } else {
-            if self.is_closed() {
-                Poll::Ready(None)
-            } else {
-                Poll::Pending
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum EmblElement {
     WebmHeader,
     Segment,
@@ -241,11 +105,73 @@ impl EmblStreamInner {
                 )
             }
             Some(0xa3) => {
-                todo!("Implement reading the SimpleBlock into a new vec")
+                self.try_reading_simpleblock()
             }
             Some(_) => {
                 Some(EmblElement::Unexpected)
             },
+            None => None
+        }
+    }
+
+    /// Returns:
+    /// - Some((true, element_offset, element_len)) if it peeked successfully
+    /// - Some((false, 0, 0)) if it wasn't the expected header
+    /// - None if the data isn't available yet (for the entire element)
+    fn peek_element(&mut self, id: &[u8]) -> Option<(bool, usize, usize)> {
+        if self.bytes.len() < id.len() {
+            return None;
+        }
+        for i in 0..id.len() {
+            if self.bytes.get(i) != Some(&id[i]) {
+                return Some((false, 0, 0));
+            }
+        }
+        let offset = id.len();
+        // vint decoding for element size
+        let Some(first_octet) = self.bytes.get(offset) else {
+            return None;
+        };
+        let octet_count = 1 + first_octet.leading_zeros() as usize;
+        let mut octets = [0; 8];
+        for i in 0..octet_count {
+            if let Some(&octet) = self.bytes.get(offset + i) {
+                octets[i] = octet;
+            } else {
+                return None;
+            }
+        }
+        let marker_pos = 8 - octets[0].leading_zeros() as u8;
+        if marker_pos != 0 {
+            let anti_marker_mask = !(1 << (marker_pos - 1)) as u8;
+            octets[0] &= anti_marker_mask;
+        }
+        let mut element_size = 0;
+        for i in 0..octet_count {
+            element_size |= (octets[i] as usize) << (8 * (octet_count - i - 1));
+        }
+        let element_offset = offset + octet_count;
+        if element_size != UNKNOWN_VINT_LEN && element_offset + element_size > self.bytes.len() {
+            None
+        } else {
+            Some((true, element_offset, element_size))
+        }
+    }
+
+    fn try_reading_simpleblock(&mut self) -> Option<EmblElement> {
+        match self.peek_element(&[0xa3]) {
+            Some((true, element_offset, element_size)) => {
+                if element_size == UNKNOWN_VINT_LEN {
+                    Some(EmblElement::Unexpected)
+                } else {
+                    let _ = self.bytes.drain(0..element_offset);
+                    let data = self.bytes.drain(0..element_size).collect();
+                    Some(EmblElement::SimpleBlock {
+                        data,
+                    })
+                }
+            },
+            Some((false, _, _)) => Some(EmblElement::Unexpected),
             None => None
         }
     }
@@ -259,6 +185,19 @@ impl EmblStreamInner {
         element: EmblElement,
         id: &[u8],
     ) -> Option<EmblElement> {
+        return match self.peek_element(id) {
+            Some((true, element_offset, element_size)) => {
+                let _ = self.bytes.drain(0..element_offset);
+                if element_size != UNKNOWN_VINT_LEN {
+                    let _ = self.bytes.drain(0..element_size);
+                }
+                Some(element)
+            },
+            Some((false, _, _)) => Some(EmblElement::Unexpected),
+            None => None
+        };
+
+
         if self.bytes.len() < id.len() {
             return None;
         }
@@ -291,9 +230,9 @@ impl EmblStreamInner {
             element_size |= (octets[i] as usize) << (8 * (octet_count - i - 1));
         }
         if element_size == UNKNOWN_VINT_LEN {
-            self.bytes.drain(0..id.len() + octet_count);
+            self.bytes.drain(0..offset + octet_count);
         } else {
-            self.bytes.drain(0..id.len() + octet_count + element_size);
+            self.bytes.drain(0..offset + octet_count + element_size);
         }
         Some(element)
     }
@@ -311,6 +250,9 @@ impl Stream for EmblStream {
             Poll::Ready(Some(element))
         } else {
             if inner.is_closed {
+                // TODO: warn, some junk data at the end.
+                // if !inner.bytes.is_empty() {
+                // }
                 Poll::Ready(None)
             } else {
                 Poll::Pending
@@ -413,15 +355,13 @@ async fn main() -> AnyRes<()> {
     let mut embl_stream = EmblStream::new();
     embl_stream.enqueue_chunk(bytes)?;
     embl_stream.close();
-    println!("{:?}", embl_stream.next().await);
-    println!("{:?}", embl_stream.next().await);
-    println!("{:?}", embl_stream.next().await);
-    println!("{:?}", embl_stream.next().await);
-    println!("{:?}", embl_stream.next().await);
-    println!("{:?}", embl_stream.next().await);
-    println!("{:?}", embl_stream.next().await);
-    println!("{:?}", embl_stream.next().await);
-    println!("{:?}", embl_stream.next().await);
+
+    while let Some(element) = embl_stream.next().await {
+        if element == EmblElement::Unexpected {
+            break;
+        }
+        println!("{element:?}");
+    }
 
     // let mut counter = 0;
     // while let Some(_) = embl_stream.next().await {
