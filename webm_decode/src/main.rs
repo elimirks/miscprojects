@@ -20,7 +20,9 @@ enum EmblElement {
     SimpleBlock {
         data: Vec<u8>,
     },
-    Unexpected,
+    Unexpected {
+        data: Vec<u8>,
+    },
 }
 
 struct EmblStream {
@@ -108,7 +110,8 @@ impl EmblStreamInner {
                 self.try_reading_simpleblock()
             }
             Some(_) => {
-                Some(EmblElement::Unexpected)
+                self.bytes.make_contiguous();
+                Some(self.unexpected_elem())
             },
             None => None
         }
@@ -158,11 +161,17 @@ impl EmblStreamInner {
         }
     }
 
+    fn unexpected_elem(&self) -> EmblElement {
+        EmblElement::Unexpected {
+            data: self.bytes.iter().take(16).cloned().collect::<Vec<_>>(),
+        }
+    }
+
     fn try_reading_simpleblock(&mut self) -> Option<EmblElement> {
         match self.peek_element(&[0xa3]) {
             Some((true, element_offset, element_size)) => {
                 if element_size == UNKNOWN_VINT_LEN {
-                    Some(EmblElement::Unexpected)
+                    Some(self.unexpected_elem())
                 } else {
                     let _ = self.bytes.drain(0..element_offset);
                     let data = self.bytes.drain(0..element_size).collect();
@@ -171,7 +180,7 @@ impl EmblStreamInner {
                     })
                 }
             },
-            Some((false, _, _)) => Some(EmblElement::Unexpected),
+            Some((false, _, _)) => Some(self.unexpected_elem()),
             None => None
         }
     }
@@ -193,7 +202,7 @@ impl EmblStreamInner {
                 }
                 Some(element)
             },
-            Some((false, _, _)) => Some(EmblElement::Unexpected),
+            Some((false, _, _)) => Some(self.unexpected_elem()),
             None => None
         };
 
@@ -203,7 +212,7 @@ impl EmblStreamInner {
         }
         for i in 0..id.len() {
             if self.bytes.get(i) != Some(&id[i]) {
-                return Some(EmblElement::Unexpected);
+                return Some(self.unexpected_elem());
             }
         }
         let offset = id.len();
@@ -356,8 +365,10 @@ async fn main() -> AnyRes<()> {
     embl_stream.enqueue_chunk(bytes)?;
     embl_stream.close();
 
+    // TODO: waker when adding new data to the queue
+
     while let Some(element) = embl_stream.next().await {
-        if element == EmblElement::Unexpected {
+        if matches!(element, EmblElement::Unexpected { .. }) {
             break;
         }
         println!("{element:?}");
