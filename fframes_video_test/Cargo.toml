@@ -1,0 +1,10 @@
+[package]
+name = "fframes_video_test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.93"
+# ffmpeg-next = "7.1.0"
+gstreamer = "0.23.3"
+itertools = "0.13.0"
