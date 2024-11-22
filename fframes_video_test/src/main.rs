@@ -1,4 +1,5 @@
 use std::ops::DerefMut;
+use std::sync::{Arc, Mutex};
 use std::thread::sleep_ms;
 
 // https://gitlab.freedesktop.org/gstreamer/gstreamer-rs/-/tree/main/tutorials/src
@@ -34,19 +35,40 @@ fn create_demux_bin(
     let stream_sync = ElementFactory::make("streamsynchronizer")
         .build()?;
 
+    // Queues are necessary in case the durations are slightly different
+    let video_queue = ElementFactory::make("queue").build()?;
+    let audio_queue = ElementFactory::make("queue").build()?;
+
     bin.add_many([
         &video_source,
         &audio_source,
         &video_demuxer,
         &audio_demuxer,
         &stream_sync,
+        &video_queue,
+        &audio_queue,
     ])?;
 
     video_source.link(&video_demuxer)?;
     audio_source.link(&audio_demuxer)?;
 
+    let video_sync_sink = stream_sync
+        .request_pad_simple("sink_0")
+        .context("failed creating stream sync sink")?;
+    let audio_sync_sink = stream_sync
+        .request_pad_simple("sink_1")
+        .context("failed creating stream sync sink")?;
+
+    let video_sync_src = stream_sync
+        .static_pad("src_0")
+        .context("failed getting stream sync src")?;
+    let audio_sync_src = stream_sync
+        .static_pad("src_1")
+        .context("failed getting stream sync src")?;
+
     // Ensure the group IDs of the video & audio data are the same, so that
     // stream synchronizers won't deadlock
+    let audio_sync_src_clone = audio_sync_src.clone();
     let group_id = gst::GroupId::next();
     let set_group_id_probe = move |pad: &gst::Pad, probe_info: &mut gst::PadProbeInfo| {
         let Some(event) = probe_info.event_mut() else {
@@ -67,20 +89,6 @@ fn create_demux_bin(
         gst::PadProbeReturn::Ok
     };
 
-    let video_sync_sink = stream_sync
-        .request_pad_simple("sink_0")
-        .context("failed creating stream sync sink")?;
-    let audio_sync_sink = stream_sync
-        .request_pad_simple("sink_1")
-        .context("failed creating stream sync sink")?;
-
-    let video_sync_src = stream_sync
-        .static_pad("src_0")
-        .context("failed getting stream sync src")?;
-    let audio_sync_src = stream_sync
-        .static_pad("src_1")
-        .context("failed getting stream sync src")?;
-
     video_demuxer.connect_pad_added(move |demuxer, pad| {
         if pad.name().starts_with("video") {
             // demuxer.send_event(event) TODO: in case of errors
@@ -100,17 +108,42 @@ fn create_demux_bin(
         }
     });
 
-    video_ghost_pad.set_target(Some(&video_sync_src))?;
-    audio_ghost_pad.set_target(Some(&audio_sync_src))?;
+    video_sync_src.link(&video_queue.static_pad("sink").unwrap())?;
+    audio_sync_src.link(&audio_queue.static_pad("sink").unwrap())?;
+
+    video_ghost_pad.set_target(Some(&video_queue.static_pad("src").unwrap()))?;
+    audio_ghost_pad.set_target(Some(&audio_queue.static_pad("src").unwrap()))?;
 
     Ok(bin)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     gst::init()?;
-    if let Err(err) = test_demux_bin_then_mux() {
+    if let Err(err) = test_glue() {
         eprintln!("Error: {:?}", err);
     }
+    Ok(())
+}
+
+fn run_pipeline(pipeline: &gst::Pipeline) -> AnyRes<()> {
+    let bus = pipeline.bus().context("no bus")?;
+    pipeline.set_state(State::Playing)?;
+
+    for msg in bus.iter_timed(gst::ClockTime::NONE) {
+        println!("{}", pretty_fmt_message(&msg.view())?);
+
+        use gst::MessageView;
+
+        match msg.view() {
+            MessageView::Eos(..) => break,
+            MessageView::Error(err) => {
+                println!("err: {}", err.to_string());
+                return Ok(());
+            }
+            _ => {}
+        }
+    }
+    pipeline.set_state(State::Null)?;
     Ok(())
 }
 
@@ -134,26 +167,7 @@ fn test_demux_bin_fakesink() -> AnyRes<()> {
     demux_bin.link_pads(Some("audio"), &fake_sink_0, None)?;
     demux_bin.link_pads(Some("video"), &fake_sink_1, None)?;
 
-    let bus = pipeline.bus().context("no bus")?;
-    pipeline.set_state(State::Playing)?;
-
-    for msg in bus.iter_timed(gst::ClockTime::NONE) {
-        println!("{}", pretty_fmt_message(&msg.view())?);
-
-        use gst::MessageView;
-
-        match msg.view() {
-            MessageView::Eos(..) => break,
-            MessageView::Error(err) => {
-                println!("err: {}", err.to_string());
-                return Ok(());
-            }
-            _ => {}
-        }
-    }
-    pipeline.set_state(State::Null)?;
-
-    Ok(())
+    run_pipeline(&pipeline)
 }
 
 fn test_demux_bin_then_mux() -> AnyRes<()> {
@@ -166,44 +180,106 @@ fn test_demux_bin_then_mux() -> AnyRes<()> {
             .build()?,
     )?;
 
-    let fake_sink = ElementFactory::make("fakesink").build()?;
     let mux = ElementFactory::make("webmmux").build()?;
     let file_sink = ElementFactory::make("filesink")
         .property("location", "../output.webm")
         .build()?;
 
     let pipeline = gst::Pipeline::default();
-    pipeline.add_many([&fake_sink, &mux, &file_sink])?;
+    pipeline.add_many([&mux, &file_sink])?;
     pipeline.add_many([&demux_bin])?;
 
-    // FIXME: One or the other works, but not both together...
-    // Why!?
-    // Maybe a frame rate mismatch or something
-    // Try out `audiorate` and `videorate` filters
     demux_bin.link_pads(Some("audio"), &mux, Some("audio_0"))?;
-    demux_bin.link_pads(Some("video"), &fake_sink, None)?;
+    demux_bin.link_pads(Some("video"), &mux, Some("video_0"))?;
     mux.link(&file_sink)?;
 
-    let bus = pipeline.bus().context("no bus")?;
-    pipeline.set_state(State::Playing)?;
+    run_pipeline(&pipeline)
+}
 
-    for msg in bus.iter_timed(gst::ClockTime::NONE) {
-        println!("{}", pretty_fmt_message(&msg.view())?);
+fn test_demux_concat() -> AnyRes<()> {
+    let demux_bin_1 = create_demux_bin(
+        ElementFactory::make("filesrc")
+            .property("location", "data/video_244ef87e-000a-47f6-9a49-04f4fa93f8f2.vp9.webm")
+            .build()?,
+        ElementFactory::make("filesrc")
+            .property("location", "data/audio_244ef87e-000a-47f6-9a49-04f4fa93f8f2.opus.webm")
+            .build()?,
+    )?;
 
-        use gst::MessageView;
+    let demux_bin_2 = create_demux_bin(
+        ElementFactory::make("filesrc")
+            .property("location", "data/video_604370e8-3cac-4633-b11a-d539f4f537d1.vp9.webm")
+            .build()?,
+        ElementFactory::make("filesrc")
+            .property("location", "data/audio_604370e8-3cac-4633-b11a-d539f4f537d1.opus.webm")
+            .build()?,
+    )?;
 
-        match msg.view() {
-            MessageView::Eos(..) => break,
-            MessageView::Error(err) => {
-                println!("err: {}", err.to_string());
-                return Ok(());
-            }
-            _ => {}
-        }
-    }
-    pipeline.set_state(State::Null)?;
+    let fake_sink_0 = ElementFactory::make("fakesink").build()?;
+    let fake_sink_1 = ElementFactory::make("fakesink").build()?;
 
-    Ok(())
+    let video_concat = ElementFactory::make("concat").build()?;
+    let audio_concat = ElementFactory::make("concat").build()?;
+
+    let pipeline = gst::Pipeline::default();
+    pipeline.add_many([&demux_bin_1, &demux_bin_2])?;
+    pipeline.add_many([&fake_sink_0, &fake_sink_1, &video_concat, &audio_concat])?;
+
+    demux_bin_1.link_pads(Some("audio"), &audio_concat, Some("sink_0"))?;
+    demux_bin_2.link_pads(Some("audio"), &audio_concat, Some("sink_1"))?;
+
+    demux_bin_1.link_pads(Some("video"), &video_concat, Some("sink_0"))?;
+    demux_bin_2.link_pads(Some("video"), &video_concat, Some("sink_1"))?;
+
+    video_concat.link(&fake_sink_0)?;
+    audio_concat.link(&fake_sink_1)?;
+
+    run_pipeline(&pipeline)
+}
+
+fn test_glue() -> AnyRes<()> {
+    let demux_bin_1 = create_demux_bin(
+        ElementFactory::make("filesrc")
+            .property("location", "data/video_244ef87e-000a-47f6-9a49-04f4fa93f8f2.vp9.webm")
+            .build()?,
+        ElementFactory::make("filesrc")
+            .property("location", "data/audio_244ef87e-000a-47f6-9a49-04f4fa93f8f2.opus.webm")
+            .build()?,
+    )?;
+
+    let demux_bin_2 = create_demux_bin(
+        ElementFactory::make("filesrc")
+            .property("location", "data/video_604370e8-3cac-4633-b11a-d539f4f537d1.vp9.webm")
+            .build()?,
+        ElementFactory::make("filesrc")
+            .property("location", "data/audio_604370e8-3cac-4633-b11a-d539f4f537d1.opus.webm")
+            .build()?,
+    )?;
+
+    let file_sink = ElementFactory::make("filesink")
+        .property("location", "../output.webm")
+        .build()?;
+    let mux = ElementFactory::make("webmmux").build()?;
+
+    let video_concat = ElementFactory::make("concat").build()?;
+    let audio_concat = ElementFactory::make("concat").build()?;
+
+    let pipeline = gst::Pipeline::default();
+    pipeline.add_many([&demux_bin_1, &demux_bin_2])?;
+    pipeline.add_many([&mux, &file_sink, &audio_concat, &video_concat])?;
+
+    demux_bin_1.link_pads(Some("audio"), &audio_concat, Some("sink_0"))?;
+    demux_bin_2.link_pads(Some("audio"), &audio_concat, Some("sink_1"))?;
+
+    demux_bin_1.link_pads(Some("video"), &video_concat, Some("sink_0"))?;
+    demux_bin_2.link_pads(Some("video"), &video_concat, Some("sink_1"))?;
+
+    video_concat.link_pads(None, &mux, Some("video_0"))?;
+    audio_concat.link_pads(None, &mux, Some("audio_0"))?;
+
+    mux.link(&file_sink)?;
+
+    run_pipeline(&pipeline)
 }
 
 fn glue() -> AnyRes<()> {
@@ -260,31 +336,7 @@ fn glue() -> AnyRes<()> {
     // TODO: Figure out why this mux is pausing
     mux.link(&file_sink)?;
 
-    let bus = pipeline.bus().context("no bus")?;
-
-    println!("{}", pipeline.debug_to_dot_data(gst::DebugGraphDetails::ALL));
-    pipeline.set_state(State::Playing)?;
-    println!("Start!");
-    for msg in bus.iter_timed(gst::ClockTime::NONE) {
-        println!("{}", pretty_fmt_message(&msg.view())?);
-
-        use gst::MessageView;
-
-        match msg.view() {
-            MessageView::Eos(..) => break,
-            MessageView::Error(err) => {
-                println!("err: {}", err.to_string());
-                return Ok(());
-            }
-            _ => {}
-        }
-    }
-    //sleep_ms(10000);
-    // println!("{}", pipeline.debug_to_dot_data(gst::DebugGraphDetails::ALL));
-    // println!("Done?");
-    pipeline.set_state(State::Null)?;
-
-    Ok(())
+    run_pipeline(&pipeline)
 }
 
 fn pretty_fmt_state(state: &State) -> &'static str {
