@@ -170,170 +170,47 @@ fn test_demux_bin_fakesink() -> AnyRes<()> {
     run_pipeline(&pipeline)
 }
 
-fn test_demux_bin_then_mux() -> AnyRes<()> {
-    let demux_bin = create_demux_bin(
-        ElementFactory::make("filesrc")
-            .property("location", "data/video_244ef87e-000a-47f6-9a49-04f4fa93f8f2.vp9.webm")
-            .build()?,
-        ElementFactory::make("filesrc")
-            .property("location", "data/audio_244ef87e-000a-47f6-9a49-04f4fa93f8f2.opus.webm")
-            .build()?,
-    )?;
-
-    let mux = ElementFactory::make("webmmux").build()?;
-    let file_sink = ElementFactory::make("filesink")
-        .property("location", "../output.webm")
-        .build()?;
-
-    let pipeline = gst::Pipeline::default();
-    pipeline.add_many([&mux, &file_sink])?;
-    pipeline.add_many([&demux_bin])?;
-
-    demux_bin.link_pads(Some("audio"), &mux, Some("audio_0"))?;
-    demux_bin.link_pads(Some("video"), &mux, Some("video_0"))?;
-    mux.link(&file_sink)?;
-
-    run_pipeline(&pipeline)
-}
-
-fn test_demux_concat() -> AnyRes<()> {
-    let demux_bin_1 = create_demux_bin(
-        ElementFactory::make("filesrc")
-            .property("location", "data/video_244ef87e-000a-47f6-9a49-04f4fa93f8f2.vp9.webm")
-            .build()?,
-        ElementFactory::make("filesrc")
-            .property("location", "data/audio_244ef87e-000a-47f6-9a49-04f4fa93f8f2.opus.webm")
-            .build()?,
-    )?;
-
-    let demux_bin_2 = create_demux_bin(
-        ElementFactory::make("filesrc")
-            .property("location", "data/video_604370e8-3cac-4633-b11a-d539f4f537d1.vp9.webm")
-            .build()?,
-        ElementFactory::make("filesrc")
-            .property("location", "data/audio_604370e8-3cac-4633-b11a-d539f4f537d1.opus.webm")
-            .build()?,
-    )?;
-
-    let fake_sink_0 = ElementFactory::make("fakesink").build()?;
-    let fake_sink_1 = ElementFactory::make("fakesink").build()?;
-
-    let video_concat = ElementFactory::make("concat").build()?;
-    let audio_concat = ElementFactory::make("concat").build()?;
-
-    let pipeline = gst::Pipeline::default();
-    pipeline.add_many([&demux_bin_1, &demux_bin_2])?;
-    pipeline.add_many([&fake_sink_0, &fake_sink_1, &video_concat, &audio_concat])?;
-
-    demux_bin_1.link_pads(Some("audio"), &audio_concat, Some("sink_0"))?;
-    demux_bin_2.link_pads(Some("audio"), &audio_concat, Some("sink_1"))?;
-
-    demux_bin_1.link_pads(Some("video"), &video_concat, Some("sink_0"))?;
-    demux_bin_2.link_pads(Some("video"), &video_concat, Some("sink_1"))?;
-
-    video_concat.link(&fake_sink_0)?;
-    audio_concat.link(&fake_sink_1)?;
-
-    run_pipeline(&pipeline)
-}
-
 fn test_glue() -> AnyRes<()> {
-    let demux_bin_1 = create_demux_bin(
-        ElementFactory::make("filesrc")
-            .property("location", "data/video_244ef87e-000a-47f6-9a49-04f4fa93f8f2.vp9.webm")
-            .build()?,
-        ElementFactory::make("filesrc")
-            .property("location", "data/audio_244ef87e-000a-47f6-9a49-04f4fa93f8f2.opus.webm")
-            .build()?,
-    )?;
+    let demux_ids = [
+        "90e01e31-415d-4fc0-8372-e592c8ce259f",
+        "244ef87e-000a-47f6-9a49-04f4fa93f8f2",
+        "604370e8-3cac-4633-b11a-d539f4f537d1",
+    ];
 
-    let demux_bin_2 = create_demux_bin(
-        ElementFactory::make("filesrc")
-            .property("location", "data/video_604370e8-3cac-4633-b11a-d539f4f537d1.vp9.webm")
-            .build()?,
-        ElementFactory::make("filesrc")
-            .property("location", "data/audio_604370e8-3cac-4633-b11a-d539f4f537d1.opus.webm")
-            .build()?,
-    )?;
+    let demux_bins = demux_ids.iter().map(|id| {
+        create_demux_bin(
+            ElementFactory::make("filesrc")
+                .property("location", format!("data/video_{}.vp9.webm", id))
+                .build()?,
+            ElementFactory::make("filesrc")
+                .property("location", format!("data/audio_{}.opus.webm", id))
+                .build()?,
+        )
+    }).collect::<AnyRes<Vec<_>>>()?;
 
     let file_sink = ElementFactory::make("filesink")
         .property("location", "../output.webm")
         .build()?;
     let mux = ElementFactory::make("webmmux").build()?;
 
-    let video_concat = ElementFactory::make("concat").build()?;
-    let audio_concat = ElementFactory::make("concat").build()?;
+    let video_concat = ElementFactory::make("concat")
+        .build()?;
+    let audio_concat = ElementFactory::make("concat")
+        .build()?;
 
     let pipeline = gst::Pipeline::default();
-    pipeline.add_many([&demux_bin_1, &demux_bin_2])?;
+    pipeline.add_many(&demux_bins)?;
     pipeline.add_many([&mux, &file_sink, &audio_concat, &video_concat])?;
 
-    demux_bin_1.link_pads(Some("audio"), &audio_concat, Some("sink_0"))?;
-    demux_bin_2.link_pads(Some("audio"), &audio_concat, Some("sink_1"))?;
-
-    demux_bin_1.link_pads(Some("video"), &video_concat, Some("sink_0"))?;
-    demux_bin_2.link_pads(Some("video"), &video_concat, Some("sink_1"))?;
+    for (idx, demux_bin) in demux_bins.iter().enumerate() {
+        let destpadname = format!("sink_{}", idx);
+        demux_bin.link_pads(Some("audio"), &audio_concat, Some(&destpadname))?;
+        demux_bin.link_pads(Some("video"), &video_concat, Some(&destpadname))?;
+    }
 
     video_concat.link_pads(None, &mux, Some("video_0"))?;
     audio_concat.link_pads(None, &mux, Some("audio_0"))?;
 
-    mux.link(&file_sink)?;
-
-    run_pipeline(&pipeline)
-}
-
-fn glue() -> AnyRes<()> {
-    let demux_bin_1 = create_demux_bin(
-        ElementFactory::make("filesrc")
-            .property("location", "data/video_244ef87e-000a-47f6-9a49-04f4fa93f8f2.vp9.webm")
-            .build()?,
-        ElementFactory::make("filesrc")
-            .property("location", "data/audio_244ef87e-000a-47f6-9a49-04f4fa93f8f2.opus.webm")
-            .build()?,
-    )?;
-
-    let demux_bin_2 = create_demux_bin(
-        ElementFactory::make("filesrc")
-            .property("location", "data/video_604370e8-3cac-4633-b11a-d539f4f537d1.vp9.webm")
-            .build()?,
-        ElementFactory::make("filesrc")
-            .property("location", "data/audio_604370e8-3cac-4633-b11a-d539f4f537d1.opus.webm")
-            .build()?,
-    )?;
-
-    let concat_audio = ElementFactory::make("concat").build()?;
-    let concat_video = ElementFactory::make("concat").build()?;
-
-    let mux = ElementFactory::make("webmmux").build()?;
-
-    // Save to file
-    let file_sink = ElementFactory::make("filesink")
-        .property("location", "../output.webm")
-        .build()?;
-
-    let pipeline = gst::Pipeline::default();
-    pipeline.add_many([&demux_bin_1, &demux_bin_2])?;
-    pipeline.add_many([&concat_audio, &concat_video, &mux, &file_sink])?;
-
-    // TODO: PadTemplate to auto-gen the number?
-    concat_audio.request_pad_simple("sink_0").context("failed requesting pad")?;
-    concat_audio.request_pad_simple("sink_1").context("failed requesting pad")?;
-
-    concat_video.request_pad_simple("sink_0").context("failed requesting pad")?;
-    concat_video.request_pad_simple("sink_1").context("failed requesting pad")?;
-
-    // TODO: add a synchronize stream before concat
-
-    demux_bin_1.link_pads(Some("audio"), &concat_audio, Some("sink_0"))?;
-    demux_bin_2.link_pads(Some("audio"), &concat_audio, Some("sink_1"))?;
-
-    demux_bin_1.link_pads(Some("video"), &concat_video, Some("sink_0"))?;
-    demux_bin_2.link_pads(Some("video"), &concat_video, Some("sink_1"))?;
-
-    concat_audio.link_pads(Some("src"), &mux, Some("audio_0"))?;
-    concat_video.link_pads(Some("src"), &mux, Some("video_0"))?;
-
-    // TODO: Figure out why this mux is pausing
     mux.link(&file_sink)?;
 
     run_pipeline(&pipeline)
