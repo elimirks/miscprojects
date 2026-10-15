@@ -29,3 +29,10 @@ Trail of red between minibrots.
 More "nested" minibrots.
 
 ![Mini "nested" mandelbrots](https://github.com/elimirks/miscprojects/blob/master/glsl_mandelbrot/images/minibrot.png?raw=true)
+
+## Dependencies
+
+```sh
+sudo apt update
+sudo apt install libsdl2-dev libsdl2-ttf-dev
+```
